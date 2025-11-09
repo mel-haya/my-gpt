@@ -1,0 +1,39 @@
+import { serial, vector, text, pgTable, index } from "drizzle-orm/pg-core";
+
+export const documents = pgTable(
+  "documents",
+  {
+    id: serial("id").primaryKey(),
+    content: text("content").notNull(),
+    embedding: vector("embedding", { dimensions: 1536 }),
+  },
+  (table) => [
+    index("documents_embedding_index").using(
+      "hnsw",
+      table.embedding.op("vector_cosine_ops")
+    ),
+  ]
+);
+
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: serial("id").primaryKey(),
+    user_id: serial("user_id").notNull(),
+  }
+);
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversation_id: serial("conversation_id").notNull(),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+});
+
+
+export type InsertDocument = typeof documents.$inferInsert;
+export type SelectDocument = typeof documents.$inferSelect;
+export type InsertConversation = typeof conversations.$inferInsert;
+export type SelectConversation = typeof conversations.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+export type SelectMessage = typeof messages.$inferSelect;
