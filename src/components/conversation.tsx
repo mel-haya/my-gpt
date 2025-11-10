@@ -5,11 +5,12 @@ import { useChat } from "@ai-sdk/react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import Message from "./message";
+import { chatMessage } from "@/app/api/chat/route";
 
 export default function Conversation() {
   const [input, setInput] = useState("");
 
-  const { messages, sendMessage, status, error, stop } = useChat();
+  const { messages, sendMessage, status, error, stop } = useChat<chatMessage>();
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -54,7 +55,7 @@ export default function Conversation() {
             <Button
               type="submit"
               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              disabled={status !== "ready"}
+              disabled={status !== "ready" || input.trim() === ""}
             >
               Send
             </Button>
