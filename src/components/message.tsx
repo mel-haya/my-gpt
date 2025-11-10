@@ -1,6 +1,67 @@
 import type { UIMessage } from "ai";
-import { Button } from "./ui/button";
+import { useState, useEffect, useRef } from "react";
 export default function Message({ message }: { message: UIMessage }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const audioUrlRef = useRef<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  async function handlePlayAudio() {
+    if (audioUrlRef.current) {
+      if (isPlaying) {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current?.play();
+        setIsPlaying(true);
+      }
+      return;
+    }
+    if (isLoading) {
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/generate-speech", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: message.parts
+            .map((part) => (part.type === "text" ? part.text : ""))
+            .join(""),
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to generate speech");
+      }
+      const audioBlob = await response.blob();
+      audioUrlRef.current = URL.createObjectURL(audioBlob);
+      audioRef.current = new Audio(audioUrlRef.current);
+      setIsPlaying(true);
+      if (audioRef.current) {
+        audioRef.current.play();
+        audioRef.current.onended = () => {
+          setIsPlaying(false);
+          // URL.revokeObjectURL(audioUrlRef.current!);
+        };
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        URL.revokeObjectURL(audioUrlRef.current!);
+      }
+    };
+  }, []);
+
   return (
     <div
       key={message.id}
@@ -25,8 +86,22 @@ export default function Message({ message }: { message: UIMessage }) {
         })}
       </div>
       {message.role === "assistant" && (
-        <div className="flex items-center gap-2" title="Read Aloud">
-          <i className="fa-solid fa-volume-high"></i>
+        <div
+          className="flex items-center gap-2"
+          title="Read Aloud"
+          onClick={handlePlayAudio}
+        >
+          <i
+            className={`fa-solid ${
+              !audioUrlRef.current
+                ? isLoading
+                  ? "fa-spinner fa-spin"
+                  : "fa-volume-high"
+                : isPlaying
+                ? "fa-pause"
+                : "fa-play"
+            }`}
+          ></i>
         </div>
       )}
     </div>
