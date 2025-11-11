@@ -5,16 +5,6 @@ import { ClerkProvider } from "@clerk/nextjs";
 import Header from "@/components/header";
 import { dark } from '@clerk/themes'
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "My GPT",
   description: "A GPT-powered application with speech and image generation features.",
@@ -36,7 +26,7 @@ export default function RootLayout({
         }}
       >
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased dark`}
+          className={`dark`}
         >
           <Header />
           {children}

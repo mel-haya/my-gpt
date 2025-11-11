@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Header() {
   return (
-    <div className="flex w-full items-center justify-between bg-gray-900/20 px-4 py-6 text-white fixed top-0 left-0 right-0 backdrop-blur-md shadow-md z-10">
+    <div className="flex w-full items-center justify-between bg-neutral-900 px-4 py-6 text-white fixed top-0 left-0 right-0 shadow-md z-10 border-b border-neutral-800">
       <h1 className="text-2xl font-bold font-goldman">My GPT</h1>
       <SignedIn>
         <SignOutButton>
