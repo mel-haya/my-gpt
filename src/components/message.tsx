@@ -1,8 +1,8 @@
 
 import type { chatMessage } from "@/app/api/chat/route";
 import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
-export default function Message({ message }: { message: chatMessage }) {
+import {Image }from "@imagekit/next";
+export default function Message({ message, streaming }: { message: chatMessage, streaming: boolean }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const audioUrlRef = useRef<string | null>(null);
@@ -53,6 +53,10 @@ export default function Message({ message }: { message: chatMessage }) {
       setIsLoading(false);
     }
   }
+
+  useEffect(() => {
+    setIsLoading(streaming);  
+  }, [streaming]);
 
   useEffect(() => {
     return () => {
@@ -119,7 +123,8 @@ export default function Message({ message }: { message: chatMessage }) {
                       >
                         <div>
                           <Image
-                            src={`data:image/png;base64,${part.output}`}
+                          urlEndpoint={process.env.NEXT_PUBLIC_IMAGE_KIT_URL_ENDPOINT!}
+                            src={`${part.output}`}
                             alt="Generated image"
                             width={500}
                             height={500}

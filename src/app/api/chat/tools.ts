@@ -2,6 +2,20 @@ import { tool, experimental_generateImage as generateImage } from "ai";
 import { openai } from "./models";
 import { z } from "zod";
 import { openai as originalOpenAI } from "@ai-sdk/openai";
+import imageKit from "imagekit";
+
+async function uploadImageToImageKit(base64Image: string): Promise<string> {
+  const ik = new imageKit({
+    publicKey: process.env.NEXT_PUBLIC_IMAGE_KIT_PUBLIC_KEY!,
+    privateKey: process.env.IMAGE_KIT_PRIVATE_KEY!,
+    urlEndpoint: process.env.NEXT_PUBLIC_IMAGE_KIT_URL_ENDPOINT!,
+  });
+  const response = await ik.upload({
+    file: base64Image,
+    fileName: `generated_image.png`,
+  });
+  return response.url;
+}
 
 export const tools = {
   generateImage: tool({
@@ -21,12 +35,26 @@ export const tools = {
           openai: { style: "vivid", quality: "hd" },
         },
       });
-      return image.base64;
-    },
-    toModelOutput: () => ({
-      type: "content",
-      value: [{ type: "text", text: "Image generated successfully." }],
+      const imageUrl = await uploadImageToImageKit(image.base64);
+      return imageUrl;
+    }
+  }),
+  changeBackground: tool({
+    name: "changeBackground",
+    description: "Changes the background of an image to an AI generated background.",
+    inputSchema: z.object({
+      imageUrl: z.string().describe("The URL of the image to change the background of."),
+      background: z.string().describe("The desired background color (e.g., 'modern office', 'beach sunset', 'forest')."),
     }),
+    outputSchema: z.string().describe("The URL of the image with the changed background."),
+  }),
+  removeBackground: tool({
+    name: "removeBackground",
+    description: "Removes the background from an image.",
+    inputSchema: z.object({
+      imageUrl: z.string().describe("The URL of the image to remove the background of."),
+    }),
+    outputSchema: z.string().describe("The URL of the image with the background removed."),
   }),
   web_search: originalOpenAI.tools.webSearch({
     searchContextSize: 'medium',
