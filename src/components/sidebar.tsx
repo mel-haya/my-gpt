@@ -27,7 +27,8 @@ export default function Sidebar({
   };
 
     return (
-        <div className="hidden lg:flex min-w-[300px] bg-gray-100 dark:bg-neutral-900/80 pt-26 border-r border-gray-300 dark:border-gray-800 flex-col gap-2">
+        <div className="hidden lg:flex min-w-[300px] bg-gray-100 dark:bg-neutral-900/80 border-r border-gray-300 dark:border-gray-800 flex-col gap-2">
+            <h1 className="text-2xl font-bold font-goldman px-4 py-6">My GPT</h1>
             <div className="border-2 border-dashed  mx-4 border-neutral-500 rounded-lg relative">
                 <div className="text-center text-neutral-500 italic px-4 py-12">drag or select your PDFs here</div>
                 <input ref={fileInputRef} onChange={checkFile} type="file" accept=".pdf" multiple className="w-full h-16 opacity-0 absolute top-0 left-0 cursor-pointer"/>

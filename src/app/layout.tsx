@@ -28,7 +28,6 @@ export default function RootLayout({
         <body
           className={`dark`}
         >
-          <Header />
           {children}
         </body>
       </ClerkProvider>

@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import Message from "./message";
 import { chatMessage } from "@/app/api/chat/route";
-
+import Header from "./header";
 export default function Conversation({
   messages,
   sendMessage,
@@ -31,22 +31,15 @@ export default function Conversation({
   };
 
   return (
-    <div className="flex flex-col pt-24 grow h-screen">
-      <div className="flex-1 overflow-y-auto px-4 space-y-4">
+    <div className="flex flex-col grow h-screen">
+      <Header />
+      <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-4">
         {error && <div className="text-red-500 mb-4">{error.message}</div>}
 
         {messages.map((message) => (
-          <Message key={message.id} message={message}/>
+          <Message key={message.id} message={message} streaming={status === "streaming" && message.id === messages[messages.length - 1].id} />
         ))}
       </div>
-      {(status === "submitted" || status === "streaming") && (
-        <div className="mb-4">
-          <div className="flex items-center gap-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
-          </div>
-        </div>
-      )}
-
       <form
         onSubmit={handleSubmit}
         className="p-4 bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 shadow-lg"
