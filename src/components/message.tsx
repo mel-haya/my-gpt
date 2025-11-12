@@ -1,8 +1,13 @@
-
 import type { chatMessage } from "@/app/api/chat/route";
 import { useState, useEffect, useRef } from "react";
-import {Image }from "@imagekit/next";
-export default function Message({ message, streaming }: { message: chatMessage, streaming: boolean }) {
+import { Image } from "@imagekit/next";
+export default function Message({
+  message,
+  streaming,
+}: {
+  message: chatMessage;
+  streaming: boolean;
+}) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const audioUrlRef = useRef<string | null>(null);
@@ -55,7 +60,7 @@ export default function Message({ message, streaming }: { message: chatMessage, 
   }
 
   useEffect(() => {
-    setIsLoading(streaming);  
+    setIsLoading(streaming);
   }, [streaming]);
 
   useEffect(() => {
@@ -87,67 +92,198 @@ export default function Message({ message, streaming }: { message: chatMessage, 
             case "text":
               return <div key={index}>{part.text}</div>;
             case "tool-generateImage":
-                switch (part.state) {
-                  case "input-streaming":
-                    return (
-                      <div
-                        key={`${message.id}-getWeather-${index}`}
-                        className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
-                      >
-                        <div className="text-sm text-zinc-500">
-                          Receiving image generation request...
-                        </div>
-                        <pre className="text-xs text-zinc-600 mt-1">
-                          {JSON.stringify(part.input, null, 2)}
-                        </pre>
+              switch (part.state) {
+                case "input-streaming":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div className="text-sm text-zinc-500">
+                        Receiving image generation request...
                       </div>
-                    );
+                      <pre className="text-xs text-zinc-600 mt-1">
+                        {JSON.stringify(part.input, null, 2)}
+                      </pre>
+                    </div>
+                  );
 
-                  case "input-available":
-                    return (
-                      <div
-                        key={`${message.id}-getWeather-${index}`}
-                        className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
-                      >
-                        <div className="text-sm text-zinc-400">
-                          Generating image for: {part.input.prompt}
-                        </div>
+                case "input-available":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div className="text-sm text-zinc-400">
+                        Generating image for: {part.input.prompt}
                       </div>
-                    );
+                    </div>
+                  );
 
-                  case "output-available":
-                    return (
-                      <div
-                        key={`${message.id}-getWeather-${index}`}
-                        className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
-                      >
-                        <div>
-                          <Image
-                          urlEndpoint={process.env.NEXT_PUBLIC_IMAGE_KIT_URL_ENDPOINT!}
-                            src={`${part.output}`}
-                            alt="Generated image"
-                            width={500}
-                            height={500}
-                          />
-                        </div>
+                case "output-available":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div>
+                        <Image
+                          urlEndpoint={
+                            process.env.NEXT_PUBLIC_IMAGE_KIT_URL_ENDPOINT!
+                          }
+                          src={`${part.output}`}
+                          alt="Generated image"
+                          width={500}
+                          height={500}
+                        />
                       </div>
-                    );
+                    </div>
+                  );
 
-                  case "output-error":
-                    return (
-                      <div
-                        key={`${message.id}-getWeather-${index}`}
-                        className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
-                      >
-                        <div className="text-sm text-red-400">
-                          Error: {part.errorText}
-                        </div>
+                case "output-error":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div className="text-sm text-red-400">
+                        Error: {part.errorText}
                       </div>
-                    );
+                    </div>
+                  );
 
-                  default:
-                    return null;
-                }
+                default:
+                  return null;
+              }
+            case "tool-removeBackground":
+              switch (part.state) {
+                case "input-streaming":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div className="text-sm text-zinc-500">
+                        Receiving image transformation request...
+                      </div>
+                      <pre className="text-xs text-zinc-600 mt-1">
+                        {JSON.stringify(part.input, null, 2)}
+                      </pre>
+                    </div>
+                  );
+
+                case "input-available":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div className="text-sm text-zinc-400">
+                        Removing background...
+                      </div>
+                    </div>
+                  );
+
+                case "output-available":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div>
+                        <Image
+                          urlEndpoint={
+                            process.env.NEXT_PUBLIC_IMAGE_KIT_URL_ENDPOINT!
+                          }
+                          src={part.output}
+                          alt="Generated image"
+                          width={500}
+                          height={500}
+                        />
+                      </div>
+                    </div>
+                  );
+
+                case "output-error":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div className="text-sm text-red-400">
+                        Error: {part.errorText}
+                      </div>
+                    </div>
+                  );
+
+                default:
+                  return null;
+              }
+            case "tool-changeBackground":
+              switch (part.state) {
+                case "input-streaming":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div className="text-sm text-zinc-500">
+                        Receiving image transformation request...
+                      </div>
+                      <pre className="text-xs text-zinc-600 mt-1">
+                        {JSON.stringify(part.input, null, 2)}
+                      </pre>
+                    </div>
+                  );
+
+                case "input-available":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div className="text-sm text-zinc-400">
+                        Changing background to: {part.input.background}
+                      </div>
+                    </div>
+                  );
+
+                case "output-available":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div>
+                        <Image
+                          urlEndpoint={
+                            process.env.NEXT_PUBLIC_IMAGE_KIT_URL_ENDPOINT!
+                          }
+                          src={part.output}
+                          alt="Generated image"
+                          width={500}
+                          height={500}
+                        />
+                      </div>
+                    </div>
+                  );
+
+                case "output-error":
+                  return (
+                    <div
+                      key={`${message.id}-getWeather-${index}`}
+                      className="bg-zinc-800/50 border border-zinc-700 p-2 rounded mt-1 mb-2"
+                    >
+                      <div className="text-sm text-red-400">
+                        Error: {part.errorText}
+                      </div>
+                    </div>
+                  );
+
+                default:
+                  return null;
+              }
+
             default:
               return null;
           }
