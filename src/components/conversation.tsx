@@ -1,12 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useChat } from "@ai-sdk/react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import Message from "./message";
 import { chatMessage } from "@/app/api/chat/route";
 import Header from "./header";
+
+const welcomeMessage = "Hello! How can I assist you today?";
+const promptExamples = [
+  "Generate an image of a kitten",
+  "Write me an Email",
+  "Who created Linux",
+];
+
 export default function Conversation({
   messages,
   sendMessage,
@@ -22,8 +29,6 @@ export default function Conversation({
 }) {
   const [input, setInput] = useState("");
 
-  // const { messages, sendMessage, status, error, stop, setMessages } = useChat<chatMessage>();
-
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     sendMessage({ text: input });
@@ -34,10 +39,35 @@ export default function Conversation({
     <div className="flex flex-col grow h-screen">
       <Header />
       <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-4">
+        {messages.length === 0 && (
+          <div className="h-full flex-col flex justify-center items-center gap-4">
+            <h1 className="text-3xl font-bold">{welcomeMessage}</h1>
+            <div className="flex gap-2">
+              {promptExamples.map((p, index) => {
+                return (
+                  <div
+                    onClick={() => setInput(p)}
+                    key={`prompt_${index}`}
+                    className="bg-neutral-800 p-4 cursor-pointer rounded-lg"
+                  >
+                    {p}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {error && <div className="text-red-500 mb-4">{error.message}</div>}
 
         {messages.map((message) => (
-          <Message key={message.id} message={message} streaming={status === "streaming" && message.id === messages[messages.length - 1].id} />
+          <Message
+            key={message.id}
+            message={message}
+            streaming={
+              status === "streaming" &&
+              message.id === messages[messages.length - 1].id
+            }
+          />
         ))}
       </div>
       <form
