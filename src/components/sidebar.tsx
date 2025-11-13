@@ -1,41 +1,92 @@
-
 import { chatMessage } from "@/app/api/chat/route";
 import { Button } from "@/components/ui/button";
-import { toast } from 'react-toastify';
-import { useRef } from "react";
-
+import { toast } from "react-toastify";
+import { useRef, useState } from "react";
+import PdfIcon from "@/components/Icons/pdfIcon";
+import { processPDF } from "@/app/actions";
+import { shortenText } from "@/lib/utils";
 
 export default function Sidebar({
-    setMessages,
-}
-: {
-    setMessages: (messages: chatMessage[]) => void;
+  setMessages,
+}: {
+  setMessages: (messages: chatMessage[]) => void;
 }) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
 
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const handleUploadClick = () => {
-        toast.info("Upload feature coming soon!");
-    };
+  const handleUploadClick = async () => {
+    if (!file) {
+      toast.error("Please select a PDF file first.");
+      return;
+    }
 
-    const checkFile = () => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      setLoading(true);
+      const result = await processPDF(formData);
+      setLoading(false);
+      if (result.success) {
+        toast.success("PDF file uploaded and processed successfully.");
+        fileInputRef.current!.value = "";
+        setFile(null);
+      } else {
+        toast.error("Error processing PDF: " + result.error);
+      }
+    } catch (error) {
+      toast.error("Failed to upload the PDF file.");
+    }
+  };
+
+  const handleNewConversation = () => {
+    setMessages([]);
+  };
+
+  const checkFile = () => {
     const file = fileInputRef.current?.files?.[0];
     if (file) {
-      alert("File exists: " + file.name);
+      setFile(file);
     } else {
       alert("No file chosen");
     }
   };
 
-    return (
-        <div className="hidden lg:flex min-w-[300px] bg-gray-100 dark:bg-neutral-900/80 border-r border-gray-300 dark:border-gray-800 flex-col gap-2">
-            <h1 className="text-2xl font-bold font-goldman px-4 py-6">My GPT</h1>
-            <div className="border-2 border-dashed  mx-4 border-neutral-500 rounded-lg relative">
-                <div className="text-center text-neutral-500 italic px-4 py-12">drag or select your PDFs here</div>
-                <input ref={fileInputRef} onChange={checkFile} type="file" accept=".pdf" multiple className="w-full h-16 opacity-0 absolute top-0 left-0 cursor-pointer"/>
+  return (
+    <div className="hidden lg:flex min-w-[300px] bg-gray-100 dark:bg-neutral-900/80 border-r border-gray-300 dark:border-gray-800 flex-col gap-2">
+      <h1 className="text-2xl font-bold font-goldman px-4 py-6">My GPT</h1>
+      <div className="border-2 border-dashed  mx-4 border-neutral-500 rounded-lg relative">
+        {file ? (
+          loading ? (
+            <div className="text-center text-neutral-700 dark:text-neutral-300 italic px-4 py-12 flex justify-center items-center">
+              <h2>Processing PDF...</h2>
             </div>
-            <Button className="mx-4 cursor-pointer" onClick={handleUploadClick}>Upload PDF to the knowledge base</Button>
-            <Button className="mx-4 cursor-pointer" onClick={() => setMessages([])}>New Conversation</Button>
-            
-        </div>
-    );
+          ) : (
+            <div className="text-center text-neutral-700 dark:text-neutral-300 italic px-4 py-12 flex justify-center items-center gap-1">
+              <PdfIcon width="24" height="24" />
+              {shortenText(file.name)}
+            </div>
+          )
+        ) : (
+          <div className="text-center text-neutral-500 italic px-4 py-12">
+            drag or select your PDFs here
+          </div>
+        )}
+
+        <input
+          ref={fileInputRef}
+          onChange={checkFile}
+          type="file"
+          accept=".pdf"
+          className="w-full h-full opacity-0 absolute top-0 left-0 cursor-pointer"
+        />
+      </div>
+      <Button className="mx-4 cursor-pointer" onClick={handleUploadClick}>
+        Upload PDF to the knowledge base
+      </Button>
+      <Button className="mx-4 cursor-pointer" onClick={handleNewConversation}>
+        New Conversation
+      </Button>
+    </div>
+  );
 }

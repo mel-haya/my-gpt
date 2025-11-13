@@ -3,6 +3,7 @@ import { openai } from "./models";
 import { z } from "zod";
 import { openai as originalOpenAI } from "@ai-sdk/openai";
 import imageKit from "imagekit";
+import { searchDocuments } from "@/lib/search";
 
 async function uploadImageToImageKit(base64Image: string): Promise<string> {
   const ik = new imageKit({
@@ -58,5 +59,27 @@ export const tools = {
   }),
   web_search: originalOpenAI.tools.webSearch({
     searchContextSize: 'medium',
+  }),
+  searchKnowledgeBase: tool({
+    name: "searchKnowledgeBase",
+    description: "Searches the knowledge base for relevant information based on a query.",
+    inputSchema: z.object({
+      query: z.string().describe("The search query to look for in the knowledge base."),
+    }),
+    execute: async ({ query }) => {
+      try {
+        const response = await searchDocuments(query, 5, 0.5);
+        if(response.length === 0) {
+          console.log("No relevant documents found.");
+          return "No relevant information found in the knowledge base.";
+        }
+        const results = response.map(doc => `- ${doc.content}`).join("\n");
+        return `Here are the relevant documents found in the knowledge base:\n${results}`;
+      }
+      catch (error) {
+        console.error("Error searching knowledge base:", error);
+        return "An error occurred while searching the knowledge base.";
+      }
+    }
   }),
 };
