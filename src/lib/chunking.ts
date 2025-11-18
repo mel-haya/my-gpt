@@ -1,12 +1,18 @@
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 export const textSplitter = new RecursiveCharacterTextSplitter({
-  chunkSize: 200,
-  chunkOverlap: 20,
-  separators: [" "],
+  chunkSize: 500, // Reduced from 500 to be safer
+  chunkOverlap: 30,
+  separators: ["\n\n", "\n", " ", ""], // Better separators
 });
 
 export async function chunkContent(content: string): Promise<string[]> {
-  const chunks = await textSplitter.splitText(content);
-  return chunks;
+  try{
+    const chunks = await textSplitter.splitText(content);
+    return chunks;
+  }
+  catch(error){
+    console.error("Error during text chunking:", error);
+    return [];
+  }
 }
