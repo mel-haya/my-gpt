@@ -20,7 +20,7 @@ export const conversations = pgTable(
   "conversations",
   {
     id: serial("id").primaryKey(),
-    user_id: serial("user_id").notNull(),
+    user_id: text("user_id").notNull(),
     title: text("title"),
   }
 );
