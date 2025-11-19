@@ -3,12 +3,26 @@
 import Conversation from "@/components/conversation";
 import Sidebar from "@/components/sidebar";
 import { useChat } from "@ai-sdk/react";
-import { chatMessage } from "./api/chat/route";
+import { ChatMessage } from "@/types/chatMessage";
 import { ToastContainer } from "react-toastify";
-import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import {
+  lastAssistantMessageIsCompleteWithToolCalls,
+  UIMessagePart,
+  UIDataTypes,
+} from "ai";
 import { buildTransformationUrl } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import {
+  addConversation,
+  getConversationsByUserId,
+} from "@/services/conversationsService";
+import type { SelectConversation } from "@/lib/db-schema";
 
 export default function Home() {
+  const userId = 1; // Replace with actual user id logic
+  const [currentConversation, setCurrentConversation] =
+    useState<SelectConversation | null>(null);
+
   const {
     messages,
     sendMessage,
@@ -17,7 +31,7 @@ export default function Home() {
     stop,
     setMessages,
     addToolOutput,
-  } = useChat<chatMessage>({
+  } = useChat<ChatMessage>({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     async onToolCall({ toolCall }) {
       if (toolCall.dynamic) return;
@@ -59,6 +73,34 @@ export default function Home() {
       }
     },
   });
+
+  useEffect(() => {
+    // async function initConversation() {
+    //   const conversations = await getConversationsByUserId(userId);
+    //   if (conversations.length === 0) {
+    //     const newConv = await addConversation(userId);
+    //     setCurrentConversation(newConv);
+    //   } else {
+    //     setCurrentConversation(conversations[0]);
+    //   }
+    // }
+    // initConversation();
+    fetch('/api/conversations').then(res => {
+      console.log(res);
+      return res.json();
+    });
+  }, []);
+
+  // useEffect(() => {
+  //   async function loadMessages() {
+  //     if (currentConversation) {
+        
+  //       setMessages([]);
+  //     }
+  //   }
+  //   loadMessages();
+  // }, [currentConversation]);
+
   return (
     <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
       <Sidebar setMessages={setMessages} />
