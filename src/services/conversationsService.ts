@@ -1,9 +1,9 @@
 import { conversations, InsertConversation, SelectConversation } from "@/lib/db-schema";
 import { db } from "@/lib/db-config";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and } from "drizzle-orm";
 
 export async function addConversation(
-  userId: number
+  userId: string
 ): Promise<SelectConversation> {
   const insertConversation: InsertConversation = {
     user_id: userId,
@@ -12,8 +12,20 @@ export async function addConversation(
   return result[0];
 }
 
+export async function changeConversationTitle(
+  userId: string,
+  conversationId: number,
+  title: string
+): Promise<number> {
+  const result = await db
+    .update(conversations)
+    .set({ title })
+    .where(and(eq(conversations.user_id, userId), eq(conversations.id, conversationId)));
+  return result.rowCount
+}
+
 export async function getConversationsByUserId(
-  userId: number
+  userId: string
 ): Promise<SelectConversation[]> {
   const result = await db
     .select()
