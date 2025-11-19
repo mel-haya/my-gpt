@@ -1,4 +1,4 @@
-import { chatMessage } from "@/app/api/chat/route";
+import { ChatMessage } from "@/types/chatMessage";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-toastify";
 import { useRef, useState } from "react";
@@ -8,7 +8,7 @@ import { shortenText } from "@/lib/utils";
 export default function Sidebar({
   setMessages,
 }: {
-  setMessages: (messages: chatMessage[]) => void;
+  setMessages: (messages: ChatMessage[]) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -33,12 +33,15 @@ export default function Sidebar({
       if (resultJson.success) {
         toast.success("PDF file uploaded and processed successfully.");
         fileInputRef.current!.value = "";
-        setFile(null);
       } else {
         toast.error("Error processing PDF: " + resultJson.error);
       }
     } catch (error) {
       toast.error("Failed to upload the PDF file.");
+    }
+    finally {
+      setLoading(false);
+      setFile(null);
     }
   };
 

@@ -11,10 +11,17 @@ export async function generateEmbedding(text: string) {
 }
 
 export async function generateEmbeddings(texts: string[]) {
-  const inputs = texts.map((text) => text.replace("\n", " "));
-  const { embeddings } = await embedMany({
-    model: openai.textEmbeddingModel("text-embedding-3-small"),
-    values: inputs,
-  });
-  return embeddings;
+  
+  const inputs = texts.map((text) => text.replace(/\n/g, " "));
+  
+  try {
+    const { embeddings } = await embedMany({
+      model: openai.textEmbeddingModel("text-embedding-3-small"),
+      values: inputs,
+    });
+    return embeddings;
+  } catch (error) {
+    console.error("Error generating embeddings:", error);
+    throw error;
+  }
 }
