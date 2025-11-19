@@ -1,6 +1,8 @@
 import type { chatMessage } from "@/app/api/chat/route";
 import { useState, useEffect, useRef } from "react";
 import { Image } from "@imagekit/next";
+import  SyntaxHighlighter from "react-syntax-highlighter";
+import { darcula } from "react-syntax-highlighter/dist/esm/styles/hljs";
 export default function Message({
   message,
   streaming,
@@ -59,6 +61,37 @@ export default function Message({
     }
   }
 
+  function parseMarkdownCodeBlocks(input: string) {
+    const regex = /```\s*(\w+)([\s\S]*?)(```|$)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(input)) !== null) {
+      const code = match[2].trim();
+
+      // text before the code block
+      if (match.index > lastIndex) {
+        parts.push(<div className="py-2">{input.slice(lastIndex, match.index)}</div>);
+      }
+
+      // the code block itself
+      parts.push(
+        <SyntaxHighlighter language={match[1].trim()} style={darcula}>
+          {String(code)}
+        </SyntaxHighlighter>
+      );
+
+      lastIndex = regex.lastIndex;
+    }
+
+    // remaining text after last code block
+    if (lastIndex < input.length) {
+      parts.push(input.slice(lastIndex));
+    }
+    return parts;
+  }
+
   useEffect(() => {
     setIsLoading(streaming);
   }, [streaming]);
@@ -90,7 +123,13 @@ export default function Message({
         {message.parts.map((part, index) => {
           switch (part.type) {
             case "text":
-              return <div key={index}>{part.text}</div>;
+              return (
+                <div key={index}>
+                  {parseMarkdownCodeBlocks(part.text).map((element, idx) => (
+                    <div key={idx}>{element}</div>
+                  ))}
+                </div>
+              );
             case "tool-generateImage":
               switch (part.state) {
                 case "input-streaming":
@@ -283,7 +322,6 @@ export default function Message({
                 default:
                   return null;
               }
-
             default:
               return null;
           }
