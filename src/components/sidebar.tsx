@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "react-toastify";
 import { useRef, useState } from "react";
 import PdfIcon from "@/components/Icons/pdfIcon";
-import { processPDF } from "@/app/actions";
 import { shortenText } from "@/lib/utils";
 
 export default function Sidebar({
@@ -25,14 +24,18 @@ export default function Sidebar({
       const formData = new FormData();
       formData.append("file", file);
       setLoading(true);
-      const result = await processPDF(formData);
+      const result = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+      const resultJson = await result.json();
       setLoading(false);
-      if (result.success) {
+      if (resultJson.success) {
         toast.success("PDF file uploaded and processed successfully.");
         fileInputRef.current!.value = "";
         setFile(null);
       } else {
-        toast.error("Error processing PDF: " + result.error);
+        toast.error("Error processing PDF: " + resultJson.error);
       }
     } catch (error) {
       toast.error("Failed to upload the PDF file.");
