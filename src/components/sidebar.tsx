@@ -10,10 +10,12 @@ export default function Sidebar({
   reset,
   conversations,
   setCurrentConversation,
+  deleteConversation,
 }: {
   reset: () => void;
   conversations: SelectConversation[];
   setCurrentConversation: (conversation: SelectConversation) => void;
+  deleteConversation: (conversationId: number) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -43,8 +45,7 @@ export default function Sidebar({
       }
     } catch (error) {
       toast.error("Failed to upload the PDF file.");
-    }
-    finally {
+    } finally {
       setLoading(false);
       setFile(null);
     }
@@ -103,12 +104,19 @@ export default function Sidebar({
           <div
             key={conversation.id}
             onClick={() => setCurrentConversation(conversation)}
-            className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800"
+            className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex justify-between"
           >
-            {conversation.title || "Untitled Conversation"}
+            {conversation.title
+              ? (conversation.title.length < 30)
+                ? conversation.title
+                : conversation.title?.slice(0, 30) + "..."
+              : "Untitled Conversation"}
+            <span className="opacity-0 hover:opacity-100" onClick={(e) => {
+              e.stopPropagation();
+              deleteConversation(conversation.id);
+            }}><i className="fa-solid fa-xmark"></i></span>
           </div>
         ))}
-        
       </div>
     </div>
   );

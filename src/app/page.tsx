@@ -64,6 +64,9 @@ export default function Home() {
           break;
       }
     },
+    async onFinish({ messages }) {
+      await fetchConversations();
+    },
   });
 
   async function initConversation() {
@@ -97,24 +100,49 @@ export default function Home() {
     setCurrentConversation(null);
   }
 
-  useEffect(() => {
-    async function fetchConversations() {
-      try {
-        const res = await fetch("/api/conversations");
-        const data = await res.json();
-        setConversations(data);
-      } catch (error) {
-        console.error("Error fetching conversations:", error);
+  async function deleteConversation(conversationId: number) {
+    try {
+      const res = await fetch(
+        `/api/conversations?conversationId=${conversationId}`,
+        {
+          method: "DELETE",
+        }
+      );
+      const data = await res;
+      console.log("Delete response data:", data);
+      if (data.ok) {
+        if (currentConversation?.id === conversationId) {
+          resetConversation();
+        }
+        await fetchConversations();
       }
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
     }
-    fetchConversations();
+  }
+  async function fetchConversations() {
+    try {
+      const res = await fetch("/api/conversations");
+      const data = await res.json();
+      setConversations(data);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+    }
+  }
+  useEffect(() => {
+    async function fetchAndSetConversations() {
+      await fetchConversations();
+    }
+    fetchAndSetConversations();
   }, []);
 
   useEffect(() => {
-    if(!currentConversation) return;
+    if (!currentConversation || messages.length === 1) return;
     async function getMessages() {
       try {
-        const res = await fetch("/api/messages?conversationId=" + currentConversation?.id);
+        const res = await fetch(
+          "/api/messages?conversationId=" + currentConversation?.id
+        );
         const data = await res.json();
         setMessages(data);
       } catch (error) {
@@ -130,6 +158,7 @@ export default function Home() {
         reset={resetConversation}
         setCurrentConversation={setCurrentConversation}
         conversations={conversations}
+        deleteConversation={deleteConversation}
       />
       <Conversation
         messages={messages}
