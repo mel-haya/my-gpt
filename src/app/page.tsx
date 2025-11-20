@@ -7,22 +7,16 @@ import { ChatMessage } from "@/types/chatMessage";
 import { ToastContainer } from "react-toastify";
 import {
   lastAssistantMessageIsCompleteWithToolCalls,
-  UIMessagePart,
-  UIDataTypes,
 } from "ai";
 import { buildTransformationUrl } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import {
-  addConversation,
-  getConversationsByUserId,
-} from "@/services/conversationsService";
+
 import type { SelectConversation } from "@/lib/db-schema";
 
 export default function Home() {
   const userId = 1; // Replace with actual user id logic
   const [currentConversation, setCurrentConversation] =
     useState<SelectConversation | null>(null);
-
   const {
     messages,
     sendMessage,
@@ -74,39 +68,39 @@ export default function Home() {
     },
   });
 
-  useEffect(() => {
-    // async function initConversation() {
-    //   const conversations = await getConversationsByUserId(userId);
-    //   if (conversations.length === 0) {
-    //     const newConv = await addConversation(userId);
-    //     setCurrentConversation(newConv);
-    //   } else {
-    //     setCurrentConversation(conversations[0]);
-    //   }
-    // }
-    // initConversation();
-    fetch('/api/conversations').then(res => {
-      console.log(res);
-      return res.json();
-    });
-  }, []);
+  async function initConversation() {
+    try{
+      const convesation = await fetch('/api/conversations/new', { method: 'POST'})
+      const data = await convesation.json();
+      setCurrentConversation(data);
+      return data;
+    }
+    catch(error){
+      console.error("Error initializing conversation:", error);
+    }
+  }
 
-  // useEffect(() => {
-  //   async function loadMessages() {
-  //     if (currentConversation) {
-        
-  //       setMessages([]);
-  //     }
-  //   }
-  //   loadMessages();
-  // }, [currentConversation]);
+  async function send(message: { text: string }) {
+    let conversation = currentConversation;
+    if(!conversation){
+      conversation = await initConversation();
+    }
+    const body = { conversationId: conversation?.id };
+    await sendMessage(message, {body});
+  }
+
+  function resetConversation() {
+    setMessages([]);
+    setCurrentConversation(null);
+  }
+
 
   return (
     <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
-      <Sidebar setMessages={setMessages} />
+      <Sidebar reset={resetConversation} setCurrentConversation={setCurrentConversation} />
       <Conversation
         messages={messages}
-        sendMessage={sendMessage}
+        sendMessage={send}
         status={status}
         error={error}
         stop={stop}

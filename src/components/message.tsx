@@ -1,4 +1,4 @@
-import type { chatMessage } from "@/app/api/chat/route";
+import type { ChatMessage } from "@/types/chatMessage";
 import { useState, useEffect, useRef } from "react";
 import { Image } from "@imagekit/next";
 import  SyntaxHighlighter from "react-syntax-highlighter";
@@ -7,7 +7,7 @@ export default function Message({
   message,
   streaming,
 }: {
-  message: chatMessage;
+  message: ChatMessage;
   streaming: boolean;
 }) {
   const [isPlaying, setIsPlaying] = useState(false);

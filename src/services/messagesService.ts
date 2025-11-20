@@ -3,7 +3,7 @@ import { eq, asc } from "drizzle-orm";
 import { messages, InsertMessage, SelectMessage } from "@/lib/db-schema";
 import { ChatMessage } from "@/types/chatMessage";
 
-export async function addMessage(
+export async function saveMessage(
   message: ChatMessage,
   conversationId: number
 ): Promise<SelectMessage> {

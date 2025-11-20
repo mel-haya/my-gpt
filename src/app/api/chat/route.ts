@@ -1,18 +1,18 @@
-import {
-  streamText,
-  convertToModelMessages,
-  stepCountIs,
-} from "ai";
+import { streamText, convertToModelMessages, stepCountIs } from "ai";
 import { openai } from "./models";
 import { tools } from "./tools";
 import { ChatMessage } from "@/types/chatMessage";
-
+import { saveMessage } from "@/services/messagesService";
 
 export async function POST(req: Request) {
   try {
-    const { messages }: { messages: ChatMessage[] } = await req.json();
+    const {
+      messages,
+      conversationId,
+    }: { messages: ChatMessage[], conversationId: number } =
+    await req.json();
+    await saveMessage(messages[messages.length - 1], conversationId);
     const modelMessages = convertToModelMessages(messages);
-
     const response = streamText({
       messages: modelMessages,
       model: openai.languageModel("fast"),
@@ -25,8 +25,16 @@ export async function POST(req: Request) {
           don't answer any question that cannot be answered using the knowledge base.`,
       stopWhen: stepCountIs(2),
     });
-    return response.toUIMessageStreamResponse();
+
+    return response.toUIMessageStreamResponse({
+      onFinish: ({ responseMessage }) => {
+        saveMessage(responseMessage as ChatMessage, conversationId);
+      },
+    });
   } catch (error) {
-    return new Response("Error processing request", { status: 500, statusText: String(error) });
+    return new Response("Error processing request", {
+      status: 500,
+      statusText: String(error),
+    });
   }
 }

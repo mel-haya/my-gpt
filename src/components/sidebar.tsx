@@ -4,11 +4,14 @@ import { toast } from "react-toastify";
 import { useRef, useState } from "react";
 import PdfIcon from "@/components/Icons/pdfIcon";
 import { shortenText } from "@/lib/utils";
+import type { SelectConversation } from "@/lib/db-schema";
 
 export default function Sidebar({
-  setMessages,
+  reset,
+  setCurrentConversation,
 }: {
-  setMessages: (messages: ChatMessage[]) => void;
+  reset: () => void;
+  setCurrentConversation: (conversation: SelectConversation) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -46,7 +49,7 @@ export default function Sidebar({
   };
 
   const handleNewConversation = () => {
-    setMessages([]);
+    reset();
   };
 
   const checkFile = () => {
