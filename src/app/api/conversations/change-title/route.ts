@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse as Response, NextRequest as Request } from "next/server";
 import { changeConversationTitle } from "@/services/conversationsService";
 
-export async function ALTER(req: Request) {
+export async function POST(req: Request) {
     const { userId } = await auth();
     const { conversationId, title } = await req.json();
     if (!userId) {
