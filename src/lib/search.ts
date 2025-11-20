@@ -6,7 +6,7 @@ import { generateEmbedding } from "./embedding";
 export async function searchDocuments(
   query: string,
   limit: number = 5,
-  threshold: number = 1
+  threshold: number = 0.5
 ) {
 
   const embedding = await generateEmbedding(query);

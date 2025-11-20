@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import Message from "./message";
-import { chatMessage } from "@/app/api/chat/route";
+import { ChatMessage } from "@/types/chatMessage";
 import Header from "./header";
 
 const welcomeMessage = "Hello! How can I assist you today?";
@@ -21,7 +21,7 @@ export default function Conversation({
   error,
   stop,
 }: {
-  messages: chatMessage[];
+  messages: ChatMessage[];
   sendMessage: (message: { text: string }) => void;
   status: string;
   error: Error | undefined;
@@ -29,9 +29,9 @@ export default function Conversation({
 }) {
   const [input, setInput] = useState("");
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    sendMessage({ text: input });
+    await sendMessage({ text: input });
     setInput("");
   };
 

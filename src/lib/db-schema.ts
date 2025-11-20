@@ -1,5 +1,6 @@
-import { serial, vector, text, pgTable, index } from "drizzle-orm/pg-core";
+import { serial, vector, text, pgTable, index, jsonb, pgEnum } from "drizzle-orm/pg-core";
 
+export const rolesEnum = pgEnum("roles", ["system", "user", "assistant"]);
 export const documents = pgTable(
   "documents",
   {
@@ -19,15 +20,16 @@ export const conversations = pgTable(
   "conversations",
   {
     id: serial("id").primaryKey(),
-    user_id: serial("user_id").notNull(),
+    user_id: text("user_id").notNull(),
+    title: text("title"),
   }
 );
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
-  conversation_id: serial("conversation_id").notNull(),
-  role: text("role").notNull(),
-  content: text("content").notNull(),
+  conversation_id: serial("conversation_id").notNull().references(() => conversations.id),
+  role: rolesEnum("role").notNull(),
+  parts: jsonb("parts").notNull(),
 });
 
 
