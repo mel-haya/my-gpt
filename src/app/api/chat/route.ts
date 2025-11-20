@@ -3,15 +3,25 @@ import { openai } from "./models";
 import { tools } from "./tools";
 import { ChatMessage } from "@/types/chatMessage";
 import { saveMessage } from "@/services/messagesService";
+import { SelectConversation } from "@/lib/db-schema";
+import { changeConversationTitle } from "@/services/conversationsService";
+import { TextUIPart } from "ai";
 
 export async function POST(req: Request) {
   try {
     const {
       messages,
-      conversationId,
-    }: { messages: ChatMessage[], conversationId: number } =
-    await req.json();
-    await saveMessage(messages[messages.length - 1], conversationId);
+      conversation,
+    }: { messages: ChatMessage[]; conversation: SelectConversation } =
+      await req.json();
+    await saveMessage(messages[messages.length - 1], conversation.id);
+    if (!conversation.title) {
+      await changeConversationTitle(
+        conversation.user_id,
+        conversation.id,
+        (messages[0].parts[0] as TextUIPart).text
+      );
+    }
     const modelMessages = convertToModelMessages(messages);
     const response = streamText({
       messages: modelMessages,
@@ -28,7 +38,7 @@ export async function POST(req: Request) {
 
     return response.toUIMessageStreamResponse({
       onFinish: ({ responseMessage }) => {
-        saveMessage(responseMessage as ChatMessage, conversationId);
+        saveMessage(responseMessage as ChatMessage, conversation.id);
       },
     });
   } catch (error) {

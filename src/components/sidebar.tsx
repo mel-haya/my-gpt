@@ -8,9 +8,11 @@ import type { SelectConversation } from "@/lib/db-schema";
 
 export default function Sidebar({
   reset,
+  conversations,
   setCurrentConversation,
 }: {
   reset: () => void;
+  conversations: SelectConversation[];
   setCurrentConversation: (conversation: SelectConversation) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -96,6 +98,18 @@ export default function Sidebar({
       <Button className="mx-4 cursor-pointer" onClick={handleNewConversation}>
         New Conversation
       </Button>
+      <div>
+        {conversations.map((conversation) => (
+          <div
+            key={conversation.id}
+            onClick={() => setCurrentConversation(conversation)}
+            className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800"
+          >
+            {conversation.title || "Untitled Conversation"}
+          </div>
+        ))}
+        
+      </div>
     </div>
   );
 }
