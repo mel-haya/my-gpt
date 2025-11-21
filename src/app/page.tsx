@@ -69,8 +69,8 @@ export default function Home() {
       }
     },
     async onFinish({ messages }) {
-      messages = messages.filter((msg) => msg.role === "user");
-      if (messages.length === 1) await fetchConversations();
+      const userMessages = messages.filter((m) => m.role === "user");
+      if (userMessages.length === 1) await fetchConversations();
     },
   });
 
@@ -132,9 +132,6 @@ export default function Home() {
     }
   }
   async function fetchConversations() {
-    console.log("Fetching conversations...");
-    if (!isSignedIn) return;
-    console.log("User is signed in, proceeding to fetch conversations.");
     try {
       const res = await fetch("/api/conversations");
       const data = await res.json();
