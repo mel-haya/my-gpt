@@ -1,8 +1,24 @@
 import type { ChatMessage } from "@/types/chatMessage";
 import { useState, useEffect, useRef } from "react";
 import { Image } from "@imagekit/next";
-import  SyntaxHighlighter from "react-syntax-highlighter";
-import { darcula } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import SyntaxHighlighter from "react-syntax-highlighter";
+import { a11yDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import Markdown from "react-markdown";
+
+function LinkRenderer({
+  href,
+  children,
+}: {
+  href?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <a className="text-blue-400 underline" href={href} target="_blank" rel="noreferrer">
+      {children}
+    </a>
+  );
+}
+
 export default function Message({
   message,
   streaming,
@@ -61,36 +77,6 @@ export default function Message({
     }
   }
 
-  function parseMarkdownCodeBlocks(input: string) {
-    const regex = /```\s*(\w+)([\s\S]*?)(```|$)/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = regex.exec(input)) !== null) {
-      const code = match[2].trim();
-
-      // text before the code block
-      if (match.index > lastIndex) {
-        parts.push(<div className="py-2">{input.slice(lastIndex, match.index)}</div>);
-      }
-
-      // the code block itself
-      parts.push(
-        <SyntaxHighlighter language={match[1].trim()} style={darcula}>
-          {String(code)}
-        </SyntaxHighlighter>
-      );
-
-      lastIndex = regex.lastIndex;
-    }
-
-    // remaining text after last code block
-    if (lastIndex < input.length) {
-      parts.push(input.slice(lastIndex));
-    }
-    return parts;
-  }
 
   useEffect(() => {
     setIsLoading(streaming);
@@ -124,11 +110,22 @@ export default function Message({
           switch (part.type) {
             case "text":
               return (
-                <div key={index}>
-                  {parseMarkdownCodeBlocks(part.text).map((element, idx) => (
-                    <div key={idx}>{element}</div>
-                  ))}
-                </div>
+                <Markdown
+                  key={index}
+                  components={{
+                    a: (props) => <LinkRenderer href={props.href}>{props.children}</LinkRenderer>,
+                    code: ({children, className, node, ...rest})=>{
+                      const match = /language-(\w+)/.exec(className || '');
+                      return match ? (
+                        <SyntaxHighlighter language={match[1].trim()} style={a11yDark}>
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      ) : ( <code className={className} {...rest}>{children}</code> );
+                    }
+                  }}
+                >
+                  {part.text}
+                </Markdown>
               );
             case "tool-generateImage":
               switch (part.state) {
