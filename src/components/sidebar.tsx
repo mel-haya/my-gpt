@@ -1,27 +1,36 @@
-import { ChatMessage } from "@/types/chatMessage";
+
 import { Button } from "@/components/ui/button";
 import { toast } from "react-toastify";
 import { useRef, useState } from "react";
 import PdfIcon from "@/components/Icons/pdfIcon";
 import { shortenText } from "@/lib/utils";
 import type { SelectConversation } from "@/lib/db-schema";
+import { useAuth } from "@clerk/nextjs";
 
 export default function Sidebar({
   reset,
   conversations,
   setCurrentConversation,
   deleteConversation,
+  onSignInRequired,
 }: {
   reset: () => void;
   conversations: SelectConversation[];
   setCurrentConversation: (conversation: SelectConversation) => void;
   deleteConversation: (conversationId: number) => void;
+  onSignInRequired: () => void;
 }) {
+  const { isSignedIn } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleUploadClick = async () => {
+    if (!isSignedIn) {
+      onSignInRequired();
+      return;
+    }
+
     if (!file) {
       toast.error("Please select a PDF file first.");
       return;
@@ -43,7 +52,7 @@ export default function Sidebar({
       } else {
         toast.error("Error processing PDF: " + resultJson.error);
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to upload the PDF file.");
     } finally {
       setLoading(false);
@@ -52,6 +61,10 @@ export default function Sidebar({
   };
 
   const handleNewConversation = () => {
+    if (!isSignedIn) {
+      onSignInRequired();
+      return;
+    }
     reset();
   };
 

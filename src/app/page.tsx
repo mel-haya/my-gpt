@@ -2,19 +2,23 @@
 
 import Conversation from "@/components/conversation";
 import Sidebar from "@/components/sidebar";
+import SignInPopup from "@/components/sign-in-popup";
 import { useChat } from "@ai-sdk/react";
 import { ChatMessage } from "@/types/chatMessage";
 import { ToastContainer } from "react-toastify";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { buildTransformationUrl } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useEffectEvent } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 import type { SelectConversation } from "@/lib/db-schema";
 
 export default function Home() {
+  const { isSignedIn } = useAuth();
   const [conversations, setConversations] = useState<SelectConversation[]>([]);
   const [currentConversation, setCurrentConversation] =
     useState<SelectConversation | null>(null);
+  const [showSignInPopup, setShowSignInPopup] = useState(false);
   const {
     messages,
     sendMessage,
@@ -65,7 +69,8 @@ export default function Home() {
       }
     },
     async onFinish({ messages }) {
-      await fetchConversations();
+      messages = messages.filter((msg) => msg.role === "user");
+      if (messages.length === 1) await fetchConversations();
     },
   });
 
@@ -83,6 +88,12 @@ export default function Home() {
   }
 
   async function send(message: { text: string }) {
+    // Check if user is signed in
+    if (!isSignedIn) {
+      setShowSignInPopup(true);
+      return;
+    }
+
     try {
       let conversation = currentConversation;
       if (!conversation) {
@@ -121,6 +132,9 @@ export default function Home() {
     }
   }
   async function fetchConversations() {
+    console.log("Fetching conversations...");
+    if (!isSignedIn) return;
+    console.log("User is signed in, proceeding to fetch conversations.");
     try {
       const res = await fetch("/api/conversations");
       const data = await res.json();
@@ -129,36 +143,42 @@ export default function Home() {
       console.error("Error fetching conversations:", error);
     }
   }
-  useEffect(() => {
-    async function fetchAndSetConversations() {
-      await fetchConversations();
-    }
-    fetchAndSetConversations();
-  }, []);
+
+  const onSignOut = useEffectEvent(() => {
+    resetConversation();
+    setConversations([]);
+  });
+
+  const onSignin = useEffectEvent(async () => {
+    await fetchConversations();
+  });
 
   useEffect(() => {
-    if (!currentConversation || messages.length === 1) return;
-    async function getMessages() {
-      try {
-        const res = await fetch(
-          "/api/messages?conversationId=" + currentConversation?.id
-        );
-        const data = await res.json();
-        setMessages(data);
-      } catch (error) {
-        console.error("Error fetching conversations:", error);
-      }
+    if (!isSignedIn) onSignOut();
+    else onSignin();
+  }, [isSignedIn]);
+
+  async function changeConversation(conversation: SelectConversation) {
+    setCurrentConversation(conversation);
+    try {
+      const res = await fetch(
+        "/api/messages?conversationId=" + conversation?.id
+      );
+      const data = await res.json();
+      setMessages(data);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
     }
-    getMessages();
-  }, [currentConversation]);
+  }
 
   return (
     <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
       <Sidebar
         reset={resetConversation}
-        setCurrentConversation={setCurrentConversation}
+        setCurrentConversation={changeConversation}
         conversations={conversations}
         deleteConversation={deleteConversation}
+        onSignInRequired={() => setShowSignInPopup(true)}
       />
       <Conversation
         messages={messages}
@@ -168,6 +188,10 @@ export default function Home() {
         stop={stop}
       />
       <ToastContainer autoClose={3000} theme="dark" pauseOnHover={false} />
+      <SignInPopup
+        isOpen={showSignInPopup}
+        onClose={() => setShowSignInPopup(false)}
+      />
     </div>
   );
 }

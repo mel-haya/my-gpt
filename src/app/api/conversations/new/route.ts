@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse as Response, NextRequest as Request } from "next/server";
+import { NextResponse as Response } from "next/server";
 import { addConversation } from "@/services/conversationsService";
 
 export async function POST() {
