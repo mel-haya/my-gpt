@@ -8,6 +8,8 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { CanvasFactory } from 'pdf-parse/worker';
 import { del } from '@vercel/blob';
 
+export const runtime = 'edge';
+
 export async function parsePDF(url: string) {
   try {
     const data = new PDFParse({ url, CanvasFactory});
@@ -42,6 +44,12 @@ export async function parsePDF(url: string) {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return NextResponse.json(
+      { error: 'Missing BLOB_READ_WRITE_TOKEN environment variable.' },
+      { status: 500 },
+    );
+  }
   const body = (await request.json()) as HandleUploadBody;
  
   try {
