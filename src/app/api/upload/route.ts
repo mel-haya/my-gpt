@@ -1,3 +1,4 @@
+import { CanvasFactory } from 'pdf-parse/worker';
 import { PDFParse } from "pdf-parse";
 import { db } from "@/lib/db-config";
 import { documents } from "@/lib/db-schema";
@@ -5,10 +6,7 @@ import { generateEmbeddings } from "@/lib/embedding";
 import { chunkContent } from "@/lib/chunking";
 import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
-import { CanvasFactory } from 'pdf-parse/worker';
 import { del } from '@vercel/blob';
-
-export const runtime = 'edge';
 
 export async function parsePDF(url: string) {
   try {
