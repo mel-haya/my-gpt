@@ -5,11 +5,12 @@ import { generateEmbeddings } from "@/lib/embedding";
 import { chunkContent } from "@/lib/chunking";
 import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
+import { CanvasFactory } from 'pdf-parse/worker';
 import { del } from '@vercel/blob';
 
 export async function parsePDF(url: string) {
   try {
-    const data = new PDFParse({ url });
+    const data = new PDFParse({ url, CanvasFactory});
     const text = (await data.getText()).text;
     console.log("Extracted text length:", text.length);
     if (text.trim().length === 0) {
