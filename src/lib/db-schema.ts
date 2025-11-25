@@ -1,4 +1,4 @@
-import { serial, vector, text, pgTable, index, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import { serial, vector, text, pgTable, index, jsonb, pgEnum, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const rolesEnum = pgEnum("roles", ["system", "user", "assistant"]);
 export const documents = pgTable(
@@ -32,6 +32,17 @@ export const messages = pgTable("messages", {
   parts: jsonb("parts").notNull(),
 });
 
+export const uploadedFiles = pgTable(
+  "uploaded_files",
+  {
+    id: serial("id").primaryKey(),
+    fileName: text("file_name").notNull(),
+    fileHash: text("file_hash").notNull(),
+  },
+  (table) => [
+    uniqueIndex("file_hash_index").on(table.fileHash),
+  ]
+);
 
 export type InsertDocument = typeof documents.$inferInsert;
 export type SelectDocument = typeof documents.$inferSelect;
@@ -39,3 +50,5 @@ export type InsertConversation = typeof conversations.$inferInsert;
 export type SelectConversation = typeof conversations.$inferSelect;
 export type InsertMessage = typeof messages.$inferInsert;
 export type SelectMessage = typeof messages.$inferSelect;
+export type InsertUploadedFile = typeof uploadedFiles.$inferInsert;
+export type SelectUploadedFile = typeof uploadedFiles.$inferSelect;

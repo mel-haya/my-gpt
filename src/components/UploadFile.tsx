@@ -4,7 +4,8 @@ import { shortenText } from "@/lib/utils";
 import { toast } from "react-toastify";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "./ui/button";
-import { upload } from '@vercel/blob/client';
+import { upload } from "@vercel/blob/client";
+import CryptoJS from "crypto-js";
 
 export default function UploadFile({
   onSignInRequired,
@@ -25,6 +26,30 @@ export default function UploadFile({
     }
   };
 
+  const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result instanceof ArrayBuffer) {
+          resolve(reader.result);
+        } else {
+          reject(new Error("Failed to read file as ArrayBuffer."));
+        }
+      };
+      reader.onerror = (error) => {
+        reject(error);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  const calculateFileHash = async (file: File) => {
+    const arrayBuffer = await readFileAsArrayBuffer(file);
+    const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer);
+    const hash = CryptoJS.SHA256(wordArray).toString(CryptoJS.enc.Hex);
+    return hash;
+  };
+
   const handleUploadClick = async () => {
     if (!isSignedIn) {
       onSignInRequired();
@@ -37,23 +62,34 @@ export default function UploadFile({
     }
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
       setLoading(true);
-      // const result = await fetch("/api/upload", {
-      //   method: "POST",
-      //   body: formData,
-      // })
-      // const resultJson = await result.json();
+      const hash = await calculateFileHash(file);
+
+      const checkRes = await fetch(`/api/upload/check-hash?hash=${hash}`);
+      const checkJson = await checkRes.json();
+
+      if (checkJson.exists) {
+        toast.info("This file has already been processed.");
+        setLoading(false);
+        setFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+
       const newBlob = await upload(file.name, file, {
         access: "public",
         handleUploadUrl: "/api/upload",
+        clientPayload: hash,
       });
       console.log("Upload result:", newBlob);
       setLoading(false);
       if (newBlob) {
         toast.success("PDF file uploaded and processed successfully.");
-        fileInputRef.current!.value = "";
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
       } else {
         toast.error("Error processing PDF: ");
       }

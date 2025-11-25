@@ -1,7 +1,7 @@
 import { CanvasFactory } from 'pdf-parse/worker';
 import { PDFParse } from "pdf-parse";
 import { db } from "@/lib/db-config";
-import { documents } from "@/lib/db-schema";
+import { documents, uploadedFiles } from "@/lib/db-schema";
 import { generateEmbeddings } from "@/lib/embedding";
 import { chunkContent } from "@/lib/chunking";
 import { NextResponse } from "next/server";
@@ -55,12 +55,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       body,
       request,
       onBeforeGenerateToken: async (
-        /* pathname, clientPayload */
+        pathname,
+        clientPayload
       ) => {
         return {
           allowedContentTypes: ["application/pdf"],
           addRandomSuffix: true,
-          tokenPayload: JSON.stringify({}),
+          tokenPayload: clientPayload,
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
@@ -68,12 +69,19 @@ export async function POST(request: Request): Promise<NextResponse> {
  
         try {
           const result = await parsePDF(blob.downloadUrl);
+          if (result.success && tokenPayload) {
+            await db.insert(uploadedFiles).values({
+              fileName: blob.pathname,
+              fileHash: tokenPayload,
+            });
+          }
           console.log('PDF processing result:', result);
           await del(blob.url);
         } catch (error) {
           console.error('Could not process PDF:', error);
         }
       },
+      
     });
  
     return NextResponse.json(jsonResponse);
