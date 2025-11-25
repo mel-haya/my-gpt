@@ -65,20 +65,34 @@ export async function POST(request: Request): Promise<NextResponse> {
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
-        console.log('blob upload completed', blob, tokenPayload);
- 
+        console.log("blob upload completed", blob, tokenPayload);
+
+        if (!tokenPayload) {
+          console.error("No tokenPayload (hash) received on upload completion.");
+          await del(blob.url); // Clean up the uploaded file.
+          return;
+        }
+
         try {
+          // Attempt to insert the file hash immediately to "lock" it.
+          await db.insert(uploadedFiles).values({
+            fileName: blob.pathname,
+            fileHash: tokenPayload,
+          });
+
+          // If the insert is successful, then we can process the PDF.
           const result = await parsePDF(blob.downloadUrl);
-          if (result.success && tokenPayload) {
-            await db.insert(uploadedFiles).values({
-              fileName: blob.pathname,
-              fileHash: tokenPayload,
-            });
-          }
-          console.log('PDF processing result:', result);
-          await del(blob.url);
+          console.log("PDF processing result:", result);
         } catch (error) {
-          console.error('Could not process PDF:', error);
+          // If the insert fails, it's likely due to the unique constraint,
+          // meaning the file is already being processed or has been processed.
+          console.log(
+            "File hash already exists or another error occurred, skipping processing:",
+            (error as Error).message
+          );
+        } finally {
+          // Always delete the temporary blob file.
+          await del(blob.url);
         }
       },
       
