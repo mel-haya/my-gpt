@@ -1,6 +1,7 @@
 import { serial, vector, text, pgTable, index, jsonb, pgEnum, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const rolesEnum = pgEnum("roles", ["system", "user", "assistant"]);
+export const statusEnum = pgEnum("file_status", ["processing", "completed", "failed"]);
 export const documents = pgTable(
   "documents",
   {
@@ -38,6 +39,7 @@ export const uploadedFiles = pgTable(
     id: serial("id").primaryKey(),
     fileName: text("file_name").notNull(),
     fileHash: text("file_hash").notNull(),
+    status: statusEnum("status").notNull().default("completed"),
   },
   (table) => [
     uniqueIndex("file_hash_index").on(table.fileHash),
