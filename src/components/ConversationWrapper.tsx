@@ -20,7 +20,11 @@ import {
   ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import { Message, MessageContent } from "@/components/ai-elements/message";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
 import { MessageSquareIcon } from "lucide-react";
 
 const welcomeMessage = "Hello! How can I assist you today?";
@@ -58,8 +62,8 @@ export default function ConversationWrapper({
     <div className="flex flex-col grow h-screen relative items-center">
       <Background count={messages.length} />
       <Header />
-      <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-4 z-10 w-full max-w-[1200px]">
-        {messages.length === 0 && (
+      {messages.length === 0 && (
+        <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-4 z-10 w-full max-w-[1200px]">
           <div className="h-full flex-col flex justify-center items-center gap-4 w-[60vw] mx-auto text-center">
             <h1 className="text-3xl font-bold">{welcomeMessage}</h1>
             <PromptInput
@@ -81,40 +85,44 @@ export default function ConversationWrapper({
               })}
             </div>
           </div>
-        )}
-        {error && <div className="text-red-500 mb-4">{error.message}</div>}
-
-        {/* {messages.map((message) => (
-          <Message
-            key={message.id}
-            message={message}
-            streaming={
-              status === "streaming" &&
-              message.id === messages[messages.length - 1].id
-            }
-          />
-        ))} */}
-        <Conversation className="relative size-full">
-          <ConversationContent>
-            {messages.length === 0 ? (
-              <ConversationEmptyState
-                description="Messages will appear here as the conversation progresses."
-                icon={<MessageSquareIcon className="size-6" />}
-                title="Start a conversation"
-              />
-            ) : (
-              messages.map(({ id, parts, role }) => (
-                <Message from={role} key={id}>
-                  <MessageContent>{value}</MessageContent>
-                </Message>
-              ))
-            )}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
-      </div>
+        </div>
+      )}
+      {error && <div className="text-red-500 mb-4">{error.message}</div>}
       {messages.length && (
-        <PromptInput sendMessage={sendMessage} status={status} stop={stop} />
+        <>
+          <Conversation className="relative size-full max-w-[1200px] z-10 flex-1">
+            <ConversationContent>
+              {messages.length === 0 ? (
+                <ConversationEmptyState
+                  description="Messages will appear here as the conversation progresses."
+                  icon={<MessageSquareIcon className="size-6" />}
+                  title="Start a conversation"
+                />
+              ) : (
+                messages.map(({ id, parts, role }) => (
+                  <Message from={role} key={id}>
+                    <MessageContent>
+                      {parts.map((part, i) => {
+                        switch (part.type) {
+                          case "text":
+                            return (
+                              <MessageResponse key={`${id}-${i}`}>
+                                {part.text}
+                              </MessageResponse>
+                            );
+                          default:
+                            return null;
+                        }
+                      })}
+                    </MessageContent>
+                  </Message>
+                ))
+              )}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+          <PromptInput sendMessage={sendMessage} status={status} stop={stop} />
+        </>
       )}
       {/* <form
         onSubmit={handleSubmit}
