@@ -1,15 +1,16 @@
 "use client";
 
-import Conversation from "@/components/conversation";
+import Conversation from "@/components/ConversationWrapper";
 import Sidebar from "@/components/sidebar";
 import SignInPopup from "@/components/sign-in-popup";
 import { useChat } from "@ai-sdk/react";
 import { ChatMessage } from "@/types/chatMessage";
 import { ToastContainer } from "react-toastify";
-import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import { FileUIPart, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { buildTransformationUrl } from "@/lib/utils";
 import { useEffect, useState, useEffectEvent } from "react";
 import { useAuth } from "@clerk/nextjs";
+import { CreateUIMessage, ChatRequestOptions } from "ai";
 
 import type { SelectConversation } from "@/lib/db-schema";
 
@@ -87,7 +88,10 @@ export default function Home() {
     }
   }
 
-  async function send(message: { text: string }) {
+  async function send(
+    message: { text: string; files?: FileUIPart[] },
+    options?: ChatRequestOptions
+  ): Promise<void> {
     // Check if user is signed in
     if (!isSignedIn) {
       setShowSignInPopup(true);
@@ -100,7 +104,7 @@ export default function Home() {
         conversation = await initConversation();
       }
       const body = { conversation };
-      await sendMessage(message, { body });
+      await sendMessage(message, { ...options, body });
     } catch (error) {
       console.error("Error sending message:", error);
     }

@@ -23,6 +23,7 @@ export async function POST(req: Request) {
       );
     }
     const modelMessages = convertToModelMessages(messages);
+
     const response = streamText({
       messages: modelMessages,
       model: openai.languageModel("fast"),

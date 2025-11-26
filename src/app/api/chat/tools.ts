@@ -57,9 +57,9 @@ export const tools = {
     }),
     outputSchema: z.string().describe("The URL of the image with the background removed."),
   }),
-  web_search: originalOpenAI.tools.webSearch({
-    searchContextSize: 'medium',
-  }),
+  // web_search: originalOpenAI.tools.webSearch({
+  //   searchContextSize: 'medium',
+  // }),
   searchKnowledgeBase: tool({
     name: "searchKnowledgeBase",
     description: "Searches the knowledge base for relevant information based on a query.",
