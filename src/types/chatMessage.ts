@@ -1,4 +1,4 @@
 import { Tools } from "./Tools";
-import { UIMessage, UIDataTypes } from "ai";
+import { UIMessage, UIDataTypes, InferUITools } from "ai";
 
-export type ChatMessage = UIMessage<never, UIDataTypes, Tools>;
+export type ChatMessage = UIMessage<never, UIDataTypes, InferUITools<Tools>>;
