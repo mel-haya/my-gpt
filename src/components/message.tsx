@@ -114,7 +114,7 @@ export default function Message({
                   key={index}
                   components={{
                     a: (props) => <LinkRenderer href={props.href}>{props.children}</LinkRenderer>,
-                    code: ({children, className, node, ...rest})=>{
+                    code: ({children, className, ...rest})=>{
                       const match = /language-(\w+)/.exec(className || '');
                       return match ? (
                         <SyntaxHighlighter language={match[1].trim()} style={a11yDark}>

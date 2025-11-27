@@ -106,7 +106,7 @@ export default function ConversationWrapper({
                         switch (part.type) {
                           case "text":
                             return (
-                              <MessageResponse key={`${id}-${i}`}>
+                              <MessageResponse  key={`${id}-${i}`}>
                                 {part.text}
                               </MessageResponse>
                             );
