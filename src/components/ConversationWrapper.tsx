@@ -1,16 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo } from "react";
+import Image from "next/image";
 // import Message from "./message";
 import { ChatMessage } from "@/types/chatMessage";
 import Header from "./header";
 import Background from "@/components/background";
 import PromptInput from "./PromptInput";
-import {
-  ChatRequestOptions,
-  FileUIPart,
-  ChatStatus,
-} from "ai";
+import { ChatRequestOptions, FileUIPart, ChatStatus } from "ai";
 import {
   Conversation,
   ConversationContent,
@@ -19,12 +16,13 @@ import {
 } from "@/components/ai-elements/conversation";
 import {
   Message,
+  MessageAttachment,
+  MessageAttachments,
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
-import { MessageSquareIcon } from "lucide-react";
+import { LoaderCircle } from 'lucide-react';
 import Styles from "@/assets/styles/customScrollbar.module.css";
-import { send } from "process";
 
 const welcomeMessage = "Hello! How can I assist you today?";
 const promptExamples = [
@@ -49,17 +47,52 @@ export default function ConversationWrapper({
   error: Error | undefined;
   stop: () => void;
 }) {
-  const [input, setInput] = useState("");
+  const displayMessages = useMemo(() => {
+    return messages.map((message) => {
+      const { id, parts, role } = message;
 
-  // const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  //   e.preventDefault();
-  //   await sendMessage({ text: input });
-  //   setInput("");
-  // };
+      if (role === "user") {
+        const textParts = parts.filter((part) => part.type === "text");
+        const fileParts = parts.filter((part) => part.type === "file");
+
+        return {
+          key: id,
+          role,
+          content: textParts.map((part) => part.text).join(""),
+          attachments: fileParts.map((part) => ({
+            type: "file" as const,
+            url: part.url || "",
+            mediaType: part.mediaType,
+            filename: part.filename,
+          })),
+        };
+      } else {
+        // For assistant messages, keep the original structure
+        const fileParts = parts.filter(
+          (part) =>
+            part.type === "tool-generateImage" &&
+            part.state === "output-available"
+        );
+        return {
+          key: id,
+          role,
+          content: parts
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join(""),
+          attachments: fileParts.map((part) => ({
+            type: "file" as const,
+            url: part.output || "",
+            mediaType: "image/png",
+          })),
+        };
+      }
+    });
+  }, [messages]);
 
   return (
     <div className="flex flex-col grow h-screen relative items-center">
-      <Background count={messages.length}/>
+      <Background count={messages.length} />
       <Header />
       {!messages.length && (
         <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-4 z-10 w-full">
@@ -80,7 +113,7 @@ export default function ConversationWrapper({
                   >
                     {p}
                   </div>
-                )
+                );
               })}
             </div>
           </div>
@@ -89,33 +122,58 @@ export default function ConversationWrapper({
       {error && <div className="text-red-500 mb-4">{error.message}</div>}
       {messages.length > 0 && (
         <>
-          <Conversation className={`relative size-full z-10 flex-1 overflow-hidden ${Styles.customScrollbar}`}>
+          <Conversation
+            className={`relative size-full z-10 flex-1 overflow-hidden ${Styles.customScrollbar}`}
+          >
             <ConversationContent className="max-w-[1200px] mx-auto">
-              {messages.length === 0 ? (
-                <ConversationEmptyState
-                  description="Messages will appear here as the conversation progresses."
-                  icon={<MessageSquareIcon className="size-6" />}
-                  title="Start a conversation"
-                />
-              ) : (
-                messages.map(({ id, parts, role }) => (
-                  <Message from={role} key={id}>
-                    <MessageContent>
-                      {parts.map((part, i) => {
-                        switch (part.type) {
-                          case "text":
-                            return (
-                              <MessageResponse  key={`${id}-${i}`}>
-                                {part.text}
-                              </MessageResponse>
-                            );
-                          default:
-                            return null;
-                        }
-                      })}
-                    </MessageContent>
-                  </Message>
-                ))
+              {displayMessages.map((message) => (
+                <Message from={message.role} key={message.key}>
+                  {message.role === "user" &&
+                    message.attachments &&
+                    message.attachments.length > 0 && (
+                      <MessageAttachments className="mb-2">
+                        {message.attachments.map((attachment) => (
+                          <MessageAttachment
+                            data={attachment}
+                            key={attachment.url}
+                          />
+                        ))}
+                      </MessageAttachments>
+                    )}
+                  <MessageContent>
+                    {message.content && (
+                      <MessageResponse key={`${message.key}-content`}>
+                        {message.content}
+                      </MessageResponse>
+                    )}
+                    {message.role === "assistant" &&
+                      message.attachments &&
+                      message.attachments.length > 0 && (
+                        <div className="mt-2">
+                          {message.attachments.map((attachment, i) => (
+                            <Image
+                              key={`${message.key}-img-${i}`}
+                              src={attachment.url}
+                              alt="Generated image"
+                              width={500}
+                              height={500}
+                              className="max-w-full h-auto rounded-lg"
+                            />
+                          ))}
+                        </div>
+                      )}
+                  </MessageContent>
+                </Message>
+              ))}
+              {status !== "ready" && (
+                <Message from="assistant">
+                  <MessageContent>
+                    {/* <MessageResponse>
+                      Generating response...
+                    </MessageResponse> */}
+                      <LoaderCircle className="animate-spin mr-2 inline-block" />
+                  </MessageContent>
+                </Message>
               )}
             </ConversationContent>
             <ConversationScrollButton />
@@ -123,7 +181,6 @@ export default function ConversationWrapper({
           <PromptInput sendMessage={sendMessage} status={status} stop={stop} />
         </>
       )}
-      
     </div>
   );
 }
