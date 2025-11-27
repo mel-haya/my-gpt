@@ -77,7 +77,7 @@ const InputDemo = ({
   return (
     <PromptInput
       onSubmit={handleSubmit}
-      className="my-4 max-w-[1200px]"
+      className="my-4 w-[1200px] mx-auto"
       globalDrop
       multiple
     >
