@@ -1,32 +1,49 @@
 import { streamText, convertToModelMessages, stepCountIs } from "ai";
 import { openai } from "./models";
-import { tools } from "./tools";
+import { tools, webSearchTool } from "./tools";
 import { ChatMessage } from "@/types/chatMessage";
 import { saveMessage } from "@/services/messagesService";
-import { SelectConversation } from "@/lib/db-schema";
 import { changeConversationTitle } from "@/services/conversationsService";
 import { TextUIPart } from "ai";
+import { Tools } from "@/types/Tools";
+import { uploadImageToImageKit } from "./imageKit";
+
 
 export async function POST(req: Request) {
   try {
     const {
       messages,
       conversation,
-    }: { messages: ChatMessage[]; conversation: SelectConversation } =
+      model,
+      webSearch,
+    } =
       await req.json();
-    await saveMessage(messages[messages.length - 1], conversation.id);
+    const lastMessage = messages[messages.length - 1];
+    for (const part of lastMessage.parts) {
+      if (part.type === "file" && part.mediaType.startsWith("image/")) {
+        part.url = await uploadImageToImageKit(part.url!);
+      }
+    }
+    await saveMessage(lastMessage, conversation.id);
     if (!conversation.title) {
+      const part: TextUIPart = messages[0].parts.find(
+        (p:TextUIPart) => p.type === "text"
+      );
       await changeConversationTitle(
         conversation.user_id,
         conversation.id,
-        (messages[0].parts[0] as TextUIPart).text
+        (part as TextUIPart).text
       );
     }
+    const toolsToUse: Tools = {...tools};
+    
     const modelMessages = convertToModelMessages(messages);
+    if (webSearch)
+      toolsToUse.webSearch = webSearchTool;
     const response = streamText({
       messages: modelMessages,
-      model: openai.languageModel("fast"),
-      tools: tools,
+      model: openai.languageModel(model === "GPT-5-nano" ? "fast" : "smart"),
+      tools: toolsToUse,
       system: `You are a helpful assistant with access to a knowledge base. 
           When users ask questions, search the knowledge base for relevant information.
           Always search before answering if the question might relate to uploaded documents.
@@ -40,6 +57,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
+    console.error("Error in /api/chat route:", error);
     return new Response("Error processing request", {
       status: 500,
       statusText: String(error),

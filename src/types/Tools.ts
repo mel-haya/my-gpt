@@ -1,7 +1,6 @@
-import {tools} from "@/app/api/chat/tools";
-import {
-  InferUITools,
-} from "ai";
+import { tools } from "@/app/api/chat/tools";
+import { Tool } from "ai";
 
-export type Tools = InferUITools<typeof tools>;
-
+export type Tools = typeof tools & {
+  webSearch?: Tool;
+};
