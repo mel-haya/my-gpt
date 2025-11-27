@@ -25,7 +25,6 @@ import {
 import { ChatMessage } from "@/types/chatMessage";
 import { GlobeIcon } from "lucide-react";
 import { useRef, useState } from "react";
-import { useChat } from "@ai-sdk/react";
 import {
   CreateUIMessage,
   ChatRequestOptions,
@@ -34,8 +33,8 @@ import {
 } from "ai";
 
 const models = [
-  { id: "gpt-4o", name: "GPT-4o" },
-  { id: "claude-opus-4-20250514", name: "Claude 4 Opus" },
+  { id: "GPT-5-nano", name: "GPT-5-nano" },
+  { id: "GPT-5-mini", name: "GPT-5-mini" },
 ];
 const InputDemo = ({
   sendMessage,

@@ -103,8 +103,8 @@ export default function Home() {
       if (!conversation) {
         conversation = await initConversation();
       }
-      const body = { conversation };
-      await sendMessage(message, { ...options, body });
+      const body = { conversation, ...options?.body };
+      await sendMessage(message, { body });
     } catch (error) {
       console.error("Error sending message:", error);
     }

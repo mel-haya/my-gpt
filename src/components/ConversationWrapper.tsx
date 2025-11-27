@@ -1,15 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 // import Message from "./message";
 import { ChatMessage } from "@/types/chatMessage";
 import Header from "./header";
 import Background from "@/components/background";
 import PromptInput from "./PromptInput";
 import {
-  CreateUIMessage,
   ChatRequestOptions,
   FileUIPart,
   ChatStatus,
@@ -27,6 +24,7 @@ import {
 } from "@/components/ai-elements/message";
 import { MessageSquareIcon } from "lucide-react";
 import Styles from "@/assets/styles/customScrollbar.module.css";
+import { send } from "process";
 
 const welcomeMessage = "Hello! How can I assist you today?";
 const promptExamples = [
@@ -61,7 +59,7 @@ export default function ConversationWrapper({
 
   return (
     <div className="flex flex-col grow h-screen relative items-center">
-      <Background count={messages.length} />
+      <Background count={messages.length}/>
       <Header />
       {!messages.length && (
         <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-4 z-10 w-full">
@@ -76,7 +74,7 @@ export default function ConversationWrapper({
               {promptExamples.map((p, index) => {
                 return (
                   <div
-                    onClick={() => setInput(p)}
+                    onClick={() => sendMessage({ text: p })}
                     key={`prompt_${index}`}
                     className="bg-neutral-800/40 p-4 cursor-pointer rounded-lg"
                   >
