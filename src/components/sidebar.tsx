@@ -22,8 +22,8 @@ export default function Sidebar({
 }) {
   const { isSignedIn } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [toggleHistory, setToggleHistory] = useState(true);
-  const [toggleUpload, setToggleUpload] = useState(true);
+  const [toggleHistory, setToggleHistory] = useState(false);
+  const [toggleUpload, setToggleUpload] = useState(false);
   const handleNewConversation = () => {
     if (!isSignedIn) {
       onSignInRequired();
