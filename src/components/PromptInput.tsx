@@ -78,7 +78,7 @@ const InputDemo = ({
     <PromptInputProvider>
       <PromptInput
         onSubmit={handleSubmit}
-        className="my-4 w-[1200px] mx-auto"
+        className="my-4 max-w-[1200px] mx-6"
         globalDrop
         accept="image/*"
         multiple={true}

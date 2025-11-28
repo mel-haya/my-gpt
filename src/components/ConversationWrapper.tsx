@@ -96,7 +96,7 @@ export default function ConversationWrapper({
       <Header />
       {!messages.length && (
         <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-4 z-10 w-full">
-          <div className="h-full flex-col flex justify-center items-center gap-4 w-[1200px] mx-auto text-center">
+          <div className="h-full flex-col flex justify-center items-center gap-4 mx-auto text-center">
             <h1 className="text-3xl font-bold">{welcomeMessage}</h1>
             <PromptInput
               sendMessage={sendMessage}
