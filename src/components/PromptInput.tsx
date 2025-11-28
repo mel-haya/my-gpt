@@ -21,6 +21,7 @@ import {
   PromptInputFooter,
   PromptInputTools,
   PromptInputHeader,
+  PromptInputProvider,
 } from "@/components/ai-elements/prompt-input";
 import { ChatMessage } from "@/types/chatMessage";
 import { GlobeIcon } from "lucide-react";
@@ -74,65 +75,67 @@ const InputDemo = ({
     setText("");
   };
   return (
-    <PromptInput
-      onSubmit={handleSubmit}
-      className="my-4 w-[1200px] mx-auto"
-      globalDrop
-      accept="image/*"
-      multiple
-    >
-      <PromptInputHeader>
-        <PromptInputAttachments>
-          {(attachment) => <PromptInputAttachment data={attachment} />}
-        </PromptInputAttachments>
-      </PromptInputHeader>
-      <PromptInputBody className="flex w-full gap-2 items-center px-2">
-        <PromptInputTextarea
-          onChange={(e) => setText(e.target.value)}
-          ref={textareaRef}
-          value={text}
-        />
-      </PromptInputBody>
-      <PromptInputFooter>
-        <PromptInputTools>
-          <PromptInputActionMenu>
-            <PromptInputActionMenuTrigger />
-            <PromptInputActionMenuContent>
-              <PromptInputActionAddAttachments />
-            </PromptInputActionMenuContent>
-          </PromptInputActionMenu>
-          <PromptInputSpeechButton
-            onTranscriptionChange={setText}
-            textareaRef={textareaRef}
+    <PromptInputProvider>
+      <PromptInput
+        onSubmit={handleSubmit}
+        className="my-4 w-[1200px] mx-auto"
+        globalDrop
+        accept="image/*"
+        multiple={true}
+      >
+        <PromptInputHeader>
+          <PromptInputAttachments>
+            {(attachment) => <PromptInputAttachment data={attachment} />}
+          </PromptInputAttachments>
+        </PromptInputHeader>
+        <PromptInputBody className="flex w-full gap-2 items-center px-2">
+          <PromptInputTextarea
+            onChange={(e) => setText(e.target.value)}
+            ref={textareaRef}
+            value={text}
           />
-          <PromptInputButton
-            onClick={() => setUseWebSearch(!useWebSearch)}
-            variant={useWebSearch ? "default" : "ghost"}
-          >
-            <GlobeIcon size={16} />
-            <span>Search</span>
-          </PromptInputButton>
-          <PromptInputSelect
-            onValueChange={(value) => {
-              setModel(value);
-            }}
-            value={model}
-          >
-            <PromptInputSelectTrigger>
-              <PromptInputSelectValue />
-            </PromptInputSelectTrigger>
-            <PromptInputSelectContent>
-              {models.map((model) => (
-                <PromptInputSelectItem key={model.id} value={model.id}>
-                  {model.name}
-                </PromptInputSelectItem>
-              ))}
-            </PromptInputSelectContent>
-          </PromptInputSelect>
-        </PromptInputTools>
-        <PromptInputSubmit disabled={!text && !status} status={status} />
-      </PromptInputFooter>
-    </PromptInput>
+        </PromptInputBody>
+        <PromptInputFooter>
+          <PromptInputTools>
+            <PromptInputActionMenu>
+              <PromptInputActionMenuTrigger />
+              <PromptInputActionMenuContent>
+                <PromptInputActionAddAttachments />
+              </PromptInputActionMenuContent>
+            </PromptInputActionMenu>
+            <PromptInputSpeechButton
+              onTranscriptionChange={setText}
+              textareaRef={textareaRef}
+            />
+            <PromptInputButton
+              onClick={() => setUseWebSearch(!useWebSearch)}
+              variant={useWebSearch ? "default" : "ghost"}
+            >
+              <GlobeIcon size={16} />
+              <span>Search</span>
+            </PromptInputButton>
+            <PromptInputSelect
+              onValueChange={(value) => {
+                setModel(value);
+              }}
+              value={model}
+            >
+              <PromptInputSelectTrigger>
+                <PromptInputSelectValue />
+              </PromptInputSelectTrigger>
+              <PromptInputSelectContent>
+                {models.map((model) => (
+                  <PromptInputSelectItem key={model.id} value={model.id}>
+                    {model.name}
+                  </PromptInputSelectItem>
+                ))}
+              </PromptInputSelectContent>
+            </PromptInputSelect>
+          </PromptInputTools>
+          <PromptInputSubmit disabled={!text && !status} status={status} />
+        </PromptInputFooter>
+      </PromptInput>
+    </PromptInputProvider>
   );
 };
 export default InputDemo;
