@@ -31,6 +31,11 @@
     animation: rotate 12s infinite ease-in-out;
 }
 
+.sideBarBackground {
+    background: #1a1a1a;
+    /* background: linear-gradient(160deg, rgba(24, 2, 29, 1) 0%, rgba(8, 33, 70, 1) 100%); */
+}
+
 
 @keyframes resizeShape {
 
