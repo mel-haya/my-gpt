@@ -139,7 +139,7 @@ export default function UploadFile({
           ref={fileInputRef}
           onChange={checkFile}
           type="file"
-          accept=".pdf"
+          accept=".pdf,.docx"
           className="w-full h-full opacity-0 absolute top-0 left-0 cursor-pointer"
         />
       </div>
