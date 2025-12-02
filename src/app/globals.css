@@ -126,3 +126,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+.cl-userButtonOuterIdentifier {
+  padding-left: 0;
+}

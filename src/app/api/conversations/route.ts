@@ -2,12 +2,19 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse as Response } from "next/server";
 import { deleteConversationById, getConversationsByUserId } from "@/services/conversationsService";
 
-export async function GET() {
+export async function GET(req: Request) {
     const { userId } = await auth();
     if (!userId) {
         return new Response("Unauthorized", { status: 401 });
     }
-    const conversations = await getConversationsByUserId(userId);
+    
+    const { searchParams } = new URL(req.url);
+    const searchQuery = searchParams.get("search");
+    
+    const conversations = await getConversationsByUserId(
+        userId, 
+        searchQuery || undefined
+    );
     return new Response(JSON.stringify(conversations), { status: 200 });
 }
 

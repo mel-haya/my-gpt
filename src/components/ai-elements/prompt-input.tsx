@@ -1079,7 +1079,7 @@ export type PromptInputSpeechButtonProps = ComponentProps<
   typeof PromptInputButton
 > & {
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
-  onTranscriptionChange?: (text: string) => void;
+  onTranscriptionChange?: (transcript: string) => void;
 };
 
 export const PromptInputSpeechButton = ({
@@ -1089,10 +1089,8 @@ export const PromptInputSpeechButton = ({
   ...props
 }: PromptInputSpeechButtonProps) => {
   const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(
-    null
-  );
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const controller = useOptionalPromptInputController();
 
   useEffect(() => {
     if (
@@ -1117,7 +1115,6 @@ export const PromptInputSpeechButton = ({
 
       speechRecognition.onresult = (event) => {
         let finalTranscript = "";
-
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
           if (result.isFinal) {
@@ -1125,15 +1122,25 @@ export const PromptInputSpeechButton = ({
           }
         }
 
-        if (finalTranscript && textareaRef?.current) {
-          const textarea = textareaRef.current;
-          const currentValue = textarea.value;
-          const newValue =
-            currentValue + (currentValue ? " " : "") + finalTranscript;
-
-          textarea.value = newValue;
-          textarea.dispatchEvent(new Event("input", { bubbles: true }));
-          onTranscriptionChange?.(newValue);
+        if (finalTranscript) {
+          // If using provider controller, update the state directly
+          if (controller) {
+            const currentValue = controller.textInput.value;
+            const newValue =
+              currentValue + (currentValue ? " " : "") + finalTranscript;
+            controller.textInput.setInput(newValue);
+          } else if (onTranscriptionChange) {
+            // Let parent component handle the update
+            onTranscriptionChange(finalTranscript);
+          } else if (textareaRef?.current) {
+            // Fallback: update DOM directly (uncontrolled)
+            const textarea = textareaRef.current;
+            const currentValue = textarea.value;
+            const newValue =
+              currentValue + (currentValue ? " " : "") + finalTranscript;
+            textarea.value = newValue;
+            textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          }
         }
       };
 
@@ -1143,7 +1150,6 @@ export const PromptInputSpeechButton = ({
       };
 
       recognitionRef.current = speechRecognition;
-      setRecognition(speechRecognition);
     }
 
     return () => {
@@ -1151,19 +1157,19 @@ export const PromptInputSpeechButton = ({
         recognitionRef.current.stop();
       }
     };
-  }, [textareaRef, onTranscriptionChange]);
+  }, [textareaRef, onTranscriptionChange, controller]);
 
   const toggleListening = useCallback(() => {
-    if (!recognition) {
+    if (!recognitionRef.current) {
       return;
     }
 
     if (isListening) {
-      recognition.stop();
+      recognitionRef.current.stop();
     } else {
-      recognition.start();
+      recognitionRef.current.start();
     }
-  }, [recognition, isListening]);
+  }, [isListening]);
 
   return (
     <PromptInputButton
@@ -1172,7 +1178,6 @@ export const PromptInputSpeechButton = ({
         isListening && "animate-pulse bg-accent text-accent-foreground",
         className
       )}
-      disabled={!recognition}
       onClick={toggleListening}
       {...props}
     >

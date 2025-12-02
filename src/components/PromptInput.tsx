@@ -78,7 +78,7 @@ const InputDemo = ({
     <PromptInputProvider>
       <PromptInput
         onSubmit={handleSubmit}
-        className="my-4 max-w-[1200px] mx-6"
+        className="my-4 max-w-[800px] mx-6"
         globalDrop
         accept="image/*"
         multiple={true}
@@ -88,52 +88,54 @@ const InputDemo = ({
             {(attachment) => <PromptInputAttachment data={attachment} />}
           </PromptInputAttachments>
         </PromptInputHeader>
-        <PromptInputBody className="flex w-full gap-2 items-center px-2">
-          <PromptInputTextarea
-            onChange={(e) => setText(e.target.value)}
-            ref={textareaRef}
-            value={text}
-          />
-        </PromptInputBody>
-        <PromptInputFooter>
-          <PromptInputTools>
-            <PromptInputActionMenu>
-              <PromptInputActionMenuTrigger />
-              <PromptInputActionMenuContent>
-                <PromptInputActionAddAttachments />
-              </PromptInputActionMenuContent>
-            </PromptInputActionMenu>
-            <PromptInputSpeechButton
-              onTranscriptionChange={setText}
-              textareaRef={textareaRef}
+        <div className="w-full grid">
+          <PromptInputBody className="flex w-full gap-2 items-center px-2">
+            <PromptInputTextarea
+              onChange={(e) => setText(e.target.value)}
+              ref={textareaRef}
+              value={text}
             />
-            <PromptInputButton
-              onClick={() => setUseWebSearch(!useWebSearch)}
-              variant={useWebSearch ? "default" : "ghost"}
-            >
-              <GlobeIcon size={16} />
-              <span>Search</span>
-            </PromptInputButton>
-            <PromptInputSelect
-              onValueChange={(value) => {
-                setModel(value);
-              }}
-              value={model}
-            >
-              <PromptInputSelectTrigger>
-                <PromptInputSelectValue />
-              </PromptInputSelectTrigger>
-              <PromptInputSelectContent>
-                {models.map((model) => (
-                  <PromptInputSelectItem key={model.id} value={model.id}>
-                    {model.name}
-                  </PromptInputSelectItem>
-                ))}
-              </PromptInputSelectContent>
-            </PromptInputSelect>
-          </PromptInputTools>
-          <PromptInputSubmit disabled={!text && !status} status={status} />
-        </PromptInputFooter>
+          </PromptInputBody>
+          <PromptInputFooter>
+            <PromptInputTools>
+              <PromptInputActionMenu>
+                <PromptInputActionMenuTrigger />
+                <PromptInputActionMenuContent>
+                  <PromptInputActionAddAttachments />
+                </PromptInputActionMenuContent>
+              </PromptInputActionMenu>
+              <PromptInputSpeechButton
+                onTranscriptionChange={setText}
+                textareaRef={textareaRef}
+              />
+              <PromptInputButton
+                onClick={() => setUseWebSearch(!useWebSearch)}
+                variant={useWebSearch ? "default" : "ghost"}
+              >
+                <GlobeIcon size={16} />
+                <span>Search</span>
+              </PromptInputButton>
+              <PromptInputSelect
+                onValueChange={(value) => {
+                  setModel(value);
+                }}
+                value={model}
+              >
+                <PromptInputSelectTrigger>
+                  <PromptInputSelectValue />
+                </PromptInputSelectTrigger>
+                <PromptInputSelectContent>
+                  {models.map((model) => (
+                    <PromptInputSelectItem key={model.id} value={model.id}>
+                      {model.name}
+                    </PromptInputSelectItem>
+                  ))}
+                </PromptInputSelectContent>
+              </PromptInputSelect>
+            </PromptInputTools>
+            <PromptInputSubmit disabled={!text && !status} status={status} />
+          </PromptInputFooter>
+        </div>
       </PromptInput>
     </PromptInputProvider>
   );

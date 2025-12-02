@@ -11,7 +11,7 @@ import { buildTransformationUrl } from "@/lib/utils";
 import { useEffect, useState, useEffectEvent } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { CreateUIMessage, ChatRequestOptions } from "ai";
-
+import Background from "@/components/background";
 import type { SelectConversation } from "@/lib/db-schema";
 
 export default function Home() {
@@ -20,6 +20,7 @@ export default function Home() {
   const [currentConversation, setCurrentConversation] =
     useState<SelectConversation | null>(null);
   const [showSignInPopup, setShowSignInPopup] = useState(false);
+  
   const {
     messages,
     sendMessage,
@@ -135,9 +136,12 @@ export default function Home() {
       console.error("Error deleting conversation:", error);
     }
   }
-  async function fetchConversations() {
+  async function fetchConversations(searchQuery?: string) {
     try {
-      const res = await fetch("/api/conversations");
+      const url = searchQuery 
+        ? `/api/conversations?search=${encodeURIComponent(searchQuery)}`
+        : "/api/conversations";
+      const res = await fetch(url);
       const data = await res.json();
       setConversations(data);
     } catch (error) {
@@ -174,12 +178,14 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
+      <Background count={messages.length} />
       <Sidebar
         reset={resetConversation}
         setCurrentConversation={changeConversation}
         conversations={conversations}
         deleteConversation={deleteConversation}
         onSignInRequired={() => setShowSignInPopup(true)}
+        searchConversations={fetchConversations}
       />
       <Conversation
         messages={messages}

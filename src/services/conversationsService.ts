@@ -5,7 +5,7 @@ import {
   SelectConversation,
 } from "@/lib/db-schema";
 import { db } from "@/lib/db-config";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, ilike } from "drizzle-orm";
 
 export async function addConversation(
   userId: string
@@ -38,12 +38,22 @@ export async function changeConversationTitle(
 }
 
 export async function getConversationsByUserId(
-  userId: string
+  userId: string,
+  searchQuery?: string
 ): Promise<SelectConversation[]> {
+  let whereCondition = eq(conversations.user_id, userId);
+  
+  if (searchQuery) {
+    whereCondition = and(
+      eq(conversations.user_id, userId),
+      ilike(conversations.title, `%${searchQuery}%`)
+    )!;
+  }
+
   const result = await db
     .select()
     .from(conversations)
-    .where(eq(conversations.user_id, userId))
+    .where(whereCondition)
     .orderBy(desc(conversations.id));
   return result;
 }
