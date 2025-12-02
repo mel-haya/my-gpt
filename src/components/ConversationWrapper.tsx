@@ -5,7 +5,7 @@ import Image from "next/image";
 // import Message from "./message";
 import { ChatMessage } from "@/types/chatMessage";
 import Header from "./header";
-import Background from "@/components/background";
+
 import PromptInput from "./PromptInput";
 import { ChatRequestOptions, FileUIPart, ChatStatus } from "ai";
 import {
@@ -92,7 +92,6 @@ export default function ConversationWrapper({
 
   return (
     <div className="flex flex-col grow h-screen relative items-center">
-      <Background count={messages.length} />
       <Header />
       {!messages.length && (
         <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-4 z-10 w-full">
