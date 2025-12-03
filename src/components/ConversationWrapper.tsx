@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 // import Message from "./message";
 import { ChatMessage } from "@/types/chatMessage";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ai-elements/message";
 import { LoaderCircle } from 'lucide-react';
 import Styles from "@/assets/styles/customScrollbar.module.css";
+import Background from "@/components/background";
 
 const welcomeMessage = "Hello! How can I assist you today?";
 const promptExamples = [
@@ -47,6 +48,8 @@ export default function ConversationWrapper({
   error: Error | undefined;
   stop: () => void;
 }) {
+  const [selectedModel, setSelectedModel] = useState<string>("openai/gpt-5-nano");
+  
   const displayMessages = useMemo(() => {
     return messages.map((message) => {
       const { id, parts, role } = message;
@@ -92,6 +95,7 @@ export default function ConversationWrapper({
 
   return (
     <div className="flex flex-col grow h-screen relative items-center">
+      <Background count={messages.length} />
       <Header />
       {!messages.length && (
         <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-4 z-10 w-full">
@@ -101,6 +105,8 @@ export default function ConversationWrapper({
               sendMessage={sendMessage}
               status={status}
               stop={stop}
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
             />
             <div className="flex gap-2">
               {promptExamples.map((p, index) => {
@@ -177,7 +183,7 @@ export default function ConversationWrapper({
             </ConversationContent>
             <ConversationScrollButton />
           </Conversation>
-          <PromptInput sendMessage={sendMessage} status={status} stop={stop} />
+          <PromptInput sendMessage={sendMessage} status={status} stop={stop} selectedModel={selectedModel} onModelChange={setSelectedModel} />
         </>
       )}
     </div>

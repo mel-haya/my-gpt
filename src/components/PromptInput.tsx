@@ -34,13 +34,17 @@ import {
 } from "ai";
 
 const models = [
-  { id: "GPT-5-nano", name: "GPT-5-nano" },
-  { id: "GPT-5-mini", name: "GPT-5-mini" },
+  { id: "openai/gpt-5-nano", name: "GPT-5 Nano" },
+  { id: "google/gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+  { id: "anthropic/claude-haiku-4.5", name: "Claude Haiku 4.5" },
+  { id: "xai/grok-4-fast-non-reasoning", name: "Grok 4 Fast" },
 ];
 const InputDemo = ({
   sendMessage,
   status,
   stop,
+  selectedModel,
+  onModelChange,
 }: {
   sendMessage: (
     message: { text: string; files?: FileUIPart[] },
@@ -48,9 +52,10 @@ const InputDemo = ({
   ) => Promise<void>;
   status: ChatStatus;
   stop: () => void;
+  selectedModel: string;
+  onModelChange: (model: string) => void;
 }) => {
   const [text, setText] = useState<string>("");
-  const [model, setModel] = useState<string>(models[0].id);
   const [useWebSearch, setUseWebSearch] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   //   const { messages, status, sendMessage } = useChat();
@@ -67,7 +72,7 @@ const InputDemo = ({
       },
       {
         body: {
-          model: model,
+          model: selectedModel,
           webSearch: useWebSearch,
         },
       }
@@ -78,7 +83,7 @@ const InputDemo = ({
     <PromptInputProvider>
       <PromptInput
         onSubmit={handleSubmit}
-        className="my-4 max-w-[800px] mx-6"
+        className="my-4 max-w-[1000px] mx-6"
         globalDrop
         accept="image/*"
         multiple={true}
@@ -116,10 +121,8 @@ const InputDemo = ({
                 <span>Search</span>
               </PromptInputButton>
               <PromptInputSelect
-                onValueChange={(value) => {
-                  setModel(value);
-                }}
-                value={model}
+                onValueChange={onModelChange}
+                value={selectedModel}
               >
                 <PromptInputSelectTrigger>
                   <PromptInputSelectValue />

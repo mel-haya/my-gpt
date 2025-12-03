@@ -43,7 +43,8 @@ export default function Sidebar({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchQuery, searchConversations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   const handleNewConversation = () => {
     if (!isSignedIn) {

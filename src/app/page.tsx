@@ -8,10 +8,10 @@ import { ChatMessage } from "@/types/chatMessage";
 import { ToastContainer } from "react-toastify";
 import { FileUIPart, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { buildTransformationUrl } from "@/lib/utils";
-import { useEffect, useState, useEffectEvent } from "react";
+import { useEffect, useState, useEffectEvent, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { CreateUIMessage, ChatRequestOptions } from "ai";
-import Background from "@/components/background";
+
 import type { SelectConversation } from "@/lib/db-schema";
 
 export default function Home() {
@@ -136,7 +136,7 @@ export default function Home() {
       console.error("Error deleting conversation:", error);
     }
   }
-  async function fetchConversations(searchQuery?: string) {
+  const fetchConversations = useCallback(async (searchQuery?: string) => {
     try {
       const url = searchQuery 
         ? `/api/conversations?search=${encodeURIComponent(searchQuery)}`
@@ -147,7 +147,7 @@ export default function Home() {
     } catch (error) {
       console.error("Error fetching conversations:", error);
     }
-  }
+  }, []);
 
   const onSignOut = useEffectEvent(() => {
     resetConversation();
@@ -178,7 +178,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
-      <Background count={messages.length} />
+      
       <Sidebar
         reset={resetConversation}
         setCurrentConversation={changeConversation}

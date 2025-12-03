@@ -1,5 +1,4 @@
 import { streamText, convertToModelMessages, stepCountIs } from "ai";
-import { openai } from "./models";
 import { tools, webSearchTool } from "./tools";
 import { ChatMessage } from "@/types/chatMessage";
 import { saveMessage } from "@/services/messagesService";
@@ -7,6 +6,14 @@ import { changeConversationTitle } from "@/services/conversationsService";
 import { TextUIPart } from "ai";
 import { Tools } from "@/types/Tools";
 import { uploadImageToImageKit } from "./imageKit";
+
+const supportedModels = [
+  "openai/gpt-5-nano",
+  "google/gemini-2.5-flash",
+  "anthropic/claude-haiku-4.5",
+  "xai/grok-4-fast-non-reasoning"
+];
+
 
 
 export async function POST(req: Request) {
@@ -24,25 +31,28 @@ export async function POST(req: Request) {
         part.url = await uploadImageToImageKit(part.url!);
       }
     }
-    await saveMessage(lastMessage, conversation.id);
-    if (!conversation.title) {
-      const part: TextUIPart = messages[0].parts.find(
-        (p:TextUIPart) => p.type === "text"
-      );
-      await changeConversationTitle(
+    
+    // Start background operations but don't wait
+    const backgroundTasks = Promise.allSettled([
+      saveMessage(lastMessage, conversation.id),
+      !conversation.title && changeConversationTitle(
         conversation.user_id,
         conversation.id,
-        (part as TextUIPart).text
-      );
-    }
+        (messages[0].parts.find((p: TextUIPart) => p.type === "text") as TextUIPart).text
+      )
+    ].filter(Boolean));
+    
     const toolsToUse: Tools = {...tools};
+    
+    // Check if model is in supported models and set selectedmodel
+    const selectedmodel = supportedModels.includes(model) ? model : 'openai/gpt-5-nano';
     
     const modelMessages = convertToModelMessages(messages);
     if (webSearch)
       toolsToUse.webSearch = webSearchTool;
     const response = streamText({
       messages: modelMessages,
-      model: openai.languageModel(model === "GPT-5-nano" ? "fast" : "smart"),
+      model: selectedmodel,
       tools: toolsToUse,
       system: `You are a helpful assistant with access to a knowledge base. 
           When users ask questions, search the knowledge base for relevant information.
@@ -52,8 +62,23 @@ export async function POST(req: Request) {
     });
 
     return response.toUIMessageStreamResponse({
-      onFinish: ({ responseMessage }) => {
-        saveMessage(responseMessage as ChatMessage, conversation.id);
+      onFinish: async ({ responseMessage }) => {
+        try {
+          // Wait for background tasks to complete
+          const results = await backgroundTasks;
+          
+          // Log any failures but don't fail the response
+          results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+              console.error(`Background task ${index} failed:`, result.reason);
+            }
+          });
+
+          // Save AI response
+          await saveMessage(responseMessage as ChatMessage, conversation.id);
+        } catch (error) {
+          console.error('Error in onFinish:', error);
+        }
       },
     });
   } catch (error) {

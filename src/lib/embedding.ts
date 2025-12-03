@@ -1,10 +1,9 @@
 import { embed, embedMany } from "ai";
-import { openai } from "@ai-sdk/openai";
 
 export async function generateEmbedding(text: string) {
   const input = text.replace("\n", " ");
   const { embedding } = await embed({
-    model: openai.textEmbeddingModel("text-embedding-3-small"),
+    model: process.env.EMBEDDING_MODEL || "openai/text-embedding-3-small",
     value: input,
   });
   return embedding;
@@ -16,7 +15,7 @@ export async function generateEmbeddings(texts: string[]) {
   
   try {
     const { embeddings } = await embedMany({
-      model: openai.textEmbeddingModel("text-embedding-3-small"),
+      model: process.env.EMBEDDING_MODEL || "openai/text-embedding-3-small",
       values: inputs,
     });
     return embeddings;
