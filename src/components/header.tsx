@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 
 export default function Header() {
   return (
-    <div className="flex w-full items-center justify-end px-4 py-6 text-white  shadow-md z-10">
+    <div className="flex w-full items-center px-4 py-6 text-white  shadow-md z-10">
+
       <SignedOut>
         <div className="flex gap-2">
           <SignInButton mode="modal">

@@ -16,3 +16,4 @@ export function buildTransformationUrl(
 export function shortenText(text: string): string {
   return text.length > 20 ? text.slice(0, 15) + "..." : text;
 }
+

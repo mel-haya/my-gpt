@@ -24,6 +24,8 @@ import {
 import { LoaderCircle } from 'lucide-react';
 import Styles from "@/assets/styles/customScrollbar.module.css";
 import Background from "@/components/background";
+import UsageDisplay from "./UsageDisplay";
+import { useTokenUsage } from '@/hooks/useTokenUsage';
 
 const welcomeMessage = "Hello! How can I assist you today?";
 const promptExamples = [
@@ -49,6 +51,7 @@ export default function ConversationWrapper({
   stop: () => void;
 }) {
   const [selectedModel, setSelectedModel] = useState<string>("openai/gpt-5-nano");
+  const { usage } = useTokenUsage();
   
   const displayMessages = useMemo(() => {
     return messages.map((message) => {
@@ -110,11 +113,17 @@ export default function ConversationWrapper({
             />
             <div className="flex gap-2">
               {promptExamples.map((p, index) => {
+                const isDisabled = usage?.hasReachedLimit;
                 return (
                   <div
-                    onClick={() => sendMessage({ text: p })}
+                    onClick={() => !isDisabled && sendMessage({ text: p })}
                     key={`prompt_${index}`}
-                    className="bg-neutral-800/40 p-4 cursor-pointer rounded-lg"
+                    className={`p-4 rounded-lg transition-colors ${
+                      isDisabled 
+                        ? "bg-neutral-800/20 text-neutral-600 cursor-not-allowed" 
+                        : "bg-neutral-800/40 cursor-pointer hover:bg-neutral-800/60"
+                    }`}
+                    title={isDisabled ? "Daily message limit reached" : ""}
                   >
                     {p}
                   </div>
@@ -131,51 +140,53 @@ export default function ConversationWrapper({
             className={`relative size-full z-10 flex-1 overflow-hidden ${Styles.customScrollbar}`}
           >
             <ConversationContent className="max-w-[1200px] mx-auto">
-              {displayMessages.map((message) => (
-                <Message from={message.role} key={message.key}>
-                  {message.role === "user" &&
-                    message.attachments &&
-                    message.attachments.length > 0 && (
-                      <MessageAttachments className="mb-2">
-                        {message.attachments.map((attachment) => (
-                          <MessageAttachment
-                            data={attachment}
-                            key={attachment.url}
-                          />
-                        ))}
-                      </MessageAttachments>
-                    )}
-                  <MessageContent>
-                    {message.content && (
-                      <MessageResponse key={`${message.key}-content`}>
-                        {message.content}
-                      </MessageResponse>
-                    )}
-                    {message.role === "assistant" &&
+              {displayMessages.map((message) => {
+                const isSystemMessage = typeof message.key === 'string' && message.key.startsWith('system-');
+                return (
+                  <Message from={message.role} key={message.key}>
+                    {message.role === "user" &&
                       message.attachments &&
                       message.attachments.length > 0 && (
-                        <div className="mt-2">
-                          {message.attachments.map((attachment, i) => (
-                            <Image
-                              key={`${message.key}-img-${i}`}
-                              src={attachment.url}
-                              alt="Generated image"
-                              width={500}
-                              height={500}
-                              className="max-w-full h-auto rounded-lg"
+                        <MessageAttachments className="mb-2">
+                          {message.attachments.map((attachment) => (
+                            <MessageAttachment
+                              data={attachment}
+                              key={attachment.url}
                             />
                           ))}
+                        </MessageAttachments>
+                      )}
+                    <MessageContent>
+                      {message.content && (
+                        <div className={isSystemMessage ? "border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30 rounded-lg p-4 my-2" : ""}>
+                          <MessageResponse key={`${message.key}-content`}>
+                            {message.content}
+                          </MessageResponse>
                         </div>
                       )}
-                  </MessageContent>
-                </Message>
-              ))}
+                      {message.role === "assistant" &&
+                        message.attachments &&
+                        message.attachments.length > 0 && (
+                          <div className="mt-2">
+                            {message.attachments.map((attachment, i) => (
+                              <Image
+                                key={`${message.key}-img-${i}`}
+                                src={attachment.url}
+                                alt="Generated image"
+                                width={500}
+                                height={500}
+                                className="max-w-full h-auto rounded-lg"
+                              />
+                            ))}
+                          </div>
+                        )}
+                    </MessageContent>
+                  </Message>
+                );
+              })}
               {status !== "ready" && (
                 <Message from="assistant">
                   <MessageContent>
-                    {/* <MessageResponse>
-                      Generating response...
-                    </MessageResponse> */}
                       <LoaderCircle className="animate-spin mr-2 inline-block" />
                   </MessageContent>
                 </Message>
