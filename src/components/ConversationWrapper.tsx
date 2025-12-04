@@ -139,7 +139,7 @@ export default function ConversationWrapper({
           <Conversation
             className={`relative size-full z-10 flex-1 overflow-hidden ${Styles.customScrollbar}`}
           >
-            <ConversationContent className="max-w-[1200px] mx-auto">
+            <ConversationContent className="max-w-[1000px] mx-auto">
               {displayMessages.map((message) => {
                 const isSystemMessage = typeof message.key === 'string' && message.key.startsWith('system-');
                 return (
