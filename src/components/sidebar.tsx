@@ -8,6 +8,7 @@ import { PenLine, PanelLeft, Search } from "lucide-react";
 import bgStyles from "@/assets/styles/background.module.css";
 import UserComponent from "./userComponent";
 import MessagesLimit from "./messagesLimit";
+import ConversationActionMenu from "@/components/conversationActionMenu";
 
 export default function Sidebar({
   reset,
@@ -123,22 +124,21 @@ export default function Sidebar({
               <div
                 key={conversation.id}
                 onClick={() => setCurrentConversation(conversation)}
-                className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex justify-between"
+                className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex justify-between group"
               >
                 {conversation.title
                   ? conversation.title.length < 25
                     ? conversation.title
                     : conversation.title?.slice(0, 25) + "..."
                   : "Untitled Conversation"}
-                <span
-                  className="opacity-0 hover:opacity-100"
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    deleteConversation(conversation.id);
                   }}
                 >
-                  <i className="fa-solid fa-xmark"></i>
-                </span>
+                  {/* <i className="fa-solid fa-xmark"></i> */}
+                  <ConversationActionMenu onDelete={() => deleteConversation(conversation.id)} />
+                </div>
               </div>
             ))}
           </div>
