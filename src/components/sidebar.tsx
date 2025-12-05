@@ -7,6 +7,8 @@ import Styles from "@/assets/styles/customScrollbar.module.css";
 import { PenLine, PanelLeft, Search } from "lucide-react";
 import bgStyles from "@/assets/styles/background.module.css";
 import UserComponent from "./userComponent";
+import MessagesLimit from "./messagesLimit";
+import ConversationActionMenu from "@/components/conversationActionMenu";
 
 export default function Sidebar({
   reset,
@@ -43,7 +45,8 @@ export default function Sidebar({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchQuery, searchConversations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   const handleNewConversation = () => {
     if (!isSignedIn) {
@@ -89,7 +92,12 @@ export default function Sidebar({
         <div className="flex flex-col h-screen w-[300px] robert pt-16">
           {/* <h1 className="text-2xl font-bold font-goldman px-4 py-6">My GPT</h1> */}
           {/* {toggleUpload && <UploadFile onSignInRequired={onSignInRequired} />} */}
-
+          <div
+            className="px-4 py-3 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
+            style={{ background: "linear-gradient(90deg,rgba(2, 0, 36, 1) 0%, rgba(68, 0, 150, 1) 100%)" }}
+          >
+            <MessagesLimit />
+          </div>
           <div
             className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
             onClick={handleNewConversation}
@@ -116,22 +124,21 @@ export default function Sidebar({
               <div
                 key={conversation.id}
                 onClick={() => setCurrentConversation(conversation)}
-                className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex justify-between"
+                className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex justify-between group"
               >
                 {conversation.title
                   ? conversation.title.length < 25
                     ? conversation.title
                     : conversation.title?.slice(0, 25) + "..."
                   : "Untitled Conversation"}
-                <span
-                  className="opacity-0 hover:opacity-100"
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    deleteConversation(conversation.id);
                   }}
                 >
-                  <i className="fa-solid fa-xmark"></i>
-                </span>
+                  {/* <i className="fa-solid fa-xmark"></i> */}
+                  <ConversationActionMenu onDelete={() => deleteConversation(conversation.id)} />
+                </div>
               </div>
             ))}
           </div>

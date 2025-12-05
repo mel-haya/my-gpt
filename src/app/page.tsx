@@ -8,10 +8,11 @@ import { ChatMessage } from "@/types/chatMessage";
 import { ToastContainer } from "react-toastify";
 import { FileUIPart, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { buildTransformationUrl } from "@/lib/utils";
-import { useEffect, useState, useEffectEvent } from "react";
+import { useEffect, useState, useEffectEvent, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { CreateUIMessage, ChatRequestOptions } from "ai";
-import Background from "@/components/background";
+import { useTokenUsage } from '@/hooks/useTokenUsage';
+
 import type { SelectConversation } from "@/lib/db-schema";
 
 export default function Home() {
@@ -20,6 +21,7 @@ export default function Home() {
   const [currentConversation, setCurrentConversation] =
     useState<SelectConversation | null>(null);
   const [showSignInPopup, setShowSignInPopup] = useState(false);
+  const { usage, refreshUsage } = useTokenUsage();
   
   const {
     messages,
@@ -73,8 +75,24 @@ export default function Home() {
     async onFinish({ messages }) {
       const userMessages = messages.filter((m) => m.role === "user");
       if (userMessages.length === 1) await fetchConversations();
+      await refreshUsage();
     },
   });
+
+  // Helper function to add system messages to the conversation
+  const addSystemMessage = (content: string) => {
+    const systemMessage: ChatMessage = {
+      id: `system-${Date.now()}`,
+      role: "assistant",
+      parts: [
+        {
+          type: "text",
+          text: content,
+        },
+      ],
+    };
+    setMessages(prev => [...prev, systemMessage]);
+  };
 
   async function initConversation() {
     try {
@@ -99,6 +117,18 @@ export default function Home() {
       return;
     }
 
+    // Frontend validation: Check if user has reached their daily limit
+    if (usage?.hasReachedLimit) {
+      const resetTime = new Date();
+      resetTime.setHours(24, 0, 0, 0); // Next midnight
+      const hoursUntilReset = Math.ceil((resetTime.getTime() - Date.now()) / (1000 * 60 * 60));
+      
+      addSystemMessage(
+        `⚠️ **Daily message limit reached!**\n\nYou've used all your messages for today. Your limit will reset in ${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.\n\nPlease try again tomorrow.`
+      );
+      return;
+    }
+
     try {
       let conversation = currentConversation;
       if (!conversation) {
@@ -106,8 +136,34 @@ export default function Home() {
       }
       const body = { conversation, ...options?.body };
       await sendMessage(message, { body });
-    } catch (error) {
+      // Refresh usage immediately after sending (in addition to onFinish)
+      await refreshUsage();
+    } catch (error: unknown) {
       console.error("Error sending message:", error);
+      
+      // Handle 429 rate limit error specifically
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isRateLimit = errorMessage.includes('429') || 
+                          errorMessage.includes('Rate limit') || 
+                          errorMessage.includes('Daily message limit reached');
+      
+      if (isRateLimit) {
+        const resetTime = new Date();
+        resetTime.setHours(24, 0, 0, 0); // Next midnight
+        const hoursUntilReset = Math.ceil((resetTime.getTime() - Date.now()) / (1000 * 60 * 60));
+        
+        addSystemMessage(
+          `🚫 **Rate limit exceeded!**\n\nYou've reached your daily message limit. Your limit will reset in ${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.\n\nPlease try again tomorrow. We appreciate your patience! ✨`
+        );
+      } else {
+        // Handle other errors
+        addSystemMessage(
+          `❌ **Message failed to send**\n\nThere was an issue sending your message. Please try again.\n\nIf the problem persists, please check your connection or contact support.`
+        );
+      }
+      
+      // Still refresh usage even if there's an error, in case the message was processed
+      await refreshUsage();
     }
   }
 
@@ -136,7 +192,7 @@ export default function Home() {
       console.error("Error deleting conversation:", error);
     }
   }
-  async function fetchConversations(searchQuery?: string) {
+  const fetchConversations = useCallback(async (searchQuery?: string) => {
     try {
       const url = searchQuery 
         ? `/api/conversations?search=${encodeURIComponent(searchQuery)}`
@@ -147,7 +203,7 @@ export default function Home() {
     } catch (error) {
       console.error("Error fetching conversations:", error);
     }
-  }
+  }, []);
 
   const onSignOut = useEffectEvent(() => {
     resetConversation();
@@ -178,7 +234,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
-      <Background count={messages.length} />
+      
       <Sidebar
         reset={resetConversation}
         setCurrentConversation={changeConversation}
