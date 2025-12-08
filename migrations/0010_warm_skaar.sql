@@ -1,0 +1,1 @@
+ALTER TABLE "messages" ADD COLUMN "text_content" text;

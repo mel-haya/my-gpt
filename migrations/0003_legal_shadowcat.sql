@@ -1,1 +1,1 @@
-ALTER TABLE "parts" ALTER COLUMN "content" SET DATA TYPE jsonb USING "content"::jsonb;
+-- ALTER TABLE "parts" ALTER COLUMN "content" SET DATA TYPE jsonb USING "content"::jsonb;

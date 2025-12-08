@@ -31,6 +31,7 @@ export const messages = pgTable("messages", {
   conversation_id: serial("conversation_id").notNull().references(() => conversations.id),
   role: rolesEnum("role").notNull(),
   parts: jsonb("parts").notNull(),
+  text_content: text("text_content"),
 });
 
 export const uploadedFiles = pgTable(

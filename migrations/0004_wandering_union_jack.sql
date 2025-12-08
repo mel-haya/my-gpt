@@ -1,1 +1,1 @@
-ALTER TABLE "messages" RENAME COLUMN "content" TO "parts";
+-- ALTER TABLE "messages" RENAME COLUMN "content" TO "parts";

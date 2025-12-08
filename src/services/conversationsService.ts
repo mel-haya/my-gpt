@@ -5,7 +5,7 @@ import {
   SelectConversation,
 } from "@/lib/db-schema";
 import { db } from "@/lib/db-config";
-import { eq, and, desc, ilike } from "drizzle-orm";
+import { eq, and, desc, ilike, or } from "drizzle-orm";
 
 export async function addConversation(
   userId: string
@@ -41,19 +41,35 @@ export async function getConversationsByUserId(
   userId: string,
   searchQuery?: string
 ): Promise<SelectConversation[]> {
-  let whereCondition = eq(conversations.user_id, userId);
-  
   if (searchQuery) {
-    whereCondition = and(
-      eq(conversations.user_id, userId),
-      ilike(conversations.title, `%${searchQuery}%`)
-    )!;
+    // Search in both conversation titles and message content
+    const conversationsWithMessages = await db
+      .selectDistinct({
+        id: conversations.id,
+        user_id: conversations.user_id,
+        title: conversations.title,
+      })
+      .from(conversations)
+      .leftJoin(messages, eq(conversations.id, messages.conversation_id))
+      .where(
+        and(
+          eq(conversations.user_id, userId),
+          or(
+            ilike(conversations.title, `%${searchQuery}%`),
+            ilike(messages.text_content, `%${searchQuery}%`)
+          )
+        )
+      )
+      .orderBy(desc(conversations.id));
+    
+    return conversationsWithMessages;
   }
 
+  // If no search query, return all conversations for the user
   const result = await db
     .select()
     .from(conversations)
-    .where(whereCondition)
+    .where(eq(conversations.user_id, userId))
     .orderBy(desc(conversations.id));
   return result;
 }

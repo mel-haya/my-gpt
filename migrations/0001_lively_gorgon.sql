@@ -15,7 +15,7 @@ CREATE TABLE "messages" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"conversation_id" serial NOT NULL,
 	"role" text NOT NULL,
-	"content" text NOT NULL
+	"parts" jsonb USING "content"::jsonb
 );
 --> statement-breakpoint
 CREATE INDEX "documents_embedding_index" ON "documents" USING hnsw ("embedding" vector_cosine_ops);

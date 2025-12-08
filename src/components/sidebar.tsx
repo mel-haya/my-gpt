@@ -9,6 +9,7 @@ import bgStyles from "@/assets/styles/background.module.css";
 import UserComponent from "./userComponent";
 import MessagesLimit from "./messagesLimit";
 import ConversationActionMenu from "@/components/conversationActionMenu";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Sidebar({
   reset,
@@ -17,6 +18,7 @@ export default function Sidebar({
   deleteConversation,
   onSignInRequired,
   searchConversations,
+  loading,
 }: {
   reset: () => void;
   conversations: SelectConversation[];
@@ -24,11 +26,13 @@ export default function Sidebar({
   deleteConversation: (conversationId: number) => void;
   onSignInRequired: () => void;
   searchConversations: (searchQuery: string) => void;
+  loading: boolean;
 }) {
   const { isSignedIn } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const skeletonWidths = [25, 22, 30, 18, 27, 20, 24, 28, 21];
 
   // Debounced search effect
   useEffect(() => {
@@ -94,7 +98,10 @@ export default function Sidebar({
           {/* {toggleUpload && <UploadFile onSignInRequired={onSignInRequired} />} */}
           <div
             className="px-4 py-3 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
-            style={{ background: "linear-gradient(90deg,rgba(2, 0, 36, 1) 0%, rgba(68, 0, 150, 1) 100%)" }}
+            style={{
+              background:
+                "linear-gradient(90deg,rgba(2, 0, 36, 1) 0%, rgba(68, 0, 150, 1) 100%)",
+            }}
           >
             <MessagesLimit />
           </div>
@@ -120,27 +127,39 @@ export default function Sidebar({
             />
           </div>
           <div className={`flex-1 overflow-y-auto ${Styles.customScrollbar}`}>
-            {conversations.map((conversation) => (
-              <div
-                key={conversation.id}
-                onClick={() => setCurrentConversation(conversation)}
-                className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex justify-between group"
-              >
-                {conversation.title
-                  ? conversation.title.length < 25
-                    ? conversation.title
-                    : conversation.title?.slice(0, 25) + "..."
-                  : "Untitled Conversation"}
+            {!loading &&
+              conversations.map((conversation) => (
                 <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
+                  key={conversation.id}
+                  onClick={() => setCurrentConversation(conversation)}
+                  className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex justify-between group"
                 >
-                  {/* <i className="fa-solid fa-xmark"></i> */}
-                  <ConversationActionMenu onDelete={() => deleteConversation(conversation.id)} />
+                  {conversation.title
+                    ? conversation.title.length < 25
+                      ? conversation.title
+                      : conversation.title?.slice(0, 25) + "..."
+                    : "Untitled Conversation"}
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    {/* <i className="fa-solid fa-xmark"></i> */}
+                    <ConversationActionMenu
+                      onDelete={() => deleteConversation(conversation.id)}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            {loading && (
+              <>
+                {skeletonWidths.map((_, index) => (
+                  <div key={index} className="px-4 py-3 text-gray-500">
+                    <Skeleton className={`h-4 mb-2`} style={{ width: `${skeletonWidths[index] *3  }%` }}/>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
           <UserComponent />
         </div>
