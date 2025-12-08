@@ -88,8 +88,8 @@ export default function Sidebar({
         )}
       </div>
       <div
-        className={`hidden lg:block h-screen transition-all duration-300 ease-in-out overflow-hidden ${
-          isOpen ? "w-[300px]" : "w-0"
+        className={`lg:block h-screen transition-all duration-300 ease-in-out overflow-hidden ${
+          isOpen ? "w-[300px] " : "w-0"
         }`}
       >
         <div className="flex flex-col h-screen w-[300px] robert pt-16">

@@ -111,7 +111,7 @@ export default function ConversationWrapper({
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
             />
-            <div className="flex gap-2">
+            <div className="flex flex-col md:flex-row gap-2">
               {promptExamples.map((p, index) => {
                 const isDisabled = usage?.hasReachedLimit;
                 return (
