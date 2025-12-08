@@ -15,12 +15,13 @@ const fetchConversations = async (searchQuery?: string): Promise<SelectConversat
   return res.json();
 };
 
-export const useConversations = (searchQuery?: string): UseQueryResult<SelectConversation[], Error> => {
+export const useConversations = (searchQuery?: string, options?: { enabled?: boolean }): UseQueryResult<SelectConversation[], Error> => {
   return useQuery({
     queryKey: ["conversations", searchQuery],
     queryFn: () => fetchConversations(searchQuery),
     staleTime: 60 * 1000, // 1 minute
     refetchOnWindowFocus: false,
+    enabled: options?.enabled ?? true,
   });
 };
 

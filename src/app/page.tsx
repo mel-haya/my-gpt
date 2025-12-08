@@ -13,7 +13,7 @@ import { useAuth } from "@clerk/nextjs";
 import { ChatRequestOptions } from "ai";
 import { useTokenUsage } from "@/hooks/useTokenUsage";
 import { useConversations } from "@/hooks/useConversations";
-
+import { useQueryClient } from "@tanstack/react-query";
 import type { SelectConversation } from "@/lib/db-schema";
 
 export default function Home() {
@@ -29,8 +29,8 @@ export default function Home() {
     isFetching: conversationsFetching,
     error: conversationsError,
     refetch,
-  } = useConversations(searchQuery);
-
+  } = useConversations(searchQuery, { enabled: isSignedIn });
+  const queryClient = useQueryClient();
   const {
     messages,
     sendMessage,
@@ -225,6 +225,7 @@ export default function Home() {
 
   const onSignOut = useEffectEvent(() => {
     resetConversation();
+    queryClient.removeQueries({ queryKey: ['conversations'] });
     // setConversations([]);
   });
 

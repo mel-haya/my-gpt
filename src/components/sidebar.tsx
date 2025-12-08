@@ -10,6 +10,7 @@ import UserComponent from "./userComponent";
 import MessagesLimit from "./messagesLimit";
 import ConversationActionMenu from "@/components/conversationActionMenu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MessageSquareX } from "lucide-react";
 
 export default function Sidebar({
   reset,
@@ -62,32 +63,30 @@ export default function Sidebar({
 
   return (
     <div className={`flex z-20 ${bgStyles.sideBarBackground}`}>
-      <SignedIn>
+      <div
+        className={`fixed top-0 left-0 mt-4 ml-2 flex gap-2 p-1 rounded-lg transition-all ${
+          isOpen ? "bg-gray-transparent" : "bg-gray-200 dark:bg-neutral-800"
+        }`}
+      >
         <div
-          className={`fixed top-0 left-0 mt-4 ml-2 flex gap-2 p-1 rounded-lg transition-all ${
-            isOpen ? "bg-gray-transparent" : "bg-gray-200 dark:bg-neutral-800"
-          }`}
+          className="p-1"
+          onClick={() => {
+            setIsOpen(!isOpen);
+          }}
         >
+          <PanelLeft size={20} className=" text-gray-100 cursor-pointer" />
+        </div>
+        {!isOpen && (
           <div
             className="p-1"
             onClick={() => {
               setIsOpen(!isOpen);
             }}
           >
-            <PanelLeft size={20} className=" text-gray-100 cursor-pointer" />
+            <Search size={20} className=" text-gray-100 cursor-pointer" />
           </div>
-          {!isOpen && (
-            <div
-              className="p-1"
-              onClick={() => {
-                setIsOpen(!isOpen);
-              }}
-            >
-              <Search size={20} className=" text-gray-100 cursor-pointer" />
-            </div>
-          )}
-        </div>
-      </SignedIn>
+        )}
+      </div>
       <div
         className={`hidden lg:block h-screen transition-all duration-300 ease-in-out overflow-hidden ${
           isOpen ? "w-[300px]" : "w-0"
@@ -96,15 +95,17 @@ export default function Sidebar({
         <div className="flex flex-col h-screen w-[300px] robert pt-16">
           {/* <h1 className="text-2xl font-bold font-goldman px-4 py-6">My GPT</h1> */}
           {/* {toggleUpload && <UploadFile onSignInRequired={onSignInRequired} />} */}
-          <div
-            className="px-4 py-3 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
-            style={{
-              background:
-                "linear-gradient(90deg,rgba(2, 0, 36, 1) 0%, rgba(68, 0, 150, 1) 100%)",
-            }}
-          >
-            <MessagesLimit />
-          </div>
+          <SignedIn>
+            <div
+              className="px-4 py-3 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
+              style={{
+                background:
+                  "linear-gradient(90deg,rgba(2, 0, 36, 1) 0%, rgba(68, 0, 150, 1) 100%)",
+              }}
+            >
+              <MessagesLimit />
+            </div>
+          </SignedIn>
           <div
             className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
             onClick={handleNewConversation}
@@ -155,10 +156,26 @@ export default function Sidebar({
               <>
                 {skeletonWidths.map((_, index) => (
                   <div key={index} className="px-4 py-3 text-gray-500">
-                    <Skeleton className={`h-4 mb-2`} style={{ width: `${skeletonWidths[index] *3  }%` }}/>
+                    <Skeleton
+                      className={`h-4 mb-2`}
+                      style={{ width: `${skeletonWidths[index] * 3}%` }}
+                    />
                   </div>
                 ))}
               </>
+            )}
+            {!loading && conversations.length === 0 && (
+              <div className="flex flex-col items-center justify-center mt-20 my-2 text-gray-500">
+                <MessageSquareX size={70} className="mb-4 text-gray-500" />
+                {!isSignedIn ? (
+                  <p className="mb-2 text-center mx-4">
+                    No conversations found. Please sign in to start a
+                    conversation.
+                  </p>
+                ) : (
+                  <p className="">No conversations found.</p>
+                )}
+              </div>
             )}
           </div>
           <UserComponent />
