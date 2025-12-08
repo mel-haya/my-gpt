@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@clerk/nextjs';
 
 interface UsageData {
   todaysUsage: {
@@ -60,6 +61,7 @@ const notifySubscribers = () => {
 };
 
 export function useTokenUsage() {
+  const { isSignedIn } = useAuth();
   const [, forceUpdate] = useState({});
   
   // Force re-render when global state changes
@@ -68,6 +70,11 @@ export function useTokenUsage() {
   }, []);
 
   useEffect(() => {
+    // Only subscribe and fetch if user is signed in
+    if (!isSignedIn) {
+      return;
+    }
+
     subscribers.add(rerender);
     
     // Initial fetch if not already done
@@ -78,11 +85,22 @@ export function useTokenUsage() {
     return () => {
       subscribers.delete(rerender);
     };
-  }, [rerender]);
+  }, [rerender, isSignedIn]);
 
   const refreshUsage = useCallback(async () => {
+    if (!isSignedIn) return;
     await fetchUsageGlobal();
-  }, []);
+  }, [isSignedIn]);
+
+  // Return empty state if not signed in
+  if (!isSignedIn) {
+    return { 
+      usage: null, 
+      loading: false, 
+      error: null, 
+      refreshUsage: () => Promise.resolve() 
+    };
+  }
 
   return { 
     usage: globalUsage, 

@@ -1,8 +1,10 @@
 import { useTokenUsage } from "@/hooks/useTokenUsage";
 import { useEffect } from "react";
 
+
 export default function MessagesLimit() {
   const { usage, loading, error } = useTokenUsage();
+
   if (!usage) return null;
   const { todaysUsage, remainingMessages, hasReachedLimit } = usage;
 
@@ -13,7 +15,7 @@ export default function MessagesLimit() {
   );
 
   return (
-    <div className="rounded flex flex-col gap-2">
+    <div className={`rounded flex-col gap-2 flex`}>
       <h2 className="text-md font-semibold ">Daily Messages</h2>
       {/* Progress bar container */}
       <div className=" bg-gray-200 rounded-full h-1">
@@ -27,9 +29,9 @@ export default function MessagesLimit() {
           }}
         />
       </div>
-        <div className="flex justify-between text-sm text-gray-500 mb-2">
-          <span>{remainingMessages} messages remaining</span>
-        </div>
+      <div className="flex justify-between text-sm text-gray-500 mb-2">
+        <span>{remainingMessages} messages remaining</span>
+      </div>
     </div>
   );
 }

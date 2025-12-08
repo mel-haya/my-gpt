@@ -99,7 +99,7 @@ export default function ConversationWrapper({
   return (
     <div className="flex flex-col grow h-screen relative items-center">
       <Background count={messages.length} />
-      <Header />
+      {/* <Header /> */}
       {!messages.length && (
         <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-4 z-10 w-full">
           <div className="h-full flex-col flex justify-center items-center gap-4 mx-auto text-center">

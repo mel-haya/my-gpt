@@ -11,6 +11,10 @@ export async function saveMessage(
     conversation_id: conversationId,
     role: message.role,
     parts: message.parts,
+    text_content: message.parts
+      .filter((part) => part.type === "text")
+      .map((part) => part.text)
+      .join(" "),
   };
   const result = await db.insert(messages).values(insertMessage).returning();
   return result[0];
