@@ -37,36 +37,3 @@ export async function GET() {
   }
 }
 
-// export async function PUT(req: NextRequest) {
-//   try {
-    
-//     const isAdmin = await checkRole('admin');
-//         if (!isAdmin) {
-//           return NextResponse.json(
-//             { error: 'Unauthorized. Admin access required.' },
-//             { status: 403 }
-//           );
-//         }
-
-//     const { newLimit } = await req.json();
-
-//     if (!newLimit || typeof newLimit !== 'number' || newLimit < 1) {
-//       return new Response("Invalid limit provided", {
-//         status: 400,
-//       });
-//     }
-
-//     await TokenUsageService.updateDailyLimit(userId, newLimit);
-
-//     return Response.json({
-//       success: true,
-//       message: `Daily limit updated to ${newLimit} messages`,
-//     });
-//   } catch (error) {
-//     console.error("Error updating daily limit:", error);
-//     return new Response("Error updating daily limit", {
-//       status: 500,
-//       statusText: String(error),
-//     });
-//   }
-// }
