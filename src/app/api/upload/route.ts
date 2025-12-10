@@ -9,6 +9,21 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { del } from "@vercel/blob";
 import mammoth from "mammoth";
 
+function extractOriginalFilename(pathname: string): string {
+  // Use regex to match pattern: (filename)-(vercel-code).(extension)
+  // and extract just (filename).(extension)
+  const regex = /^(.+)-[a-zA-Z0-9]{30}(\.[^.]+)$/;
+  const match = pathname.match(regex);
+  
+  if (match) {
+    // Return filename + extension without the Vercel code
+    return match[1] + match[2];
+  }
+  
+  // Return original if pattern doesn't match
+  return pathname;
+}
+
 async function embedAndSave(text: string) {
   const chunks = await chunkContent(text);
   const embeddings = await generateEmbeddings(chunks);
@@ -29,7 +44,6 @@ export async function parsePDF(url: string) {
   try {
     const data = new PDFParse({ url, CanvasFactory });
     const text = (await data.getText()).text;
-    console.log("Extracted text length:", text.length);
     if (text.trim().length === 0) {
       return {
         success: false,
@@ -58,7 +72,7 @@ export async function parseDOCX(url: string) {
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);  
     const text = (await mammoth.extractRawText({ buffer: buffer })).value;
-    console.log("Extracted text length:", text.length);
+
     if (text.trim().length === 0) {
       return {
         success: false,
@@ -85,12 +99,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
   const body = (await request.json()) as HandleUploadBody;
-
+  
   try {
     const jsonResponse = await handleUpload({
       body,
       request,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
+
         return {
           allowedContentTypes: ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
           addRandomSuffix: true,
@@ -98,7 +113,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
-        console.log("blob upload completed", blob, tokenPayload);
+
 
         if (!tokenPayload) {
           console.error(
@@ -109,16 +124,16 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
 
         try {
-          // Attempt to insert the file hash immediately to "lock" it.
+          const originalFileName = extractOriginalFilename(blob.pathname);
+          
           await db.insert(uploadedFiles).values({
-            fileName: blob.pathname,
+            fileName: originalFileName,
             fileHash: tokenPayload,
           });
-
           // Determine file type based on file extension
           const fileExtension = blob.pathname.toLowerCase().split('.').pop();
           let result;
-          console.log("Processing file with extension:", fileExtension);
+
           switch (fileExtension) {
             case 'pdf':
               result = await parsePDF(blob.downloadUrl);

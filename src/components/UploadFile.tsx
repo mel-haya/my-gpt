@@ -1,3 +1,5 @@
+"use client";
+
 import { useRef, useState } from "react";
 import PdfIcon from "@/components/Icons/pdfIcon";
 import { shortenText } from "@/lib/utils";
@@ -15,11 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import CryptoJS from "crypto-js";
 import { vi } from "zod/v4/locales";
 
-export default function UploadFile({
-  onSignInRequired,
-}: {
-  onSignInRequired: () => void;
-}) {
+export default function UploadFile() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [visibility, setVisibility] = useState("public");
@@ -61,7 +59,7 @@ export default function UploadFile({
 
   const handleUploadClick = async () => {
     if (!isSignedIn) {
-      onSignInRequired();
+      toast.error("You must be signed in to upload files.");
       return;
     }
 
