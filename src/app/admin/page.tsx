@@ -1,11 +1,18 @@
+"use client";
+import { useState } from "react";
 
-import UploadFile from "@/components/UploadFile";
+
+import FilesDashboard from "@/components/admin/filesDashboard";
+import Sidebar from "@/components/admin/sidebar";
 
 export default function AdminPage() {
+
+  const [activePage, setActivePage] = useState<string>("users");
+
   return (
-    <div className="">
-      <h1>Admin panel</h1>
-      <UploadFile />
+    <div className="flex ">
+      <Sidebar activePage={activePage} setActivePage={setActivePage} />
+      {activePage === "files" && <FilesDashboard />}
     </div>
   );
 }
