@@ -65,6 +65,23 @@ export const userTokenUsage = pgTable(
   ]
 );
 
+export const users = pgTable(
+  "users",
+  {
+    id: text("id").primaryKey(), // Clerk user ID as string
+    username: text("username").notNull(),
+    email: text("email").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("email_index").on(table.email),
+    uniqueIndex("username_index").on(table.username),
+  ]
+);
+
+
+
 export type InsertDocument = typeof documents.$inferInsert;
 export type SelectDocument = typeof documents.$inferSelect;
 export type InsertConversation = typeof conversations.$inferInsert;
@@ -75,3 +92,5 @@ export type InsertUploadedFile = typeof uploadedFiles.$inferInsert;
 export type SelectUploadedFile = typeof uploadedFiles.$inferSelect;
 export type InsertUserTokenUsage = typeof userTokenUsage.$inferInsert;
 export type SelectUserTokenUsage = typeof userTokenUsage.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+export type SelectUser = typeof users.$inferSelect;
