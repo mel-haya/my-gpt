@@ -1,11 +1,11 @@
 "use server";
 
-import { getUploadedFiles, deleteFile, toggleFileActive, UploadedFileWithUser } from "@/services/filesService";
+import { getUploadedFiles, deleteFile, toggleFileActive, UploadedFileWithUser, PaginatedUploadedFiles } from "@/services/filesService";
 
-export async function getFilesWithStatus(): Promise<UploadedFileWithUser[]> {
+export async function getFilesWithStatus(searchQuery?: string, limit: number = 10, page: number = 1): Promise<PaginatedUploadedFiles> {
   try {
-    const files = await getUploadedFiles("", 100, 1); // Get all files
-    return files;
+    const result = await getUploadedFiles(searchQuery, limit, page);
+    return result;
   } catch (error) {
     console.error("Error fetching files:", error);
     throw new Error("Failed to fetch files");

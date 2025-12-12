@@ -1,0 +1,330 @@
+"use client";
+
+import { useState } from "react";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/ui/data-table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import FileActionButtons from "./FileActionButtons";
+import type { UploadedFileWithUser } from "@/services/filesService";
+
+interface FilesTableProps {
+  files: UploadedFileWithUser[];
+  loading: boolean;
+  error: string | null;
+  isPending: boolean;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalCount: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+  onRefresh: () => void;
+  onPageChange: (page: number) => void;
+  onSearch: (query: string) => void;
+}
+
+function FileStatusBadge({ status }: { status: UploadedFileWithUser["status"] }) {
+  const statusStyles = {
+    processing: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-700",
+    completed: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700",
+    failed: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700"
+  };
+
+  return (
+    <span 
+      className={`px-2 py-1 rounded-md text-xs font-medium border ${statusStyles[status]}`}
+    >
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
+  );
+}
+
+const getColumns = (fetchFiles: () => void): ColumnDef<UploadedFileWithUser>[] => [
+  {
+    accessorKey: "id",
+    header: "ID",
+    cell: ({ row }) => (
+      <div className="font-medium">{row.getValue("id")}</div>
+    ),
+  },
+  {
+    accessorKey: "fileName",
+    header: "File Name",
+    cell: ({ row }) => (
+      <div>{row.getValue("fileName")}</div>
+    ),
+  },
+  {
+    accessorKey: "username",
+    header: "Username",
+    cell: ({ row }) => (
+      <div className="text-neutral-600 dark:text-neutral-400">
+        {row.getValue("username") || "Unknown"}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => (
+      <FileStatusBadge status={row.getValue("status")} />
+    ),
+  },
+  {
+    accessorKey: "active",
+    header: "Active",
+    cell: ({ row }) => {
+      const isActive = row.getValue("active") as boolean;
+      return (
+        <span 
+          className={`px-2 py-1 rounded-md text-xs font-medium border ${
+            isActive 
+              ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700'
+              : 'bg-neutral-100 text-neutral-800 border-neutral-200 dark:bg-neutral-900/20 dark:text-neutral-300 dark:border-neutral-700'
+          }`}
+        >
+          {isActive ? "Yes" : "No"}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "actions",
+    header: "Actions",
+    cell: ({ row }) => {
+      const file = row.original;
+      return (
+        <FileActionButtons
+          fileId={file.id}
+          fileName={file.fileName}
+          active={file.active}
+          onUpdate={fetchFiles}
+        />
+      );
+    },
+  },
+];
+
+function FilesTableSkeleton() {
+  return (
+    <div className="mt-6">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Uploaded Files</h3>
+        <div className="h-8 w-16 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+      </div>
+      <div className="w-full">
+        <div className="flex items-center py-4">
+          <div className="h-10 w-80 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+        </div>
+        <div className="rounded-md border">
+          <div className="w-full">
+            <div className="bg-neutral-50 dark:bg-neutral-800">
+              <div className="flex">
+                <div className="h-12 px-4 flex items-center text-left font-medium text-neutral-500 dark:text-neutral-400">
+                  <div className="h-4 w-8 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                </div>
+                <div className="h-12 px-4 flex items-center text-left font-medium text-neutral-500 dark:text-neutral-400">
+                  <div className="h-4 w-20 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                </div>
+                <div className="h-12 px-4 flex items-center text-left font-medium text-neutral-500 dark:text-neutral-400">
+                  <div className="h-4 w-16 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                </div>
+                <div className="h-12 px-4 flex items-center text-left font-medium text-neutral-500 dark:text-neutral-400">
+                  <div className="h-4 w-12 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                </div>
+                <div className="h-12 px-4 flex items-center text-left font-medium text-neutral-500 dark:text-neutral-400">
+                  <div className="h-4 w-16 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+            <div className="divide-y divide-neutral-200 dark:divide-neutral-700">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="border-b transition-colors hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50">
+                  <div className="flex">
+                    <div className="p-4 align-middle">
+                      <div className="h-4 w-8 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                    </div>
+                    <div className="p-4 align-middle">
+                      <div className="h-4 w-32 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                    </div>
+                    <div className="p-4 align-middle">
+                      <div className="h-4 w-20 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                    </div>
+                    <div className="p-4 align-middle">
+                      <div className="h-6 w-20 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                    </div>
+                    <div className="p-4 align-middle">
+                      <div className="h-6 w-12 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                    </div>
+                    <div className="p-4 align-middle">
+                      <div className="h-8 w-20 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-between space-x-2 py-4">
+          <div className="flex-1">
+            <div className="h-4 w-32 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+          </div>
+          <div className="flex items-center space-x-6 lg:space-x-8">
+            <div className="flex items-center space-x-2">
+              <div className="h-4 w-24 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+              <div className="h-8 w-16 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+            </div>
+            <div className="h-4 w-24 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+            <div className="flex items-center space-x-2">
+              <div className="h-8 w-8 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+              <div className="h-8 w-8 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+              <div className="h-8 w-8 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+              <div className="h-8 w-8 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function FilesTable({ 
+  files, 
+  loading, 
+  error, 
+  isPending, 
+  pagination, 
+  onRefresh, 
+  onPageChange, 
+  onSearch 
+}: FilesTableProps) {
+  const [searchInput, setSearchInput] = useState("");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSearch(searchInput);
+  };
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    if (value === "") {
+      onSearch("");
+    }
+  };
+
+  if (loading && !isPending) {
+    return <FilesTableSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="mt-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Uploaded Files</h3>
+          <button 
+            onClick={onRefresh}
+            disabled={isPending}
+            className="px-3 py-1 text-sm bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded border disabled:opacity-50"
+          >
+            {isPending ? 'Loading...' : 'Retry'}
+          </button>
+        </div>
+        <p className="text-red-500">Error: {error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 bg-neutral-900 rounded-lg">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Uploaded Files</h3>
+        <div className="flex gap-2 items-center">
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="Search files..."
+              value={searchInput}
+              onChange={handleSearchInputChange}
+              className="w-48"
+            />
+            <Button type="submit" variant="outline" size="sm">
+              Search
+            </Button>
+          </form>
+          <Button 
+            onClick={onRefresh}
+            disabled={isPending}
+            variant="outline"
+            size="sm"
+          >
+            {isPending ? 'Loading...' : 'Refresh'}
+          </Button>
+        </div>
+      </div>
+      
+      <DataTable columns={getColumns(onRefresh)} data={files} />
+      
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between space-x-2 py-4">
+        <div className="flex-1 text-sm text-neutral-500 dark:text-neutral-400">
+          Showing {files.length} of {pagination.totalCount} files
+          {pagination.totalPages > 1 && (
+            <span> (Page {pagination.currentPage} of {pagination.totalPages})</span>
+          )}
+        </div>
+        
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={() => onPageChange(pagination.currentPage - 1)}
+              disabled={!pagination.hasPreviousPage || isPending}
+              variant="outline"
+              size="sm"
+            >
+              Previous
+            </Button>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
+                let pageNum;
+                if (pagination.totalPages <= 5) {
+                  pageNum = i + 1;
+                } else {
+                  const start = Math.max(1, pagination.currentPage - 2);
+                  const end = Math.min(pagination.totalPages, start + 4);
+                  const adjustedStart = Math.max(1, end - 4);
+                  pageNum = adjustedStart + i;
+                }
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    onClick={() => onPageChange(pageNum)}
+                    disabled={isPending}
+                    variant={pagination.currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    className="w-8 h-8 p-0"
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              onClick={() => onPageChange(pagination.currentPage + 1)}
+              disabled={!pagination.hasNextPage || isPending}
+              variant="outline"
+              size="sm"
+            >
+              Next
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

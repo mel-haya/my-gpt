@@ -6,12 +6,36 @@ export type UploadedFileWithUser = SelectUploadedFile & {
   username: string | null;
 };
 
+export type PaginatedUploadedFiles = {
+  files: UploadedFileWithUser[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalCount: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+};
+
 export async function getUploadedFiles(
   searchQuery?: string,
   limit: number = 10,
   page: number = 1
-): Promise<UploadedFileWithUser[]> {
+): Promise<PaginatedUploadedFiles> {
   if (searchQuery) {
+    // Get total count for search results
+    const [totalCountResult] = await db
+      .select({ count: uploadedFiles.id })
+      .from(uploadedFiles)
+      .leftJoin(users, eq(uploadedFiles.user_id, users.id))
+      .where(and(or(ilike(uploadedFiles.fileName, `%${searchQuery}%`))));
+
+    const totalCount = await db
+      .select()
+      .from(uploadedFiles)
+      .leftJoin(users, eq(uploadedFiles.user_id, users.id))
+      .where(and(or(ilike(uploadedFiles.fileName, `%${searchQuery}%`))));
+
     // Search in both conversation titles and message content
     const uploadedFilesWithMessages = await db
       .select({
@@ -30,10 +54,27 @@ export async function getUploadedFiles(
       .offset(limit * (page - 1))
       .orderBy(desc(uploadedFiles.id));
 
-    return uploadedFilesWithMessages;
+    const totalPages = Math.ceil(totalCount.length / limit);
+
+    return {
+      files: uploadedFilesWithMessages,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount: totalCount.length,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
   }
 
   // If no search query, return all conversations for the user
+  // Get total count for all files
+  const totalCountResult = await db
+    .select()
+    .from(uploadedFiles)
+    .leftJoin(users, eq(uploadedFiles.user_id, users.id));
+
   const result = await db
     .select({
       id: uploadedFiles.id,
@@ -49,7 +90,20 @@ export async function getUploadedFiles(
     .orderBy(desc(uploadedFiles.id))
     .limit(limit)
     .offset(limit * (page - 1));
-  return result;
+
+  const totalCount = totalCountResult.length;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  return {
+    files: result,
+    pagination: {
+      currentPage: page,
+      totalPages,
+      totalCount,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  };
 }
 
 export async function deleteFile(fileId: number): Promise<void> {

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import type { SelectConversation } from "@/lib/db-schema";
 import { SignedIn, useAuth } from "@clerk/nextjs";
-import UploadFile from "./UploadFile";
+
 import Styles from "@/assets/styles/customScrollbar.module.css";
 import { PenLine, PanelLeft, Search } from "lucide-react";
 import bgStyles from "@/assets/styles/background.module.css";
@@ -94,7 +94,7 @@ export default function Sidebar({
       >
         <div className="flex flex-col h-screen w-[300px] robert pt-16">
           {/* <h1 className="text-2xl font-bold font-goldman px-4 py-6">My GPT</h1> */}
-          {/* {toggleUpload && <UploadFile onSignInRequired={onSignInRequired} />} */}
+
           <SignedIn>
             <div
               className="px-4 py-3 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"

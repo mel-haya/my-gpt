@@ -5,9 +5,17 @@ import PdfIcon from "@/components/Icons/pdfIcon";
 import { shortenText } from "@/lib/utils";
 import { toast } from "react-toastify";
 import { useAuth } from "@clerk/nextjs";
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
 import { upload } from "@vercel/blob/client";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 import CryptoJS from "crypto-js";
 
@@ -102,42 +110,53 @@ export default function UploadFile() {
     }
   };
   return (
-    <div className="px-4 flex flex-col gap-2 mb-4">
-      <h2 className="py-2 text-lg ">Upload File</h2>
-      <p className="text-stone-400">
-       You can upload PDF or DOCX files to add information to the knowledge
-        base.
-      </p>
-      <div className="border-2 border-dashed border-neutral-500 rounded-lg relative">
-        {file ? (
-          loading ? (
-            <div className="text-center text-neutral-700 dark:text-neutral-300 italic px-4 py-12 flex justify-center items-center">
-              <h2>Processing File...</h2>
-            </div>
-          ) : (
-            <div className="text-center text-neutral-700 dark:text-neutral-300 italic px-4 py-12 flex justify-center items-center gap-1">
-              <PdfIcon width="24" height="24" />
-              {shortenText(file.name)}
-            </div>
-          )
-        ) : (
-          <div className="text-center text-neutral-500 italic px-4 py-12">
-            drag or select your File here
+    <Dialog>
+      <div className="px-4 flex flex-col gap-2 mb-4">
+        <DialogTrigger asChild>
+          <Button variant="outline">Upload File</Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Upload File</DialogTitle>
+            <DialogDescription>
+              You can upload PDF or DOCX files to add information to the
+              knowledge base.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="border-2 border-dashed border-neutral-500 rounded-lg relative">
+            {file ? (
+              loading ? (
+                <div className="text-center text-neutral-700 dark:text-neutral-300 italic px-4 py-12 flex justify-center items-center">
+                  <h2>Processing File...</h2>
+                </div>
+              ) : (
+                <div className="text-center text-neutral-700 dark:text-neutral-300 italic px-4 py-12 flex justify-center items-center gap-1">
+                  <PdfIcon width="24" height="24" />
+                  {shortenText(file.name)}
+                </div>
+              )
+            ) : (
+              <div className="text-center text-neutral-500 italic px-4 py-12">
+                drag or select your File here
+              </div>
+            )}
+
+            <input
+              ref={fileInputRef}
+              onChange={checkFile}
+              type="file"
+              accept=".pdf,.docx"
+              className="w-full h-full opacity-0 absolute top-0 left-0 cursor-pointer"
+            />
           </div>
-        )}
-
-        <input
-          ref={fileInputRef}
-          onChange={checkFile}
-          type="file"
-          accept=".pdf,.docx"
-          className="w-full h-full opacity-0 absolute top-0 left-0 cursor-pointer"
-        />
+          <DialogFooter className="flex sm:justify-center">
+            <Button className="cursor-pointer mt-2" onClick={handleUploadClick}>
+              Upload PDF to the knowledge base
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </div>
-
-      <Button className="cursor-pointer mt-2" onClick={handleUploadClick}>
-        Upload PDF to the knowledge base
-      </Button>
-    </div>
+    </Dialog>
   );
 }

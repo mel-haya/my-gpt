@@ -170,7 +170,6 @@ export async function POST(request: Request): Promise<NextResponse> {
               break;
           }
 
-          // Update status based on processing result
           if (result.success) {
             await db.update(uploadedFiles)
               .set({ status: "completed" })
@@ -181,14 +180,13 @@ export async function POST(request: Request): Promise<NextResponse> {
               .where(eq(uploadedFiles.id, insertedFile.id));
           }
         } catch (error) {
-          // If the insert fails, it's likely due to the unique constraint,
-          // meaning the file is already being processed or has been processed.
+
           console.log(
             "File hash already exists or another error occurred, skipping processing:",
             (error as Error)
           );
         } finally {
-          // Always delete the temporary blob file.
+
           await del(blob.url);
         }
       },
