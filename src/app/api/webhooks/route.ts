@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { headers } from "next/headers";
-import { createUserIfNotExists } from "@/services/userService";
+import { createUserIfNotExists, deleteUser } from "@/services/userService";
 
 interface WebhookEvent {
   type: string;
@@ -101,6 +101,29 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.error("Error creating user:", error);
       return new NextResponse("Error: Failed to create user", {
+        status: 500,
+      });
+    }
+  }
+
+  if (eventType === "user.deleted") {
+    try {
+      // Extract user ID from the webhook payload
+      const { id } = evt.data;
+
+      // Delete user from database
+      const deletedUser = await deleteUser(id);
+
+      if (deletedUser) {
+        console.log("User deleted successfully:", deletedUser);
+        return new NextResponse("User deleted successfully", { status: 200 });
+      } else {
+        console.log("User not found for deletion:", id);
+        return new NextResponse("User not found", { status: 404 });
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      return new NextResponse("Error: Failed to delete user", {
         status: 500,
       });
     }

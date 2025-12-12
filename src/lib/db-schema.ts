@@ -1,4 +1,4 @@
-import { serial, vector, text, pgTable, index, jsonb, pgEnum, uniqueIndex, integer, date, timestamp } from "drizzle-orm/pg-core";
+import { serial, vector, text, pgTable, index, jsonb, pgEnum, uniqueIndex, integer, date, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const rolesEnum = pgEnum("roles", ["system", "user", "assistant"]);
 export const statusEnum = pgEnum("file_status", ["processing", "completed", "failed"]);
@@ -8,6 +8,7 @@ export const documents = pgTable(
     id: serial("id").primaryKey(),
     content: text("content").notNull(),
     embedding: vector("embedding", { dimensions: 1536 }),
+    uploaded_file_id: integer("uploaded_file_id").references(() => uploadedFiles.id),
   },
   (table) => [
     index("documents_embedding_index").using(
@@ -41,6 +42,8 @@ export const uploadedFiles = pgTable(
     fileName: text("file_name").notNull(),
     fileHash: text("file_hash").notNull(),
     status: statusEnum("status").notNull().default("completed"),
+    user_id: text("user_id").notNull().references(() => users.id),
+    active: boolean("active").notNull().default(true),
   },
   (table) => [
     uniqueIndex("file_hash_index").on(table.fileHash),

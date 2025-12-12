@@ -1,17 +1,30 @@
-import { SelectUploadedFile, uploadedFiles } from "@/lib/db-schema";
+import { SelectUploadedFile, uploadedFiles, users, documents } from "@/lib/db-schema";
 import { db } from "@/lib/db-config";
 import { eq, and, desc, ilike, or } from "drizzle-orm";
+
+export type UploadedFileWithUser = SelectUploadedFile & {
+  username: string | null;
+};
 
 export async function getUploadedFiles(
   searchQuery?: string,
   limit: number = 10,
   page: number = 1
-): Promise<SelectUploadedFile[]> {
+): Promise<UploadedFileWithUser[]> {
   if (searchQuery) {
     // Search in both conversation titles and message content
     const uploadedFilesWithMessages = await db
-      .select()
+      .select({
+        id: uploadedFiles.id,
+        fileName: uploadedFiles.fileName,
+        fileHash: uploadedFiles.fileHash,
+        status: uploadedFiles.status,
+        user_id: uploadedFiles.user_id,
+        active: uploadedFiles.active,
+        username: users.username,
+      })
       .from(uploadedFiles)
+      .leftJoin(users, eq(uploadedFiles.user_id, users.id))
       .where(and(or(ilike(uploadedFiles.fileName, `%${searchQuery}%`))))
       .limit(limit)
       .offset(limit * (page - 1))
@@ -22,10 +35,32 @@ export async function getUploadedFiles(
 
   // If no search query, return all conversations for the user
   const result = await db
-    .select()
+    .select({
+      id: uploadedFiles.id,
+      fileName: uploadedFiles.fileName,
+      fileHash: uploadedFiles.fileHash,
+      status: uploadedFiles.status,
+      user_id: uploadedFiles.user_id,
+      active: uploadedFiles.active,
+      username: users.username,
+    })
     .from(uploadedFiles)
+    .leftJoin(users, eq(uploadedFiles.user_id, users.id))
     .orderBy(desc(uploadedFiles.id))
     .limit(limit)
     .offset(limit * (page - 1));
   return result;
+}
+
+export async function deleteFile(fileId: number): Promise<void> {
+  // First delete all documents associated with this file
+  await db.delete(documents).where(eq(documents.uploaded_file_id, fileId));
+  // Then delete the file itself
+  await db.delete(uploadedFiles).where(eq(uploadedFiles.id, fileId));
+}
+
+export async function toggleFileActive(fileId: number, active: boolean): Promise<void> {
+  await db.update(uploadedFiles)
+    .set({ active })
+    .where(eq(uploadedFiles.id, fileId));
 }

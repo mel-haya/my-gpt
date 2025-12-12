@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { SelectUploadedFile } from "@/lib/db-schema";
 import UploadFile from "@/components/UploadFile";
 import { getFilesWithStatus } from "@/app/actions/files";
 import { DataTable } from "@/components/ui/data-table";
+import FileActionButtons from "./FileActionButtons";
+import type { UploadedFileWithUser } from "@/services/filesService";
 
-function FileStatusBadge({ status }: { status: SelectUploadedFile["status"] }) {
+function FileStatusBadge({ status }: { status: UploadedFileWithUser["status"] }) {
   const statusStyles = {
     processing: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-700",
     completed: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700",
@@ -23,7 +24,7 @@ function FileStatusBadge({ status }: { status: SelectUploadedFile["status"] }) {
   );
 }
 
-const columns: ColumnDef<SelectUploadedFile>[] = [
+const getColumns = (fetchFiles: () => void): ColumnDef<UploadedFileWithUser>[] => [
   {
     accessorKey: "id",
     header: "ID",
@@ -39,6 +40,15 @@ const columns: ColumnDef<SelectUploadedFile>[] = [
     ),
   },
   {
+    accessorKey: "username",
+    header: "Username",
+    cell: ({ row }) => (
+      <div className="text-neutral-600 dark:text-neutral-400">
+        {row.getValue("username") || "Unknown"}
+      </div>
+    ),
+  },
+  {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => (
@@ -46,21 +56,42 @@ const columns: ColumnDef<SelectUploadedFile>[] = [
     ),
   },
   {
-    accessorKey: "fileHash",
-    header: "File Hash",
+    accessorKey: "active",
+    header: "Active",
     cell: ({ row }) => {
-      const fileHash = row.getValue("fileHash") as string;
+      const isActive = row.getValue("active") as boolean;
       return (
-        <div className="font-mono text-neutral-500 dark:text-neutral-400">
-          {fileHash.substring(0, 12)}...
-        </div>
+        <span 
+          className={`px-2 py-1 rounded-md text-xs font-medium border ${
+            isActive 
+              ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700'
+              : 'bg-neutral-100 text-neutral-800 border-neutral-200 dark:bg-neutral-900/20 dark:text-neutral-300 dark:border-neutral-700'
+          }`}
+        >
+          {isActive ? "Yes" : "No"}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "actions",
+    header: "Actions",
+    cell: ({ row }) => {
+      const file = row.original;
+      return (
+        <FileActionButtons
+          fileId={file.id}
+          fileName={file.fileName}
+          active={file.active}
+          onUpdate={fetchFiles}
+        />
       );
     },
   },
 ];
 
 function FilesTable() {
-  const [files, setFiles] = useState<SelectUploadedFile[]>([]);
+  const [files, setFiles] = useState<UploadedFileWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -118,7 +149,7 @@ function FilesTable() {
           {isPending ? 'Loading...' : 'Refresh'}
         </button>
       </div>
-      <DataTable columns={columns} data={files} />
+      <DataTable columns={getColumns(fetchFiles)} data={files} />
     </div>
   );
 }
@@ -145,6 +176,9 @@ function FilesTableSkeleton() {
                   <div className="h-4 w-20 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
                 </div>
                 <div className="h-12 px-4 flex items-center text-left font-medium text-neutral-500 dark:text-neutral-400">
+                  <div className="h-4 w-16 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                </div>
+                <div className="h-12 px-4 flex items-center text-left font-medium text-neutral-500 dark:text-neutral-400">
                   <div className="h-4 w-12 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
                 </div>
                 <div className="h-12 px-4 flex items-center text-left font-medium text-neutral-500 dark:text-neutral-400">
@@ -163,10 +197,16 @@ function FilesTableSkeleton() {
                       <div className="h-4 w-32 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
                     </div>
                     <div className="p-4 align-middle">
+                      <div className="h-4 w-20 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                    </div>
+                    <div className="p-4 align-middle">
                       <div className="h-6 w-20 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
                     </div>
                     <div className="p-4 align-middle">
-                      <div className="h-4 w-24 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                      <div className="h-6 w-12 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
+                    </div>
+                    <div className="p-4 align-middle">
+                      <div className="h-8 w-20 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
                     </div>
                   </div>
                 </div>

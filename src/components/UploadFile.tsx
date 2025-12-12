@@ -14,7 +14,7 @@ import CryptoJS from "crypto-js";
 export default function UploadFile() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, userId } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const checkFile = () => {
@@ -81,7 +81,7 @@ export default function UploadFile() {
       const newBlob = await upload(file.name, file, {
         access: "public",
         handleUploadUrl: "/api/upload",
-        clientPayload: hash,
+        clientPayload: `${userId}:${hash}`,
       });
       console.log("Upload result:", newBlob);
       setLoading(false);
