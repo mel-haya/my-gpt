@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import FileActionButtons from "./FileActionButtons";
 import type { UploadedFileWithUser } from "@/services/filesService";
+import UploadFile from "./UploadFile";
 
 interface FilesTableProps {
   files: UploadedFileWithUser[];
@@ -64,6 +65,20 @@ const getColumns = (fetchFiles: () => void): ColumnDef<UploadedFileWithUser>[] =
         {row.getValue("username") || "Unknown"}
       </div>
     ),
+  },
+  {
+    accessorKey: "documentCount",
+    header: "Documents",
+    cell: ({ row }) => {
+      const count = row.getValue("documentCount") as number;
+      return (
+        <div className="font-medium text-center">
+          <span className="inline-flex items-center justify-center w-8 h-8 text-xs font-bold bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900/20 dark:text-blue-300">
+            {count}
+          </span>
+        </div>
+      );
+    },
   },
   {
     accessorKey: "status",
@@ -238,10 +253,11 @@ export default function FilesTable({
   }
 
   return (
-    <div className="p-4 bg-neutral-900 rounded-lg">
+    <div className="p-4 bg-neutral-900 rounded-lg ">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Uploaded Files</h3>
         <div className="flex gap-2 items-center">
+          <UploadFile onUploadComplete={onRefresh} />
           <form onSubmit={handleSearch} className="flex gap-2">
             <Input
               type="text"

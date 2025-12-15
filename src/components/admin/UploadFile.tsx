@@ -16,10 +16,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
+import { UploadIcon } from "lucide-react";
 import CryptoJS from "crypto-js";
 
-export default function UploadFile() {
+interface UploadFileProps {
+  onUploadComplete?: () => void;
+}
+
+export default function UploadFile({ onUploadComplete }: UploadFileProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const { isSignedIn, userId } = useAuth();
@@ -98,6 +102,8 @@ export default function UploadFile() {
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
+        // Trigger refresh callback if provided
+        onUploadComplete?.();
       } else {
         toast.error("Error processing PDF: ");
       }
@@ -111,9 +117,9 @@ export default function UploadFile() {
   };
   return (
     <Dialog>
-      <div className="px-4 flex flex-col gap-2 mb-4">
+      <div className="flex flex-col gap-2">
         <DialogTrigger asChild>
-          <Button variant="outline">Upload File</Button>
+          <Button className="px-4" variant="outline"> <UploadIcon className="h-4 w-4" /> Upload File</Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

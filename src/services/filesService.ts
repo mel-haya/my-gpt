@@ -1,9 +1,10 @@
 import { SelectUploadedFile, uploadedFiles, users, documents } from "@/lib/db-schema";
 import { db } from "@/lib/db-config";
-import { eq, and, desc, ilike, or } from "drizzle-orm";
+import { eq, and, desc, ilike, or, count } from "drizzle-orm";
 
 export type UploadedFileWithUser = SelectUploadedFile & {
   username: string | null;
+  documentCount: number;
 };
 
 export type PaginatedUploadedFiles = {
@@ -15,6 +16,10 @@ export type PaginatedUploadedFiles = {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
   };
+  statistics: {
+    activeFilesCount: number;
+    totalDocumentsCount: number;
+  };
 };
 
 export async function getUploadedFiles(
@@ -24,11 +29,11 @@ export async function getUploadedFiles(
 ): Promise<PaginatedUploadedFiles> {
   if (searchQuery) {
     // Get total count for search results
-    const [totalCountResult] = await db
-      .select({ count: uploadedFiles.id })
-      .from(uploadedFiles)
-      .leftJoin(users, eq(uploadedFiles.user_id, users.id))
-      .where(and(or(ilike(uploadedFiles.fileName, `%${searchQuery}%`))));
+    // const [totalCountResult] = await db
+    //   .select({ count: uploadedFiles.id })
+    //   .from(uploadedFiles)
+    //   .leftJoin(users, eq(uploadedFiles.user_id, users.id))
+    //   .where(and(or(ilike(uploadedFiles.fileName, `%${searchQuery}%`))));
 
     const totalCount = await db
       .select()
@@ -46,6 +51,7 @@ export async function getUploadedFiles(
         user_id: uploadedFiles.user_id,
         active: uploadedFiles.active,
         username: users.username,
+        documentCount: db.$count(documents, eq(documents.uploaded_file_id, uploadedFiles.id)),
       })
       .from(uploadedFiles)
       .leftJoin(users, eq(uploadedFiles.user_id, users.id))
@@ -56,6 +62,16 @@ export async function getUploadedFiles(
 
     const totalPages = Math.ceil(totalCount.length / limit);
 
+    // Get global statistics
+    const activeFilesResult = await db
+      .select({ count: count() })
+      .from(uploadedFiles)
+      .where(eq(uploadedFiles.active, true));
+
+    const totalDocumentsResult = await db
+      .select({ count: count() })
+      .from(documents);
+
     return {
       files: uploadedFilesWithMessages,
       pagination: {
@@ -64,6 +80,10 @@ export async function getUploadedFiles(
         totalCount: totalCount.length,
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1,
+      },
+      statistics: {
+        activeFilesCount: activeFilesResult[0]?.count || 0,
+        totalDocumentsCount: totalDocumentsResult[0]?.count || 0,
       },
     };
   }
@@ -84,6 +104,7 @@ export async function getUploadedFiles(
       user_id: uploadedFiles.user_id,
       active: uploadedFiles.active,
       username: users.username,
+      documentCount: db.$count(documents, eq(documents.uploaded_file_id, uploadedFiles.id)),
     })
     .from(uploadedFiles)
     .leftJoin(users, eq(uploadedFiles.user_id, users.id))
@@ -94,6 +115,16 @@ export async function getUploadedFiles(
   const totalCount = totalCountResult.length;
   const totalPages = Math.ceil(totalCount / limit);
 
+  // Get global statistics
+  const activeFilesResult = await db
+    .select({ count: count() })
+    .from(uploadedFiles)
+    .where(eq(uploadedFiles.active, true));
+
+  const totalDocumentsResult = await db
+    .select({ count: count() })
+    .from(documents);
+
   return {
     files: result,
     pagination: {
@@ -102,6 +133,10 @@ export async function getUploadedFiles(
       totalCount,
       hasNextPage: page < totalPages,
       hasPreviousPage: page > 1,
+    },
+    statistics: {
+      activeFilesCount: activeFilesResult[0]?.count || 0,
+      totalDocumentsCount: totalDocumentsResult[0]?.count || 0,
     },
   };
 }
