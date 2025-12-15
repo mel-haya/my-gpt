@@ -68,7 +68,7 @@ export default function FilesDashboard() {
 
   return (
     <div className="flex flex-col w-full max-w-[1400px] mx-4 2xl:mx-auto my-4 gap-4">
-
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Files Dashboard</h1>
       <StatisticsCards
         totalFiles={pagination.totalCount}
         activeFilesCount={statistics.activeFilesCount}

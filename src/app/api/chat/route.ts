@@ -4,6 +4,7 @@ import { ChatMessage } from "@/types/chatMessage";
 import { saveMessage } from "@/services/messagesService";
 import { changeConversationTitle } from "@/services/conversationsService";
 import { TokenUsageService } from "@/services/tokenUsageService";
+import { SettingsService } from "@/services/settingsService";
 import { TextUIPart } from "ai";
 import { Tools } from "@/types/Tools";
 import { uploadImageToImageKit } from "./imageKit";
@@ -88,14 +89,14 @@ export async function POST(req: Request) {
       totalTokens: number;
     } | null = null;
 
+    // Get configurable system prompt
+    const systemPrompt = await SettingsService.getSystemPrompt();
+
     const response = streamText({
       messages: modelMessages,
       model: selectedmodel,
       tools: toolsToUse,
-      system: `You are a helpful assistant with access to a knowledge base. 
-          When users ask questions, search the knowledge base for relevant information.
-          Always search before answering if the question might relate to uploaded documents.
-          Base your answers on the search results when available. Give concise answers that correctly answer what the user is asking for. Do not flood them with all the information from the search results.`,
+      system: systemPrompt,
       stopWhen: stepCountIs(2),
       onFinish: async ({ usage }) => {
         streamUsage = {

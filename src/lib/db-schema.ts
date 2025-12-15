@@ -83,6 +83,17 @@ export const users = pgTable(
   ]
 );
 
+export const settings = pgTable(
+  "settings",
+  {
+    id: serial("id").primaryKey(),
+    key: text("key").notNull().unique(),
+    value: text("value").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  }
+);
+
 
 
 export type InsertDocument = typeof documents.$inferInsert;
@@ -97,3 +108,5 @@ export type InsertUserTokenUsage = typeof userTokenUsage.$inferInsert;
 export type SelectUserTokenUsage = typeof userTokenUsage.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type SelectUser = typeof users.$inferSelect;
+export type InsertSettings = typeof settings.$inferInsert;
+export type SelectSettings = typeof settings.$inferSelect;

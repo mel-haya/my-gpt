@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import FilesDashboard from "@/components/admin/filesDashboard";
 import UsersDashboard from "@/components/admin/usersDashboard";
+import SettingsDashboard from "@/components/admin/settingsDashboard";
 import Sidebar from "@/components/admin/sidebar";
 
 export default function AdminPage() {
@@ -14,6 +15,7 @@ export default function AdminPage() {
 
       {activePage === "users" && <UsersDashboard />}
       {activePage === "files" && <FilesDashboard />}
+      {activePage === "settings" && <SettingsDashboard />}
     </div>
   );
 }
