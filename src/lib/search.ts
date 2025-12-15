@@ -1,6 +1,6 @@
-import { cosineDistance, desc, gt, sql } from "drizzle-orm";
+import { cosineDistance, desc, gt, sql, eq, and } from "drizzle-orm";
 import { db } from "./db-config";
-import { documents } from "./db-schema";
+import { documents, uploadedFiles } from "./db-schema";
 import { generateEmbedding } from "./embedding";
 
 export async function searchDocuments(
@@ -25,7 +25,8 @@ export async function searchDocuments(
       similarity,
     })
     .from(documents)
-    .where(gt(similarity, threshold))
+    .innerJoin(uploadedFiles, eq(documents.uploaded_file_id, uploadedFiles.id))
+    .where(and(gt(similarity, threshold), eq(uploadedFiles.active, true)))
     .orderBy(desc(similarity))
     .limit(limit);
   return similarDocuments;
