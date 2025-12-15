@@ -2,6 +2,7 @@
 import { useState } from "react";
 
 import FilesDashboard from "@/components/admin/filesDashboard";
+import UsersDashboard from "@/components/admin/usersDashboard";
 import Sidebar from "@/components/admin/sidebar";
 
 export default function AdminPage() {
@@ -11,6 +12,7 @@ export default function AdminPage() {
     <div className="flex ">
       <Sidebar activePage={activePage} setActivePage={setActivePage} />
 
+      {activePage === "users" && <UsersDashboard />}
       {activePage === "files" && <FilesDashboard />}
     </div>
   );
