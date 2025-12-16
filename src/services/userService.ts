@@ -1,6 +1,6 @@
 import { db } from "@/lib/db-config";
 import { users, userTokenUsage, type InsertUser, type SelectUser } from "@/lib/db-schema";
-import { eq, or, sql, desc, count, sum } from "drizzle-orm";
+import { eq, or, sql, desc, count } from "drizzle-orm";
 
 export async function createUser(userData: {
   id: string;

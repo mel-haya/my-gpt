@@ -2,10 +2,8 @@ import { streamText, convertToModelMessages, stepCountIs } from "ai";
 import { tools, webSearchTool } from "./tools";
 import { ChatMessage } from "@/types/chatMessage";
 import { saveMessage } from "@/services/messagesService";
-import { changeConversationTitle } from "@/services/conversationsService";
-import { TokenUsageService } from "@/services/tokenUsageService";
-import { SettingsService } from "@/services/settingsService";
-import { TextUIPart } from "ai";
+import { hasReachedDailyLimit, getRemainingMessages, recordUsage } from "@/services/tokenUsageService";
+import { getSystemPrompt } from "@/services/settingsService";
 import { Tools } from "@/types/Tools";
 import { uploadImageToImageKit } from "./imageKit";
 import { auth } from "@clerk/nextjs/server";
@@ -30,12 +28,12 @@ export async function POST(req: Request) {
     }
 
     // Check if user has reached their daily message limit
-    const hasReachedLimit = await TokenUsageService.hasReachedDailyLimit(
+    const hasReachedLimit = await hasReachedDailyLimit(
       userId
     );
 
     if (hasReachedLimit) {
-      const remainingMessages = await TokenUsageService.getRemainingMessages(
+      const remainingMessages = await getRemainingMessages(
         userId
       );
       return new Response(
@@ -90,7 +88,7 @@ export async function POST(req: Request) {
     } | null = null;
 
     // Get configurable system prompt
-    const systemPrompt = await SettingsService.getSystemPrompt();
+    const systemPrompt = await getSystemPrompt();
 
     const response = streamText({
       messages: modelMessages,
@@ -125,7 +123,7 @@ export async function POST(req: Request) {
 
           // Record message usage with actual token count from AI response
           const actualTokens = streamUsage?.totalTokens || 0;
-          const usageResult = await TokenUsageService.recordUsage(
+          const usageResult = await recordUsage(
             userId,
             actualTokens
           );

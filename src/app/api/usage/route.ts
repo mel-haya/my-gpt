@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { TokenUsageService } from "@/services/tokenUsageService";
+
+import { getTodaysUsage, getRemainingMessages, hasReachedDailyLimit } from "@/services/tokenUsageService";
 import { auth } from "@clerk/nextjs/server";
-import { checkRole } from '@/lib/checkRole';
+
 
 
 export async function GET() {
@@ -14,9 +14,9 @@ export async function GET() {
       });
     }
 
-    const todaysUsage = await TokenUsageService.getTodaysUsage(userId);
-    const remainingMessages = await TokenUsageService.getRemainingMessages(userId);
-    const hasReachedLimit = await TokenUsageService.hasReachedDailyLimit(userId);
+    const todaysUsage = await getTodaysUsage(userId);
+    const remainingMessages = await getRemainingMessages(userId);
+    const hasReachedLimit = await hasReachedDailyLimit(userId);
 
     return Response.json({
       todaysUsage: {

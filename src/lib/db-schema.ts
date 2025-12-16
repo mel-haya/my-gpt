@@ -54,7 +54,7 @@ export const userTokenUsage = pgTable(
   "user_token_usage",
   {
     id: serial("id").primaryKey(),
-    user_id: text("user_id").notNull(), // Clerk user ID as string
+    user_id: text("user_id").notNull(),
     usage_date: date("usage_date").notNull().defaultNow(),
     messages_sent: integer("messages_sent").notNull().default(0),
     tokens_used: integer("tokens_used").notNull().default(0),

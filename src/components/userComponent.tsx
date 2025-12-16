@@ -7,10 +7,12 @@ import {
   UserButton,
 } from "@clerk/nextjs";
 
-import { LogIn, LogOut } from "lucide-react";
+import { LogIn, LogOut, Gauge  } from "lucide-react";
 
 export default function UserComponent() {
   const { user } = useUser();
+  const isAdmin = user?.publicMetadata?.role === 'admin';
+  
   return (
     <header>
       <SignedIn>
@@ -23,7 +25,17 @@ export default function UserComponent() {
                   userButtonOuterIdentifier: "order-2 pl-0",
                 },
               }}
-            />
+            >
+              {isAdmin && (
+                <UserButton.MenuItems>
+                  <UserButton.Link
+                    label="Admin Panel"
+                    labelIcon={<Gauge size={16} />}
+                    href="/admin"
+                  />
+                </UserButton.MenuItems>
+              )}
+            </UserButton>
           </div>
           <div className="cursor-pointer">
             <SignOutButton>
