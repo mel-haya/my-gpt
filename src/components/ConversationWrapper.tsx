@@ -4,14 +4,19 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 // import Message from "./message";
 import { ChatMessage } from "@/types/chatMessage";
-import Header from "./header";
-
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
 import PromptInput from "./PromptInput";
-import { ChatRequestOptions, FileUIPart, ChatStatus } from "ai";
+import { ChatRequestOptions, FileUIPart, ChatStatus, isToolOrDynamicToolUIPart, getToolOrDynamicToolName } from "ai";
 import {
   Conversation,
   ConversationContent,
-  ConversationEmptyState,
+
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import {
@@ -24,8 +29,9 @@ import {
 import { LoaderCircle } from 'lucide-react';
 import Styles from "@/assets/styles/customScrollbar.module.css";
 import Background from "@/components/background";
-import UsageDisplay from "./UsageDisplay";
+
 import { useTokenUsage } from '@/hooks/useTokenUsage';
+
 
 const welcomeMessage = "Hello! How can I assist you today?";
 const promptExamples = [
@@ -79,6 +85,10 @@ export default function ConversationWrapper({
             part.type === "tool-generateImage" &&
             part.state === "output-available"
         );
+        const toolParts = parts.filter(
+          (part) =>
+            isToolOrDynamicToolUIPart(part)
+        );
         return {
           key: id,
           role,
@@ -91,6 +101,7 @@ export default function ConversationWrapper({
             url: part.output || "",
             mediaType: "image/png",
           })),
+          toolsStatus: toolParts
         };
       }
     });
@@ -156,8 +167,34 @@ export default function ConversationWrapper({
                           ))}
                         </MessageAttachments>
                       )}
+                    
+                    {/* Tools Status Display for Assistant Messages */}
+                    {message.role === "assistant" && 
+                      message.toolsStatus && 
+                      message.toolsStatus.length > 0 && (
+                        <div className="mb-2">
+                          {message.toolsStatus.map((tool, index) => (
+                            <Tool key={`${message.key}-tool-${index}`}>
+                              <ToolHeader
+                                title={getToolOrDynamicToolName(tool)}
+                                type={tool.type === "dynamic-tool" ? "tool-dynamic" : tool.type as `tool-${string}`}
+                                state={tool.state}
+                              />
+                              <ToolContent>
+                                {tool.input && (
+                                  <ToolInput input={tool.input} />
+                                )}
+                                {(tool.output || tool.errorText) && tool.state === "output-available" && (
+                                  <ToolOutput output={tool.output} errorText={tool.errorText} />
+                                )}
+                              </ToolContent>
+                            </Tool>
+                          ))}
+                        </div>
+                      )}
+                    
                     <MessageContent>
-                      {message.content && (
+                      {message.content?.trim() && (
                         <div className={isSystemMessage ? "border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30 rounded-lg p-4 my-2" : ""}>
                           <MessageResponse key={`${message.key}-content`}>
                             {message.content}

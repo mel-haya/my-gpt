@@ -1,5 +1,6 @@
 import { UserAvatar, useUser } from "@clerk/nextjs";
-import { UsersIcon, FilesIcon, SettingsIcon } from "lucide-react";
+import { UsersIcon, FilesIcon, SettingsIcon, HomeIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function SidebarAdmin({
   activePage,
@@ -9,6 +10,7 @@ export default function SidebarAdmin({
   setActivePage?: (page: string) => void;
 }) {
   const { user } = useUser();
+  const router = useRouter();
 
   return (
     <div className="flex flex-col gap-2 w-60 bg-gray-200 dark:bg-neutral-900  h-screen">
@@ -33,6 +35,14 @@ export default function SidebarAdmin({
                 user.emailAddresses[0]?.emailAddress}
           </div>
         )}
+        {/* Home Button */}
+        <button
+          className="mt-2 flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 rounded hover:bg-gray-300 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
+          onClick={() => router.push("/")}
+        >
+          <HomeIcon size={20} />
+          Home
+        </button>
       </div>
       <ul className="flex flex-col mt-8">
         <li
