@@ -127,6 +127,9 @@ export default function UpgradePage() {
             stripe={stripePromise}
             options={{
               clientSecret,
+              appearance: {
+                theme: 'night',
+              },
             }}
           >
             <StripePaymentForm />

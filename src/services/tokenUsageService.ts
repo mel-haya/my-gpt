@@ -1,6 +1,7 @@
 import { db } from "../lib/db-config";
 import { userTokenUsage, type SelectUserTokenUsage } from "../lib/db-schema";
 import { eq, and, gte, lte } from "drizzle-orm";
+import { isUserSubscribed } from "./subscriptionService";
 
 /**
  * Get or create today's token usage record for a user
@@ -39,9 +40,15 @@ export async function getTodaysUsage(userId: string): Promise<SelectUserTokenUsa
 }
 
 /**
- * Check if user has reached their daily message limit
+ * Check if user has reached their daily message limit (returns false for subscribed users)
  */
 export async function hasReachedDailyLimit(userId: string): Promise<boolean> {
+  // Subscribed users have no daily limit
+  const isSubscribed = await isUserSubscribed(userId);
+  if (isSubscribed) {
+    return false;
+  }
+
   const todaysUsage = await getTodaysUsage(userId);
   return todaysUsage.messages_sent >= todaysUsage.daily_message_limit;
 }
@@ -146,9 +153,15 @@ export async function updateDailyLimit(userId: string, newLimit: number): Promis
 }
 
 /**
- * Get remaining messages for today
+ * Get remaining messages for today (returns -1 for unlimited if subscribed)
  */
 export async function getRemainingMessages(userId: string): Promise<number> {
+  // Subscribed users have unlimited messages
+  const isSubscribed = await isUserSubscribed(userId);
+  if (isSubscribed) {
+    return -1; // -1 indicates unlimited
+  }
+
   const todaysUsage = await getTodaysUsage(userId);
   return Math.max(0, todaysUsage.daily_message_limit - todaysUsage.messages_sent);
 }

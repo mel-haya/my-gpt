@@ -40,7 +40,7 @@ export async function POST(req: Request) {
         JSON.stringify({
           error: "Daily message limit reached",
           message:
-            "You have reached your daily limit of 10 messages. Please try again tomorrow.",
+            "You have reached your daily limit of 10 messages. Please upgrade for unlimited access or try again tomorrow.",
           remainingMessages,
         }),
         {

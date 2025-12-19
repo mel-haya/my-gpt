@@ -11,6 +11,7 @@ import MessagesLimit from "./messagesLimit";
 import ConversationActionMenu from "@/components/conversationActionMenu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageSquareX } from "lucide-react";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export default function Sidebar({
   reset,
@@ -52,6 +53,7 @@ export default function Sidebar({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
+  const { isSubscribed, loading: subscriptionLoading } = useSubscription();
 
   const handleNewConversation = () => {
     if (!isSignedIn) {
@@ -96,15 +98,17 @@ export default function Sidebar({
           {/* <h1 className="text-2xl font-bold font-goldman px-4 py-6">My GPT</h1> */}
 
           <SignedIn>
-            <div
-              className="px-4 py-3 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
-              style={{
-                background:
-                  "linear-gradient(90deg,rgba(2, 0, 36, 1) 0%, rgba(68, 0, 150, 1) 100%)",
-              }}
-            >
-              <MessagesLimit />
-            </div>
+            {!isSubscribed && !subscriptionLoading && (
+              <div
+                className="px-4 py-3 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
+                style={{
+                  background:
+                    "linear-gradient(90deg,rgba(2, 0, 36, 1) 0%, rgba(68, 0, 150, 1) 100%)",
+                }}
+              >
+                <MessagesLimit />
+              </div>
+            )}
           </SignedIn>
           <div
             className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
