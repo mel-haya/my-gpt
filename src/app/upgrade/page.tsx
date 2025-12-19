@@ -3,7 +3,8 @@
 import convertToSubcurrency from "@/lib/convertToSubcurrency";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useAuth } from "@clerk/nextjs";
-// Payment form component for Stripe PaymentElement
+import Link from "next/link";
+
 function StripePaymentForm() {
   const stripe = useStripe();
   const elements = useElements();
@@ -95,6 +96,22 @@ export default function UpgradePage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-linear-to-br from-[#18181b] to-[#312e81] text-white font-sans">
+        <div className="flex justify-start mb-4 fixed top-8 left-8">
+          <Link 
+            href="/"
+            className="text-[#c7d2fe] hover:text-blue-400 transition-colors flex items-center gap-2 text-sm"
+          >
+            <svg 
+              className="w-4 h-4" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Home
+          </Link>
+        </div>
       <div className="bg-[#232336]/90 rounded-2xl shadow-2xl p-10 max-w-sm w-full text-center border border-[#312e81]">
         <h1 className="text-3xl font-bold mb-3 bg-linear-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
           Upgrade to Pro

@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import type { SelectConversation } from "@/lib/db-schema";
 import { SignedIn, useAuth } from "@clerk/nextjs";
