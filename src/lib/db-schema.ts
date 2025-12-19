@@ -94,7 +94,18 @@ export const settings = pgTable(
   }
 );
 
-
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    user_id: text("user_id").notNull().references(() => users.id),
+    created_date: timestamp("created_date").notNull().defaultNow(),
+    expiry_date: timestamp("expiry_date").notNull(),
+  },
+  (table) => [
+    index("subscriptions_user_id_index").on(table.user_id),
+  ]
+);
 
 export type InsertDocument = typeof documents.$inferInsert;
 export type SelectDocument = typeof documents.$inferSelect;
@@ -110,3 +121,5 @@ export type InsertUser = typeof users.$inferInsert;
 export type SelectUser = typeof users.$inferSelect;
 export type InsertSettings = typeof settings.$inferInsert;
 export type SelectSettings = typeof settings.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+export type SelectSubscription = typeof subscriptions.$inferSelect;

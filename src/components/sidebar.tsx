@@ -62,7 +62,7 @@ export default function Sidebar({
   };
 
   return (
-    <div className={`flex z-20 ${bgStyles.sideBarBackground}`}>
+    <div className={`flex z-30 ${bgStyles.sideBarBackground}`}>
       <div
         className={`fixed top-0 left-0 mt-4 ml-2 flex gap-2 p-1 rounded-lg transition-all ${
           isOpen ? "bg-gray-transparent" : "bg-gray-200 dark:bg-neutral-800"

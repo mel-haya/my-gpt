@@ -40,6 +40,8 @@ const promptExamples = [
   "Who created Linux",
 ];
 
+import Link from "next/link";
+
 export default function ConversationWrapper({
   messages,
   sendMessage,
@@ -56,9 +58,10 @@ export default function ConversationWrapper({
   error: Error | undefined;
   stop: () => void;
 }) {
-  const [selectedModel, setSelectedModel] = useState<string>("openai/gpt-5-nano");
-  const { usage } = useTokenUsage();
-  
+    const [selectedModel, setSelectedModel] = useState<string>("openai/gpt-5-nano");
+    const { usage } = useTokenUsage();
+    const [showRibbon, setShowRibbon] = useState(true);
+
   const displayMessages = useMemo(() => {
     return messages.map((message) => {
       const { id, parts, role } = message;
@@ -109,6 +112,29 @@ export default function ConversationWrapper({
 
   return (
     <div className="flex flex-col grow h-screen relative items-center">
+      {/* Upgrade Ribbon */}
+      {/* Upgrade Ribbon (not full width, dismissible with transition) */}
+      <div
+        className={`z-30 flex justify-center absolute top-3 left-0 w-full pointer-events-none transition-all duration-500 ${
+          showRibbon ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-10 pointer-events-none'
+        }`}
+      >
+        <div className="flex items-center gap-3 px-4 py-2 md:rounded-xl bg-linear-to-r from-blue-500 to-purple-600 shadow-lg text-white text-sm font-semibold w-full md:w-auto mx-auto pointer-events-auto relative whitespace-nowrap">
+          <span className="whitespace-nowrap flex-1 overflow-hidden">Upgrade for unlimited messages, advanced models, and a better experience!</span>
+          <Link href="/upgrade" className="ml-2">
+            <button className="px-3 py-1 rounded bg-white/20 hover:bg-white/30 text-white font-bold text-xs transition-colors border border-white/30 cursor-pointer">Upgrade</button>
+          </Link>
+          <button
+            className="text-white/70 hover:text-white text-lg font-bold px-1 transition-colors cursor-pointer"
+            aria-label="Close upgrade ribbon"
+            onClick={() => setShowRibbon(false)}
+            tabIndex={0}
+            style={{ background: "none", border: "none", lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+      </div>
       <Background count={messages.length} />
       {/* <Header /> */}
       {!messages.length && (

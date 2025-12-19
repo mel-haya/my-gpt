@@ -1,6 +1,6 @@
 "use server";
 
-import { getUploadedFiles, deleteFile, toggleFileActive, UploadedFileWithUser, PaginatedUploadedFiles } from "@/services/filesService";
+import { getUploadedFiles, deleteFile, toggleFileActive, PaginatedUploadedFiles } from "@/services/filesService";
 
 export async function getFilesWithStatus(searchQuery?: string, limit: number = 10, page: number = 1): Promise<PaginatedUploadedFiles> {
   try {
