@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
@@ -11,9 +12,6 @@ import UploadFile from "./UploadFile";
 
 interface FilesTableProps {
   files: UploadedFileWithUser[];
-  loading: boolean;
-  error: string | null;
-  isPending: boolean;
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -21,9 +19,7 @@ interface FilesTableProps {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
   };
-  onRefresh: () => void;
-  onPageChange: (page: number) => void;
-  onSearch: (query: string) => void;
+  searchQuery: string;
 }
 
 function FileStatusBadge({ status }: { status: UploadedFileWithUser["status"] }) {
@@ -42,7 +38,7 @@ function FileStatusBadge({ status }: { status: UploadedFileWithUser["status"] })
   );
 }
 
-const getColumns = (fetchFiles: () => void): ColumnDef<UploadedFileWithUser>[] => [
+const getColumns = (handleRefresh: () => void): ColumnDef<UploadedFileWithUser>[] => [
   {
     accessorKey: "id",
     header: "ID",
@@ -115,7 +111,7 @@ const getColumns = (fetchFiles: () => void): ColumnDef<UploadedFileWithUser>[] =
           fileId={file.id}
           fileName={file.fileName}
           active={file.active}
-          onUpdate={fetchFiles}
+          onUpdate={handleRefresh}
         />
       );
     },
@@ -207,57 +203,57 @@ function FilesTableSkeleton() {
 
 export default function FilesTable({ 
   files, 
-  loading, 
-  error, 
-  isPending, 
   pagination, 
-  onRefresh, 
-  onPageChange, 
-  onSearch 
+  searchQuery 
 }: FilesTableProps) {
-  const [searchInput, setSearchInput] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+  const [searchInput, setSearchInput] = useState(searchQuery || "");
+
+  const handlePageChange = (page: number) => {
+    startTransition(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('page', page.toString());
+      if (searchQuery) {
+        params.set('search', searchQuery);
+      } else {
+        params.delete('search');
+      }
+      router.push(`?${params.toString()}`);
+    });
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch(searchInput);
+    startTransition(() => {
+      const params = new URLSearchParams();
+      params.set('page', '1');
+      if (searchInput.trim()) {
+        params.set('search', searchInput);
+      }
+      router.push(`?${params.toString()}`);
+    });
   };
 
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchInput(value);
-    if (value === "") {
-      onSearch("");
-    }
+    // Only clear search when input is completely empty, but don't auto-search on every keystroke
   };
 
-  if (loading && !isPending) {
-    return <FilesTableSkeleton />;
-  }
-
-  if (error) {
-    return (
-      <div className="mt-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Uploaded Files</h3>
-          <button 
-            onClick={onRefresh}
-            disabled={isPending}
-            className="px-3 py-1 text-sm bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded border disabled:opacity-50"
-          >
-            {isPending ? 'Loading...' : 'Retry'}
-          </button>
-        </div>
-        <p className="text-red-500">Error: {error}</p>
-      </div>
-    );
-  }
+  const handleRefresh = () => {
+    startTransition(() => {
+      router.refresh();
+    });
+  };
 
   return (
     <div className="p-4 bg-neutral-900 rounded-lg ">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Uploaded Files</h3>
         <div className="flex gap-2 items-center">
-          <UploadFile onUploadComplete={onRefresh} />
+          <UploadFile onUploadComplete={handleRefresh} />
           <form onSubmit={handleSearch} className="flex gap-2">
             <Input
               type="text"
@@ -269,9 +265,27 @@ export default function FilesTable({
             <Button type="submit" variant="outline" size="sm">
               Search
             </Button>
+            {searchQuery && (
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="sm"
+                onClick={() => {
+                  setSearchInput("");
+                  startTransition(() => {
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.delete('search');
+                    params.set('page', '1');
+                    router.push(`?${params.toString()}`);
+                  });
+                }}
+              >
+                Clear
+              </Button>
+            )}
           </form>
           <Button 
-            onClick={onRefresh}
+            onClick={handleRefresh}
             disabled={isPending}
             variant="outline"
             size="sm"
@@ -281,7 +295,7 @@ export default function FilesTable({
         </div>
       </div>
       
-      <DataTable columns={getColumns(onRefresh)} data={files} />
+      <DataTable columns={getColumns(handleRefresh)} data={files} />
       
       {/* Pagination Controls */}
       <div className="flex items-center justify-between space-x-2 py-4">
@@ -295,7 +309,7 @@ export default function FilesTable({
         {pagination.totalPages > 1 && (
           <div className="flex items-center space-x-2">
             <Button
-              onClick={() => onPageChange(pagination.currentPage - 1)}
+              onClick={() => handlePageChange(pagination.currentPage - 1)}
               disabled={!pagination.hasPreviousPage || isPending}
               variant="outline"
               size="sm"
@@ -318,7 +332,7 @@ export default function FilesTable({
                 return (
                   <Button
                     key={pageNum}
-                    onClick={() => onPageChange(pageNum)}
+                    onClick={() => handlePageChange(pageNum)}
                     disabled={isPending}
                     variant={pagination.currentPage === pageNum ? "default" : "outline"}
                     size="sm"
@@ -331,7 +345,7 @@ export default function FilesTable({
             </div>
             
             <Button
-              onClick={() => onPageChange(pagination.currentPage + 1)}
+              onClick={() => handlePageChange(pagination.currentPage + 1)}
               disabled={!pagination.hasNextPage || isPending}
               variant="outline"
               size="sm"
