@@ -8,7 +8,7 @@ export default function SidebarAdmin() {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col gap-2 w-60 bg-gray-200 dark:bg-neutral-900  h-screen">
+    <div className="flex flex-col gap-2 min-w-60 bg-gray-200 dark:bg-neutral-900  h-screen">
       <div className="flex flex-col gap-4 items-center mt-8">
         <UserAvatar
           appearance={{
