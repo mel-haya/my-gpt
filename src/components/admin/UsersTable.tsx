@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,6 @@ import type { UserWithTokenUsage } from "@/services/userService";
 
 interface UsersTableProps {
   users: UserWithTokenUsage[];
-  loading: boolean;
-  error: string | null;
-  isPending: boolean;
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -19,9 +17,7 @@ interface UsersTableProps {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
   };
-  onRefresh: () => void;
-  onPageChange: (page: number) => void;
-  onSearch: (query: string) => void;
+  searchQuery: string;
 }
 
 const formatNumber = (num: number): string => {
@@ -38,7 +34,7 @@ const formatDate = (date: Date): string => {
   }).format(new Date(date));
 };
 
-const getColumns = (fetchUsers: () => void): ColumnDef<UserWithTokenUsage>[] => [
+const getColumns = (handleRefresh: () => void): ColumnDef<UserWithTokenUsage>[] => [
   {
     accessorKey: "id",
     header: "User ID",
@@ -146,38 +142,46 @@ function UsersTableSkeleton() {
   );
 }
 
-export default function UsersTable({
-  users,
-  loading,
-  error,
-  isPending,
-  pagination,
-  onRefresh,
-  onPageChange,
-  onSearch,
+export default function UsersTable({ 
+  users, 
+  pagination, 
+  searchQuery 
 }: UsersTableProps) {
-  const [searchInput, setSearchInput] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+  const [searchInput, setSearchInput] = useState(searchQuery || "");
 
-  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchInput(e.target.value);
+  const handlePageChange = (page: number) => {
+    startTransition(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('page', page.toString());
+      if (searchQuery) {
+        params.set('search', searchQuery);
+      } else {
+        params.delete('search');
+      }
+      router.push(`?${params.toString()}`);
+    });
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch(searchInput.trim());
+    startTransition(() => {
+      const params = new URLSearchParams();
+      params.set('page', '1');
+      if (searchInput.trim()) {
+        params.set('search', searchInput.trim());
+      }
+      router.push(`?${params.toString()}`);
+    });
   };
 
-  if (loading) {
-    return <UsersTableSkeleton />;
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 bg-neutral-900 rounded-lg">
-        <p className="text-red-500">Error: {error}</p>
-      </div>
-    );
-  }
+  const handleRefresh = () => {
+    startTransition(() => {
+      router.refresh();
+    });
+  };
 
   return (
     <div className="p-4 bg-neutral-900 rounded-lg">
@@ -189,15 +193,34 @@ export default function UsersTable({
               type="text"
               placeholder="Search users..."
               value={searchInput}
-              onChange={handleSearchInputChange}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-48"
             />
             <Button type="submit" variant="outline" size="sm">
               Search
             </Button>
+            {searchInput && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 lg:px-3"
+                onClick={() => {
+                  setSearchInput("");
+                  startTransition(() => {
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.delete('search');
+                    params.set('page', '1');
+                    router.push(`?${params.toString()}`);
+                  });
+                }}
+              >
+                Clear
+              </Button>
+            )}
           </form>
           <Button 
-            onClick={onRefresh}
+            onClick={handleRefresh}
             disabled={isPending}
             variant="outline"
             size="sm"
@@ -207,7 +230,7 @@ export default function UsersTable({
         </div>
       </div>
       
-      <DataTable columns={getColumns(onRefresh)} data={users} />
+      <DataTable columns={getColumns(handleRefresh)} data={users} />
       
       {/* Pagination Controls */}
       <div className="flex items-center justify-between space-x-2 py-4">
@@ -221,7 +244,7 @@ export default function UsersTable({
         {pagination.totalPages > 1 && (
           <div className="flex items-center space-x-2">
             <Button
-              onClick={() => onPageChange(pagination.currentPage - 1)}
+              onClick={() => handlePageChange(pagination.currentPage - 1)}
               disabled={!pagination.hasPreviousPage || isPending}
               variant="outline"
               size="sm"
@@ -244,7 +267,7 @@ export default function UsersTable({
                 return (
                   <Button
                     key={pageNum}
-                    onClick={() => onPageChange(pageNum)}
+                    onClick={() => handlePageChange(pageNum)}
                     disabled={isPending}
                     variant={pagination.currentPage === pageNum ? "default" : "outline"}
                     size="sm"
@@ -257,7 +280,7 @@ export default function UsersTable({
             </div>
             
             <Button
-              onClick={() => onPageChange(pagination.currentPage + 1)}
+              onClick={() => handlePageChange(pagination.currentPage + 1)}
               disabled={!pagination.hasNextPage || isPending}
               variant="outline"
               size="sm"
