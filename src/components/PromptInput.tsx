@@ -24,23 +24,15 @@ import {
   PromptInputProvider,
 } from "@/components/ai-elements/prompt-input";
 import { ChatMessage } from "@/types/chatMessage";
-import { GlobeIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { GlobeIcon, Crown } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
 import {
   CreateUIMessage,
   ChatRequestOptions,
   FileUIPart,
   ChatStatus,
 } from "ai";
-
-
-
-const models = [
-  { id: "openai/gpt-5-nano", name: "GPT-5 Nano" },
-  { id: "google/gemini-2.5-flash", name: "Gemini 2.5 Flash" },
-  { id: "anthropic/claude-haiku-4.5", name: "Claude Haiku 4.5" },
-  { id: "xai/grok-4-fast-non-reasoning", name: "Grok 4 Fast" },
-];
+import { getAvailableModels, ModelOption } from "@/app/actions/models";
 const InputDemo = ({
   sendMessage,
   status,
@@ -59,7 +51,31 @@ const InputDemo = ({
 }) => {
   const [text, setText] = useState<string>("");
   const [useWebSearch, setUseWebSearch] = useState<boolean>(false);
+  const [models, setModels] = useState<ModelOption[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState<boolean>(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load available models on component mount
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        setIsLoadingModels(true);
+        const availableModels = await getAvailableModels();
+        setModels(availableModels);
+      } catch (error) {
+        console.error("Failed to load models:", error);
+        // Fallback to basic models
+        setModels([
+          { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
+          { id: "google/gemini-1.5-flash", name: "Gemini 1.5 Flash" },
+        ]);
+      } finally {
+        setIsLoadingModels(false);
+      }
+    };
+
+    loadModels();
+  }, []);
   //   const { messages, status, sendMessage } = useChat();
   const handleSubmit = (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
@@ -125,14 +141,22 @@ const InputDemo = ({
               <PromptInputSelect
                 onValueChange={onModelChange}
                 value={selectedModel}
+                disabled={isLoadingModels}
               >
                 <PromptInputSelectTrigger>
-                  <PromptInputSelectValue />
+                  <PromptInputSelectValue 
+                    placeholder={isLoadingModels ? "Loading models..." : "Select a model"}
+                  />
                 </PromptInputSelectTrigger>
                 <PromptInputSelectContent>
                   {models.map((model) => (
                     <PromptInputSelectItem key={model.id} value={model.id}>
-                      {model.name}
+                      <div className="flex items-center gap-2">
+                        {model.name}
+                        {model.premium && (
+                          <Crown size={12} className="text-yellow-500" />
+                        )}
+                      </div>
                     </PromptInputSelectItem>
                   ))}
                 </PromptInputSelectContent>
