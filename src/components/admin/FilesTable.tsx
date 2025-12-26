@@ -295,7 +295,7 @@ export default function FilesTable({
         </div>
       </div>
       
-      <DataTable columns={getColumns(handleRefresh)} data={files} />
+      <DataTable columns={getColumns(handleRefresh)} data={files} emptyMessage="No files found."/>
       
       {/* Pagination Controls */}
       <div className="flex items-center justify-between space-x-2 py-4">

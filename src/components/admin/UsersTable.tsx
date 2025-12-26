@@ -230,7 +230,7 @@ export default function UsersTable({
         </div>
       </div>
       
-      <DataTable columns={getColumns(handleRefresh)} data={users} />
+      <DataTable columns={getColumns(handleRefresh)} data={users} emptyMessage="No users found."/>
       
       {/* Pagination Controls */}
       <div className="flex items-center justify-between space-x-2 py-4">

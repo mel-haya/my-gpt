@@ -107,6 +107,24 @@ export const subscriptions = pgTable(
   ]
 );
 
+export const tests = pgTable(
+  "tests",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    prompt: text("prompt").notNull(),
+    expected_result: text("expected_result").notNull(),
+    user_id: text("user_id").notNull().references(() => users.id),
+    created_by: text("created_by").notNull().references(() => users.id),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("tests_user_id_index").on(table.user_id),
+    index("tests_created_by_index").on(table.created_by),
+  ]
+);
+
 export type InsertDocument = typeof documents.$inferInsert;
 export type SelectDocument = typeof documents.$inferSelect;
 export type InsertConversation = typeof conversations.$inferInsert;
@@ -123,3 +141,5 @@ export type InsertSettings = typeof settings.$inferInsert;
 export type SelectSettings = typeof settings.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
 export type SelectSubscription = typeof subscriptions.$inferSelect;
+export type InsertTest = typeof tests.$inferInsert;
+export type SelectTest = typeof tests.$inferSelect;
