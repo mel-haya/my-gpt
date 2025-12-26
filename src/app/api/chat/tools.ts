@@ -68,7 +68,7 @@ export const tools = {
     }),
     execute: async ({ query }) => {
       try {
-        const response = await searchDocuments(query, 5, 0.5);
+        const response = await searchDocuments(query, 5, 0);
         if (response.length === 0) {
           console.log("No relevant documents found.");
           return "No relevant information found in the knowledge base.";
