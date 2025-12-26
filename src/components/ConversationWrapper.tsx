@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 // import Message from "./message";
 import { ChatMessage } from "@/types/chatMessage";
@@ -63,6 +63,26 @@ export default function ConversationWrapper({
     const { isSubscribed, loading: subscriptionLoading } = useSubscription();
     const [showRibbon, setShowRibbon] = useState(true);
     const { user } = useUser();
+
+  // Load models and set default to gpt-4o if available
+  useEffect(() => {
+    const setDefaultModel = async () => {
+      try {
+        const { getAvailableModels } = await import("@/app/actions/models");
+        const availableModels = await getAvailableModels();
+        
+        // Check if gpt-4o is available and set it as default
+        const gpt4oModel = availableModels.find(model => model.id === "openai/gpt-4o");
+        if (gpt4oModel) {
+          setSelectedModel("openai/gpt-4o");
+        }
+      } catch (error) {
+        console.error("Failed to load models for default selection:", error);
+      }
+    };
+    
+    setDefaultModel();
+  }, [isSubscribed]); // Re-run when subscription status changes
 
   // Memoize the model change callback to prevent unnecessary rerenders
   const handleModelChange = useCallback((model: string) => {

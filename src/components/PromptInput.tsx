@@ -62,6 +62,12 @@ const InputDemo = ({
         setIsLoadingModels(true);
         const availableModels = await getAvailableModels();
         setModels(availableModels);
+        
+        // Set gpt-4o as default if available and current model is the initial default
+        const gpt4oModel = availableModels.find(model => model.id === "openai/gpt-4o");
+        if (gpt4oModel && selectedModel === "openai/gpt-5-nano") {
+          onModelChange("openai/gpt-4o");
+        }
       } catch (error) {
         console.error("Failed to load models:", error);
         // Fallback to basic models
@@ -73,9 +79,9 @@ const InputDemo = ({
         setIsLoadingModels(false);
       }
     };
-
+    
     loadModels();
-  }, []);
+  }, [selectedModel, onModelChange]);
 
   // Memoize the models dropdown options to prevent unnecessary rerenders
   const modelOptions = useMemo(() => 
