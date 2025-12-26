@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import Image from "next/image";
 // import Message from "./message";
 import { ChatMessage } from "@/types/chatMessage";
@@ -63,6 +63,11 @@ export default function ConversationWrapper({
     const { isSubscribed, loading: subscriptionLoading } = useSubscription();
     const [showRibbon, setShowRibbon] = useState(true);
     const { user } = useUser();
+
+  // Memoize the model change callback to prevent unnecessary rerenders
+  const handleModelChange = useCallback((model: string) => {
+    setSelectedModel(model);
+  }, []);
 
   const displayMessages = useMemo(() => {
     return messages.map((message) => {
@@ -150,7 +155,7 @@ export default function ConversationWrapper({
               status={status}
               stop={stop}
               selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
+              onModelChange={handleModelChange}
             />
             <div className="flex flex-col md:flex-row gap-2">
               {promptExamples.map((p, index) => {
@@ -261,7 +266,7 @@ export default function ConversationWrapper({
             </ConversationContent>
             <ConversationScrollButton />
           </Conversation>
-          <PromptInput sendMessage={sendMessage} status={status} stop={stop} selectedModel={selectedModel} onModelChange={setSelectedModel} />
+          <PromptInput sendMessage={sendMessage} status={status} stop={stop} selectedModel={selectedModel} onModelChange={handleModelChange} />
         </>
       )}
     </div>

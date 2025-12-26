@@ -6,9 +6,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useState } from "react"
+import { useState, memo } from "react"
 
-export default function ConversationActionMenu({
+function ConversationActionMenu({
   onDelete,
 }: {
   onDelete: () => void;
@@ -45,4 +45,6 @@ export default function ConversationActionMenu({
         </DropdownMenuContent>
     </DropdownMenu>
     );
-}  
+}
+
+export default memo(ConversationActionMenu);

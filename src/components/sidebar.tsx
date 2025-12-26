@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { SelectConversation } from "@/lib/db-schema";
 import { SignedIn, useAuth } from "@clerk/nextjs";
 
@@ -61,6 +61,13 @@ export default function Sidebar({
     }
     reset();
   };
+
+  const handleDeleteConversation = useCallback(
+    (conversationId: number) => {
+      return () => deleteConversation(conversationId);
+    },
+    [deleteConversation]
+  );
 
   return (
     <div className={`flex z-30 ${bgStyles.sideBarBackground}`}>
@@ -150,7 +157,7 @@ export default function Sidebar({
                   >
                     {/* <i className="fa-solid fa-xmark"></i> */}
                     <ConversationActionMenu
-                      onDelete={() => deleteConversation(conversation.id)}
+                      onDelete={handleDeleteConversation(conversation.id)}
                     />
                   </div>
                 </div>

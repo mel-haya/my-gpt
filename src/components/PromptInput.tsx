@@ -25,7 +25,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { ChatMessage } from "@/types/chatMessage";
 import { GlobeIcon, Crown } from "lucide-react";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import {
   CreateUIMessage,
   ChatRequestOptions,
@@ -76,8 +76,24 @@ const InputDemo = ({
 
     loadModels();
   }, []);
-  //   const { messages, status, sendMessage } = useChat();
-  const handleSubmit = (message: PromptInputMessage) => {
+
+  // Memoize the models dropdown options to prevent unnecessary rerenders
+  const modelOptions = useMemo(() => 
+    models.map((model) => (
+      <PromptInputSelectItem key={model.id} value={model.id}>
+        <div className="flex items-center gap-2">
+          {model.name}
+          {model.premium && (
+            <Crown size={12} className="text-yellow-500" />
+          )}
+        </div>
+      </PromptInputSelectItem>
+    )), 
+    [models]
+  );
+
+  // Memoize the submit handler to prevent recreating the function on every render
+  const handleSubmit = useCallback((message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
     const hasAttachments = Boolean(message.files?.length);
     if (!(hasText || hasAttachments)) {
@@ -96,7 +112,9 @@ const InputDemo = ({
       }
     );
     setText("");
-  };
+  }, [sendMessage, selectedModel, useWebSearch]);
+
+  //   const { messages, status, sendMessage } = useChat();
   return (
     <PromptInputProvider>
       <PromptInput
@@ -149,16 +167,7 @@ const InputDemo = ({
                   />
                 </PromptInputSelectTrigger>
                 <PromptInputSelectContent>
-                  {models.map((model) => (
-                    <PromptInputSelectItem key={model.id} value={model.id}>
-                      <div className="flex items-center gap-2">
-                        {model.name}
-                        {model.premium && (
-                          <Crown size={12} className="text-yellow-500" />
-                        )}
-                      </div>
-                    </PromptInputSelectItem>
-                  ))}
+                  {modelOptions}
                 </PromptInputSelectContent>
               </PromptInputSelect>
             </PromptInputTools>
