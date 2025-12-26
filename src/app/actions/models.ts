@@ -35,7 +35,7 @@ export async function getAvailableModels(): Promise<ModelOption[]> {
 
     // Premium models for subscribed users
     const premiumModels: ModelOption[] = [
-      { id: "openai/gpt-5.2", name: "GPT-5.2", premium: true },
+      { id: "openai/gpt-4o", name: "GPT-4o", premium: true },
       { id: "google/gemini-2.5-flash", name: "Gemini 2.5 Flash", premium: true },
       { id: "anthropic/claude-haiku-4.5", name: "Claude Haiku 4.5", premium: true },
       { id: "xai/grok-4-fast-non-reasoning", name: "Grok 4 Fast", premium: true },

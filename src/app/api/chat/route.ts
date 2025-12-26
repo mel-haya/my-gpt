@@ -10,7 +10,7 @@ import { auth } from "@clerk/nextjs/server";
 import { renameConversationAI } from "./renameConversationAI";
 
 const supportedModels = [
-  "openai/gpt-5-nano",
+  "openai/gpt-4o",
   "google/gemini-2.5-flash",
   "anthropic/claude-haiku-4.5",
   "xai/grok-4-fast-non-reasoning",
@@ -89,7 +89,6 @@ export async function POST(req: Request) {
 
     // Get configurable system prompt
     const systemPrompt = await getSystemPrompt();
-
     const response = streamText({
       messages: modelMessages,
       model: selectedmodel,
