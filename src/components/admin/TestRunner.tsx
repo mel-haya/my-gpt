@@ -11,6 +11,7 @@ import { toast } from "react-toastify";
 export default function TestRunner() {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
+  const [selectedEvaluatorModel, setSelectedEvaluatorModel] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTestRunId, setCurrentTestRunId] = useState<number | null>(null);
@@ -50,6 +51,12 @@ export default function TestRunner() {
         if (defaultModel) {
           setSelectedModel(defaultModel.id);
         }
+        
+        // Set evaluator model default to GPT-4o or first available model
+        const defaultEvaluatorModel = availableModels.find(model => model.id === "openai/gpt-4o") || availableModels[0];
+        if (defaultEvaluatorModel) {
+          setSelectedEvaluatorModel(defaultEvaluatorModel.id);
+        }
 
         // Initial status check
         await checkTestStatus();
@@ -72,8 +79,8 @@ export default function TestRunner() {
   }, [isRunning]);
 
   const handleRunTests = async () => {
-    if (!selectedModel) {
-      toast.error("Please select a model first");
+    if (!selectedModel || !selectedEvaluatorModel) {
+      toast.error("Please select both models first");
       return;
     }
 
@@ -86,7 +93,8 @@ export default function TestRunner() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          selectedModel
+          selectedModel,
+          selectedEvaluatorModel
         })
       });
 
@@ -154,23 +162,45 @@ export default function TestRunner() {
         <CardTitle className="text-xl font-semibold text-center">Run Tests</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <label htmlFor="model-select" className="block text-sm font-medium mb-2">
-            Select Model
-          </label>
-          <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger id="model-select">
-              <SelectValue placeholder="Choose a model" />
-            </SelectTrigger>
-            <SelectContent>
-              {models.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  {model.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!isRunning && (
+          <>
+            <div>
+              <label htmlFor="model-select" className="block text-sm font-medium mb-2">
+                Select Model
+              </label>
+              <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <SelectTrigger id="model-select">
+                  <SelectValue placeholder="Choose a model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label htmlFor="evaluator-select" className="block text-sm font-medium mb-2">
+                Select Evaluator Model
+              </label>
+              <Select value={selectedEvaluatorModel} onValueChange={setSelectedEvaluatorModel}>
+                <SelectTrigger id="evaluator-select">
+                  <SelectValue placeholder="Choose an evaluator model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((model) => (
+                    <SelectItem key={`eval-${model.id}`} value={model.id}>
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
         
         {isRunning && testProgress && (
           <div className="text-center">
@@ -188,7 +218,7 @@ export default function TestRunner() {
         
         <Button 
           onClick={isRunning ? handleStopTests : handleRunTests} 
-          disabled={!selectedModel}
+          disabled={!selectedModel || !selectedEvaluatorModel}
           className="w-full"
           size="lg"
         >

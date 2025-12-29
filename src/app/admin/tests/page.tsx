@@ -3,6 +3,14 @@ import TestsDashboard from "@/components/admin/testsDashboard";
 // Force dynamic rendering since this page uses authentication
 export const dynamic = 'force-dynamic';
 
-export default function TestsPage() {
-  return <TestsDashboard />;
+interface TestsPageProps {
+  searchParams: Promise<{
+    page?: string;
+    search?: string;
+  }>;
+}
+
+export default async function TestsPage({ searchParams }: TestsPageProps) {
+  const resolvedSearchParams = await searchParams;
+  return <TestsDashboard searchParams={resolvedSearchParams} />;
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { checkRole } from "@/lib/checkRole";
+import { generateObject } from 'ai';    
+import { z } from 'zod';
 import { 
   createTestRun,
   getAllTests,
@@ -33,11 +35,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { selectedModel } = await req.json();
+    const { selectedModel, selectedEvaluatorModel } = await req.json();
 
-    if (!selectedModel) {
+    if (!selectedModel || !selectedEvaluatorModel) {
       return NextResponse.json(
-        { error: "Model selection is required" },
+        { error: "Both model and evaluator model selections are required" },
         { status: 400 }
       );
     }
@@ -59,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Start running tests in the background
-    runTestsInBackground(testRun.id, allTests, selectedModel, req);
+    runTestsInBackground(testRun.id, allTests, selectedModel, selectedEvaluatorModel, req);
 
     return NextResponse.json({
       success: true,
@@ -80,6 +82,7 @@ async function runTestsInBackground(
   testRunId: number, 
   tests: TestWithUser[], 
   selectedModel: string,
+  selectedEvaluatorModel: string,
   originalRequest: NextRequest
 ) {
   try {
@@ -193,15 +196,52 @@ async function runTestsInBackground(
           throw new Error('No response content received from chat API');
         }
 
-        // Mark test as successful since the AI responded without errors
+        // Now evaluate the response using generateObject with system prompt
+        // Define evaluation schema with simple enum output
+        const evaluationSchema = z.object({
+          result: z.enum(['success', 'fail']).describe('Whether the AI response is helpful and provides expected information'),
+          explanation: z.string().describe('Brief explanation of why it passed or failed')
+        });
+
+        // Evaluate the response using generateObject with system prompt
+        const { object: evaluation } = await generateObject({
+          model: selectedEvaluatorModel,
+          system: `You are an AI response evaluator. Your job is to evaluate if the AI output is helpful and provides the same information as would be expected for the given prompt. 
+          
+          Return 'success' if the response adequately answers the prompt and would be helpful to a user.
+          Return 'fail' if the response is inadequate, unhelpful, or doesn't address the prompt properly.
+          
+          Be objective and fair in your assessment.`,
+          prompt: `Evaluate this AI response:
+
+Original Test Prompt: "${test.prompt}"
+
+Expected Response: "${test.expected_result}"
+
+AI Response: "${fullResponse.trim()}"
+
+Determine if this is a success or fail.`,
+          schema: evaluationSchema,
+        });
+
+        // Format the evaluation result
+        const evaluationResult = `Result: ${evaluation.result}
+Explanation: ${evaluation.explanation}`;
+
+        // Combine the original response with the evaluation
+        const finalResult = `AI Response:\n${fullResponse.trim()}\n\nEvaluation:\n${evaluationResult}`;
+
+        // Mark test based on evaluation result
+        const testStatus = evaluation.result === 'success' ? 'Success' : 'Failed';
         await updateTestRunResult(
           testRunId, 
           test.id, 
-          "Success", 
-          fullResponse.trim()
+          testStatus, 
+          finalResult
         );
         
-        console.log(`✅ Test ${test.id} (${test.name}) completed successfully`);
+        const statusEmoji = evaluation.result === 'success' ? '✅' : '❌';
+        console.log(`${statusEmoji} Test ${test.id} (${test.name}) completed with result: ${evaluation.result}`);
         
         // Check if the test run has been stopped after completing this test
         const statusAfterTest = await getTestRunStatus(testRunId);

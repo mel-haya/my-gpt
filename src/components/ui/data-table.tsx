@@ -69,9 +69,11 @@ export function DataTable<TData, TValue>({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
+                  const columnMeta = header.column.columnDef.meta as { className?: string } | undefined;
                   return (
                     <TableHead 
                       key={header.id}
+                      className={columnMeta?.className}
                       style={{
                         width: header.column.columnDef.size ? `${header.column.columnDef.size}px` : 'auto',
                         maxWidth: header.column.columnDef.size ? `${header.column.columnDef.size}px` : 'none',
@@ -97,21 +99,25 @@ export function DataTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell 
-                      key={cell.id}
-                      style={{
-                        width: cell.column.columnDef.size ? `${cell.column.columnDef.size}px` : 'auto',
-                        maxWidth: cell.column.columnDef.size ? `${cell.column.columnDef.size}px` : 'none',
-                        minWidth: cell.column.columnDef.size ? `${cell.column.columnDef.size}px` : 'auto',
-                      }}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    const columnMeta = cell.column.columnDef.meta as { className?: string } | undefined;
+                    return (
+                      <TableCell 
+                        key={cell.id}
+                        className={columnMeta?.className}
+                        style={{
+                          width: cell.column.columnDef.size ? `${cell.column.columnDef.size}px` : 'auto',
+                          maxWidth: cell.column.columnDef.size ? `${cell.column.columnDef.size}px` : 'none',
+                          minWidth: cell.column.columnDef.size ? `${cell.column.columnDef.size}px` : 'auto',
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    )
+                  })}
                 </TableRow>
               ))
             ) : (
