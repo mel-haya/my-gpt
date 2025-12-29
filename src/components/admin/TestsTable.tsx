@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { MoreHorizontal, Search, ChevronLeft, ChevronRight } from "lucide-react";
-import AddTestDialog from "./AddTestDialog";
+import TestDialog from "./TestDialog";
+import DeleteTestDialog from "./DeleteTestDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,10 +42,15 @@ const formatDate = (date: Date): string => {
   }).format(new Date(date));
 };
 
-const getColumns = (handleRefresh: () => void): ColumnDef<TestWithUser>[] => [
+const getColumns = (
+  handleRefresh: () => void,
+  onDeleteTest: (testId: number, testName: string) => void,
+  onEditTest: (test: TestWithUser) => void
+): ColumnDef<TestWithUser>[] => [
   {
     accessorKey: "name",
     header: "Test Name",
+    size: 400, // Make the Test Name column larger
     cell: ({ row }) => (
       <div className="font-medium">
         <div className="truncate" title={row.getValue("name")}>
@@ -56,6 +62,7 @@ const getColumns = (handleRefresh: () => void): ColumnDef<TestWithUser>[] => [
   {
     accessorKey: "username",
     header: "User",
+    size: 150, // Fit content for User column
     cell: ({ row }) => (
       <div className="font-medium text-sm">
         {row.getValue("username") || "N/A"}
@@ -65,6 +72,7 @@ const getColumns = (handleRefresh: () => void): ColumnDef<TestWithUser>[] => [
   {
     accessorKey: "created_at",
     header: "Created Date",
+    size: 200, // Fit content for Created Date column
     cell: ({ row }) => {
       const date = row.getValue("created_at") as Date;
       return (
@@ -77,6 +85,7 @@ const getColumns = (handleRefresh: () => void): ColumnDef<TestWithUser>[] => [
   {
     accessorKey: "updated_at",
     header: "Updated",
+    size: 200, // Fit content for Updated column
     cell: ({ row }) => {
       const date = row.getValue("updated_at") as Date;
       return (
@@ -89,6 +98,7 @@ const getColumns = (handleRefresh: () => void): ColumnDef<TestWithUser>[] => [
   {
     id: "actions",
     enableHiding: false,
+    size: 50, // Fit icon size for Actions column
     cell: ({ row }) => {
       const test = row.original;
 
@@ -109,8 +119,13 @@ const getColumns = (handleRefresh: () => void): ColumnDef<TestWithUser>[] => [
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>View details</DropdownMenuItem>
-            <DropdownMenuItem>Edit test</DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">Delete test</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEditTest(test)}>Edit test</DropdownMenuItem>
+            <DropdownMenuItem 
+              className="text-red-600"
+              onClick={() => onDeleteTest(test.id, test.name)}
+            >
+              Delete test
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -123,10 +138,45 @@ export default function TestsTable({ tests, pagination, searchQuery }: TestsTabl
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    testId: number;
+    testName: string;
+  }>({
+    isOpen: false,
+    testId: 0,
+    testName: "",
+  });  const [editTest, setEditTest] = useState<TestWithUser | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const handleDeleteTest = (testId: number, testName: string) => {
+    setDeleteDialog({
+      isOpen: true,
+      testId,
+      testName,
+    });
+  };
+
+  const handleEditTest = (test: TestWithUser) => {
+    setEditTest(test);
+    setEditDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialog({
+      isOpen: false,
+      testId: 0,
+      testName: "",
+    });
+  };
+
+  const handleDeleteSuccess = () => {
+    // Refresh the page to show updated data
+    router.refresh();
+  };
 
   const columns = getColumns(() => {
     // Add refresh logic if needed
-  });
+  }, handleDeleteTest, handleEditTest);
 
   const handleSearch = () => {
     startTransition(() => {
@@ -180,7 +230,7 @@ export default function TestsTable({ tests, pagination, searchQuery }: TestsTabl
               </Button>
             </div>
             
-            <AddTestDialog />
+            <TestDialog mode="add" onSuccess={() => router.refresh()} />
           </div>
 
           {/* Data Table */}
@@ -218,6 +268,33 @@ export default function TestsTable({ tests, pagination, searchQuery }: TestsTabl
           </div>
         </div>
       </CardContent>
+      
+      <DeleteTestDialog
+        testId={deleteDialog.testId}
+        testName={deleteDialog.testName}
+        isOpen={deleteDialog.isOpen}
+        onClose={handleCloseDeleteDialog}
+        onSuccess={handleDeleteSuccess}
+      />
+      
+      {editTest && (
+        <TestDialog
+          mode="edit"
+          test={editTest}
+          isOpen={editDialogOpen}
+          onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            if (!open) {
+              setEditTest(null);
+            }
+          }}
+          onSuccess={() => {
+            setEditTest(null);
+            setEditDialogOpen(false);
+            router.refresh();
+          }}
+        />
+      )}
     </Card>
   );
 }
