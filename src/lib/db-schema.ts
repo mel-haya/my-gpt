@@ -31,7 +31,7 @@ export const conversations = pgTable(
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
-  conversation_id: serial("conversation_id").notNull().references(() => conversations.id),
+  conversation_id: integer("conversation_id").notNull().references(() => conversations.id),
   role: rolesEnum("role").notNull(),
   parts: jsonb("parts").notNull(),
   text_content: text("text_content"),

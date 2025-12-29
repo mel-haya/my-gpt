@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,11 @@ import { getAvailableModels, type ModelOption } from "@/app/actions/models";
 import { Play, Loader2, Square } from "lucide-react";
 import { toast } from "react-toastify";
 
-export default function TestRunner() {
+interface TestRunnerProps {
+  onTestsComplete?: () => void;
+}
+
+export default function TestRunner({ onTestsComplete }: TestRunnerProps) {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [selectedEvaluatorModel, setSelectedEvaluatorModel] = useState<string>("");
@@ -16,15 +20,21 @@ export default function TestRunner() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentTestRunId, setCurrentTestRunId] = useState<number | null>(null);
   const [testProgress, setTestProgress] = useState<{ completed: number; total: number } | null>(null);
+  const wasRunningRef = useRef(false);
 
   // Function to check test status
-  const checkTestStatus = async () => {
+  const checkTestStatus = useCallback(async () => {
     try {
       const statusResponse = await fetch('/api/admin/test-status');
       if (statusResponse.ok) {
         const statusResult = await statusResponse.json();
-        setIsRunning(statusResult.isRunning);
-        if (statusResult.isRunning) {
+        
+        // Check if tests were running and now completed
+        const wasRunning = wasRunningRef.current;
+        const isStillRunning = statusResult.isRunning;
+        
+        setIsRunning(isStillRunning);
+        if (isStillRunning) {
           setCurrentTestRunId(statusResult.currentTestRunId);
           // Set progress if available
           if (statusResult.progress) {
@@ -33,12 +43,22 @@ export default function TestRunner() {
         } else {
           setCurrentTestRunId(null);
           setTestProgress(null);
+          
+          // If tests were running and now stopped, trigger refresh
+          if (wasRunning && !isStillRunning) {
+            setTimeout(() => {
+              onTestsComplete?.();
+            }, 1000); // Small delay to ensure backend processing is complete
+          }
         }
+        
+        // Update the ref for next iteration
+        wasRunningRef.current = isStillRunning;
       }
     } catch (error) {
       console.error("Error checking test status:", error);
     }
-  };
+  }, [onTestsComplete]);
 
   useEffect(() => {
     async function loadModelsAndCheckStatus() {
@@ -67,7 +87,7 @@ export default function TestRunner() {
       }
     }
     loadModelsAndCheckStatus();
-  }, []);
+  }, [checkTestStatus]);
 
   // Polling effect for test status updates
   useEffect(() => {
@@ -76,7 +96,7 @@ export default function TestRunner() {
     const interval = setInterval(checkTestStatus, 3000); // Poll every 3 seconds
 
     return () => clearInterval(interval);
-  }, [isRunning]);
+  }, [isRunning, checkTestStatus]);
 
   const handleRunTests = async () => {
     if (!selectedModel || !selectedEvaluatorModel) {

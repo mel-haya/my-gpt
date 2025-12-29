@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { checkRole } from "@/lib/checkRole";
 import { generateObject } from 'ai';    
 import { z } from 'zod';
+import { generateChatCompletion } from "@/services/chatService";
 import { 
   createTestRun,
   getAllTests,
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Start running tests in the background
-    runTestsInBackground(testRun.id, allTests, selectedModel, selectedEvaluatorModel, req);
+    runTestsInBackground(testRun.id, allTests, selectedModel, selectedEvaluatorModel);
 
     return NextResponse.json({
       success: true,
@@ -82,8 +83,7 @@ async function runTestsInBackground(
   testRunId: number, 
   tests: TestWithUser[], 
   selectedModel: string,
-  selectedEvaluatorModel: string,
-  originalRequest: NextRequest
+  selectedEvaluatorModel: string
 ) {
   try {
     for (let i = 0; i < tests.length; i++) {
@@ -104,96 +104,26 @@ async function runTestsInBackground(
         
         console.log(`Running test ${test.id} (${test.name}) with model: ${selectedModel}`);
         
-        // Forward cookies and auth headers from the original request
-        const headers: HeadersInit = {
-          'Content-Type': 'application/json',
-        };
-        
-        // Forward cookies
-        const cookieHeader = originalRequest.headers.get('cookie');
-        if (cookieHeader) {
-          headers['cookie'] = cookieHeader;
-        }
-        
-        // Forward authorization header if present
-        const authHeader = originalRequest.headers.get('authorization');
-        if (authHeader) {
-          headers['authorization'] = authHeader;
-        }
-        
-        // Call the chat API to get AI response
-        const chatResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/chat`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            messages: [
-              {
-                id: `test-${test.id}-${Date.now()}`,
-                role: 'user',
-                parts: [
-                  {
-                    type: 'text',
-                    text: test.prompt
-                  }
-                ]
-              }
-            ],
-            conversation: {
-              id: `test-conversation-${testRunId}-${test.id}`,
-              user_id: 'test-user',
-              title: `Test: ${test.name}`
-            },
-            model: selectedModel,
-            webSearch: false
-          }),
+        // Use internal chat service instead of making HTTP API calls
+        const fullResponse = await generateChatCompletion({
+          messages: [
+            {
+              id: `test-${test.id}-${Date.now()}`,
+              role: 'user',
+              parts: [
+                {
+                  type: 'text',
+                  text: test.prompt
+                }
+              ]
+            }
+          ],
+          model: selectedModel,
+          webSearch: false
         });
 
-        if (!chatResponse.ok) {
-          throw new Error(`Chat API returned ${chatResponse.status}: ${chatResponse.statusText}`);
-        }
-
-        // Read the streaming response
-        const reader = chatResponse.body?.getReader();
-        if (!reader) {
-          throw new Error('No response body');
-        }
-
-        let fullResponse = '';
-        const decoder = new TextDecoder();
-        
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
-            
-            for (const line of lines) {
-              if (line.trim() === '' || line === 'data: [DONE]') continue;
-              
-              // Handle the "data: " prefix format
-              if (line.startsWith('data: ')) {
-                try {
-                  const data = JSON.parse(line.slice(6)); // Remove "data: " prefix
-                  
-                  // Extract text from text-delta events
-                  if (data.type === 'text-delta' && data.delta) {
-                    fullResponse += data.delta;
-                  }
-                } catch (e) {
-                  // Ignore parse errors for incomplete chunks
-                  console.log('Parse error for line:', line, e);
-                }
-              }
-            }
-          }
-        } finally {
-          reader.releaseLock();
-        }
-
         if (!fullResponse.trim()) {
-          throw new Error('No response content received from chat API');
+          throw new Error('No response content received from chat service');
         }
 
         // Now evaluate the response using generateObject with system prompt

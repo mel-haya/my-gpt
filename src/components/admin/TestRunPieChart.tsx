@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getLatestTestRunStatsAction } from "@/app/actions/tests";
 import type { LatestTestRunStats } from "@/services/testsService";
 import { 
@@ -20,28 +20,38 @@ import {
 import { Pie, PieChart } from "recharts";
 import { FlaskConical, TrendingUp } from "lucide-react";
 
-export default function TestRunPieChart() {
+interface TestRunPieChartProps {
+  onRefreshRef?: (refreshFn: () => void) => void;
+}
+
+export default function TestRunPieChart({ onRefreshRef }: TestRunPieChartProps) {
   const [stats, setStats] = useState<LatestTestRunStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        const result = await getLatestTestRunStatsAction();
-        setStats(result);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load test stats"
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
+  const fetchStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await getLatestTestRunStatsAction();
+      setStats(result);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load test stats"
+      );
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // Expose refresh function to parent
+  useEffect(() => {
+    onRefreshRef?.(fetchStats);
+  }, [onRefreshRef, fetchStats]);
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
@@ -31,6 +31,7 @@ interface TestsTableProps {
     hasPreviousPage: boolean;
   };
   searchQuery: string;
+  onRefreshRef?: (refreshFn: () => void) => void;
 }
 
 const formatDate = (date: Date): string => {
@@ -193,7 +194,7 @@ const getColumns = (
   },
 ];
 
-export default function TestsTable({ tests, pagination, searchQuery }: TestsTableProps) {
+export default function TestsTable({ tests, pagination, searchQuery, onRefreshRef }: TestsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -209,6 +210,14 @@ export default function TestsTable({ tests, pagination, searchQuery }: TestsTabl
   });  const [editTest, setEditTest] = useState<TestWithUser | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+
+  // Expose refresh function to parent
+  useEffect(() => {
+    const refreshTable = () => {
+      router.refresh();
+    };
+    onRefreshRef?.(refreshTable);
+  }, [onRefreshRef, router]);
   const handleDeleteTest = (testId: number, testName: string) => {
     setDeleteDialog({
       isOpen: true,
