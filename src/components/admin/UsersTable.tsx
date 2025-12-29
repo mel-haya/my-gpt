@@ -102,46 +102,6 @@ const getColumns = (handleRefresh: () => void): ColumnDef<UserWithTokenUsage>[] 
   },
 ];
 
-function UsersTableSkeleton() {
-  return (
-    <div className="mt-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">Users</h3>
-        <div className="h-8 w-16 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
-      </div>
-      <div className="w-full">
-        <div className="flex items-center py-4">
-          <div className="h-10 w-80 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
-        </div>
-        <div className="rounded-md border">
-          <div className="w-full">
-            <div className="bg-neutral-50 dark:bg-neutral-800">
-              <div className="flex">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-12 px-4 flex items-center text-left font-medium text-neutral-500 dark:text-neutral-400">
-                    <div className="h-4 w-16 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex border-b">
-                  {Array.from({ length: 6 }).map((_, j) => (
-                    <div key={j} className="h-16 px-4 flex items-center">
-                      <div className="h-4 w-full bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse"></div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function UsersTable({ 
   users, 
   pagination, 

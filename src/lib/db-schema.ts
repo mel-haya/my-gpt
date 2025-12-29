@@ -2,6 +2,8 @@ import { serial, vector, text, pgTable, index, jsonb, pgEnum, uniqueIndex, integ
 
 export const rolesEnum = pgEnum("roles", ["system", "user", "assistant"]);
 export const statusEnum = pgEnum("file_status", ["processing", "completed", "failed"]);
+export const testRunStatusEnum = pgEnum("test_run_status", ["Running", "Failed", "Done"]);
+export const testResultStatusEnum = pgEnum("test_result_status", ["Running","", "Success", "Failed", "Evaluating"]);
 export const documents = pgTable(
   "documents",
   {
@@ -125,6 +127,40 @@ export const tests = pgTable(
   ]
 );
 
+export const testRuns = pgTable(
+  "test_runs",
+  {
+    id: serial("id").primaryKey(),
+    status: testRunStatusEnum("status").notNull().default("Running"),
+    launched_at: timestamp("launched_at").notNull().defaultNow(),
+    user_id: text("user_id").notNull().references(() => users.id),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("test_runs_user_id_index").on(table.user_id),
+    index("test_runs_status_index").on(table.status),
+  ]
+);
+
+export const testRunResults = pgTable(
+  "test_run_results",
+  {
+    id: serial("id").primaryKey(),
+    test_run_id: integer("test_run_id").notNull().references(() => testRuns.id),
+    test_id: integer("test_id").notNull().references(() => tests.id),
+    output: text("output"),
+    status: testResultStatusEnum("status").notNull().default("Running"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("test_run_results_test_run_id_index").on(table.test_run_id),
+    index("test_run_results_test_id_index").on(table.test_id),
+    index("test_run_results_status_index").on(table.status),
+  ]
+);
+
 export type InsertDocument = typeof documents.$inferInsert;
 export type SelectDocument = typeof documents.$inferSelect;
 export type InsertConversation = typeof conversations.$inferInsert;
@@ -143,3 +179,7 @@ export type InsertSubscription = typeof subscriptions.$inferInsert;
 export type SelectSubscription = typeof subscriptions.$inferSelect;
 export type InsertTest = typeof tests.$inferInsert;
 export type SelectTest = typeof tests.$inferSelect;
+export type InsertTestRun = typeof testRuns.$inferInsert;
+export type SelectTestRun = typeof testRuns.$inferSelect;
+export type InsertTestRunResult = typeof testRunResults.$inferInsert;
+export type SelectTestRunResult = typeof testRunResults.$inferSelect;

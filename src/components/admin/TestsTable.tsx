@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { MoreHorizontal, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import AddTestDialog from "./AddTestDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -179,9 +180,7 @@ export default function TestsTable({ tests, pagination, searchQuery }: TestsTabl
               </Button>
             </div>
             
-            <div className="text-sm text-neutral-600 dark:text-neutral-400">
-              Total: {pagination.totalCount} tests
-            </div>
+            <AddTestDialog />
           </div>
 
           {/* Data Table */}

@@ -22,7 +22,7 @@ export default async function TestsDashboard({ searchParams }: TestsDashboardPro
   );
 
   return (
-    <div className="flex flex-col w-full max-w-[1400px] mx-4 2xl:mx-auto my-4 gap-4">
+    <div className="flex flex-col w-full max-w-350 mx-4 2xl:mx-auto my-4 gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tests Dashboard</h1>
       </div>
