@@ -1,12 +1,27 @@
 import { db } from "@/lib/db-config";
-import { tests, users } from "@/lib/db-schema";
-import type { SelectTest } from "@/lib/db-schema";
-import { eq, desc, sql, count, or, ilike } from "drizzle-orm";
+import { tests, users, testRuns, testRunResults } from "@/lib/db-schema";
+import type { SelectTest, SelectTestRun, SelectTestRunResult } from "@/lib/db-schema";
+import { eq, desc, count, or, ilike, inArray, and } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 export interface TestWithUser extends SelectTest {
   username?: string;
   created_by_username?: string;
+}
+
+export interface TestRunWithResults extends SelectTestRun {
+  username?: string;
+  results: TestRunResultWithTest[];
+}
+
+export interface TestRunResultWithTest extends SelectTestRunResult {
+  test_name?: string;
+}
+
+export interface TestDetails {
+  test: TestWithUser;
+  latestRun: TestRunWithResults | null;
+  allRuns: TestRunWithResults[];
 }
 
 export interface TestsResult {
@@ -18,6 +33,17 @@ export interface TestsResult {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
   };
+}
+
+export interface LatestTestRunStats {
+  status: "never_run" | "running" | "completed";
+  results?: {
+    success: number;
+    failed: number;
+    evaluating: number;
+    running: number;
+  };
+  lastRunAt?: Date;
 }
 
 export async function getTestsWithPagination(
@@ -127,4 +153,283 @@ export async function deleteTest(id: number) {
     .where(eq(tests.id, id))
     .returning();
   return deletedTest;
+}
+
+export async function getTestById(id: number): Promise<TestWithUser | null> {
+  const userTable = users;
+  const creatorTable = alias(users, 'creator');
+
+  const result = await db
+    .select({
+      id: tests.id,
+      name: tests.name,
+      prompt: tests.prompt,
+      expected_result: tests.expected_result,
+      user_id: tests.user_id,
+      created_by: tests.created_by,
+      created_at: tests.created_at,
+      updated_at: tests.updated_at,
+      username: userTable.username,
+      created_by_username: creatorTable.username,
+    })
+    .from(tests)
+    .leftJoin(userTable, eq(tests.user_id, userTable.id))
+    .leftJoin(creatorTable, eq(tests.created_by, creatorTable.id))
+    .where(eq(tests.id, id))
+    .limit(1);
+
+  if (result.length === 0) return null;
+
+  const test = result[0];
+  return {
+    ...test,
+    username: test.username ?? undefined,
+    created_by_username: test.created_by_username ?? undefined,
+  };
+}
+
+export async function getTestRunsForTest(testId: number): Promise<TestRunWithResults[]> {
+  try {
+    // First, get all test runs that have results for this specific test
+    const testRunsWithThisTest = await db
+      .select({ test_run_id: testRunResults.test_run_id })
+      .from(testRunResults)
+      .where(eq(testRunResults.test_id, testId))
+      .groupBy(testRunResults.test_run_id);
+
+    if (testRunsWithThisTest.length === 0) {
+      return [];
+    }
+
+    const runIds = testRunsWithThisTest.map(r => r.test_run_id);
+
+    // Get the actual test runs
+    const runs = await db
+      .select({
+        id: testRuns.id,
+        status: testRuns.status,
+        launched_at: testRuns.launched_at,
+        user_id: testRuns.user_id,
+        created_at: testRuns.created_at,
+        updated_at: testRuns.updated_at,
+        username: users.username,
+      })
+      .from(testRuns)
+      .leftJoin(users, eq(testRuns.user_id, users.id))
+      .where(inArray(testRuns.id, runIds))
+      .orderBy(desc(testRuns.created_at));
+
+    // Get results for these runs
+    const runDetails: TestRunWithResults[] = [];
+    
+    for (const run of runs) {
+      const results = await db
+        .select({
+          id: testRunResults.id,
+          test_run_id: testRunResults.test_run_id,
+          test_id: testRunResults.test_id,
+          output: testRunResults.output,
+          status: testRunResults.status,
+          created_at: testRunResults.created_at,
+          updated_at: testRunResults.updated_at,
+          test_name: tests.name,
+        })
+        .from(testRunResults)
+        .leftJoin(tests, eq(testRunResults.test_id, tests.id))
+        .where(eq(testRunResults.test_run_id, run.id));
+
+      runDetails.push({
+        ...run,
+        username: run.username ?? undefined,
+        results: results.map(result => ({
+          ...result,
+          test_name: result.test_name ?? undefined,
+        })),
+      });
+    }
+
+    return runDetails;
+  } catch (error) {
+    console.error("Error fetching test runs:", error);
+    return [];
+  }
+}
+
+export async function getTestDetails(testId: number): Promise<TestDetails | null> {
+  try {
+    // Get the test details
+    const test = await getTestById(testId);
+    if (!test) return null;
+
+    // Get all test runs for this test
+    const allRuns = await getTestRunsForTest(testId);
+    
+    // Get the latest run (first in the ordered list)
+    const latestRun = allRuns.length > 0 ? allRuns[0] : null;
+
+    return {
+      test,
+      latestRun,
+      allRuns,
+    };
+  } catch (error) {
+    console.error("Error fetching test details:", error);
+    return null;
+  }
+}
+
+export async function getLatestTestRunStats(): Promise<LatestTestRunStats> {
+  try {
+    // Get the most recent test run
+    const latestTestRun = await db
+      .select({
+        id: testRuns.id,
+        status: testRuns.status,
+        launched_at: testRuns.launched_at,
+        created_at: testRuns.created_at,
+      })
+      .from(testRuns)
+      .orderBy(desc(testRuns.created_at))
+      .limit(1);
+
+    if (latestTestRun.length === 0) {
+      return { status: "never_run" };
+    }
+
+    const latestRun = latestTestRun[0];
+
+    // If the test run is still running, return running status
+    if (latestRun.status === "Running") {
+      return { 
+        status: "running",
+        lastRunAt: latestRun.launched_at
+      };
+    }
+
+    // Get all test results for the latest run
+    const testResults = await db
+      .select({
+        status: testRunResults.status,
+      })
+      .from(testRunResults)
+      .where(eq(testRunResults.test_run_id, latestRun.id));
+
+    // Count results by status
+    const results = {
+      success: 0,
+      failed: 0,
+      evaluating: 0,
+      running: 0,
+    };
+
+    testResults.forEach(result => {
+      if (result.status === "Success") {
+        results.success++;
+      } else if (result.status === "Failed") {
+        results.failed++;
+      } else if (result.status === "Evaluating") {
+        results.evaluating++;
+      } else if (result.status === "Running") {
+        results.running++;
+      }
+    });
+
+    // If there are still running or evaluating tests, consider it running
+    const isStillRunning = results.running > 0 || results.evaluating > 0;
+
+    return {
+      status: isStillRunning ? "running" : "completed",
+      results,
+      lastRunAt: latestRun.launched_at
+    };
+  } catch (error) {
+    console.error("Error fetching latest test run stats:", error);
+    return { status: "never_run" };
+  }
+}
+
+// Test running functions
+export async function createTestRun(userId: string) {
+  const [newTestRun] = await db.insert(testRuns).values({
+    user_id: userId,
+    status: "Running"
+  }).returning();
+  return newTestRun;
+}
+
+export async function getAllTests(): Promise<TestWithUser[]> {
+  const result = await db
+    .select({
+      id: tests.id,
+      name: tests.name,
+      prompt: tests.prompt,
+      expected_result: tests.expected_result,
+      user_id: tests.user_id,
+      created_by: tests.created_by,
+      created_at: tests.created_at,
+      updated_at: tests.updated_at,
+      username: users.username,
+    })
+    .from(tests)
+    .leftJoin(users, eq(tests.user_id, users.id))
+    .orderBy(tests.id);
+
+  return result.map(test => ({
+    ...test,
+    username: test.username ?? undefined,
+    created_by_username: undefined // Not needed for this use case
+  }));
+}
+
+export async function createTestRunResult(
+  testRunId: number, 
+  testId: number, 
+  status: "Running" | "Success" | "Failed" | "Evaluating",
+  output?: string
+) {
+  const [newResult] = await db.insert(testRunResults).values({
+    test_run_id: testRunId,
+    test_id: testId,
+    status,
+    output
+  }).returning();
+  return newResult;
+}
+
+export async function updateTestRunResult(
+  testRunId: number,
+  testId: number,
+  status: "Running" | "Success" | "Failed" | "Evaluating",
+  output?: string
+) {
+  const [updatedResult] = await db
+    .update(testRunResults)
+    .set({ 
+      status, 
+      output,
+      updated_at: new Date() 
+    })
+    .where(
+      and(
+        eq(testRunResults.test_run_id, testRunId),
+        eq(testRunResults.test_id, testId)
+      )
+    )
+    .returning();
+  return updatedResult;
+}
+
+export async function updateTestRunStatus(
+  testRunId: number, 
+  status: "Running" | "Failed" | "Done"
+) {
+  const [updatedRun] = await db
+    .update(testRuns)
+    .set({ 
+      status,
+      updated_at: new Date() 
+    })
+    .where(eq(testRuns.id, testRunId))
+    .returning();
+  return updatedRun;
 }

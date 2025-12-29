@@ -1,6 +1,12 @@
 "use server";
 
-import { getTestsWithPagination, createTest, updateTest, deleteTest } from "@/services/testsService";
+import { 
+  getTestsWithPagination, 
+  createTest, 
+  updateTest, 
+  deleteTest, 
+  getLatestTestRunStats
+} from "@/services/testsService";
 import { checkRole } from "@/lib/checkRole";
 import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
@@ -137,5 +143,21 @@ export async function deleteTestAction(testId: number) {
       success: false, 
       error: error instanceof Error ? error.message : "Failed to delete test" 
     };
+  }
+}
+
+export async function getLatestTestRunStatsAction() {
+  try {
+    // Check if user has admin role
+    const isAdmin = await checkRole('admin');
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    const stats = await getLatestTestRunStats();
+    return stats;
+  } catch (error) {
+    console.error("Error in getLatestTestRunStatsAction:", error);
+    throw new Error("Failed to fetch test run stats");
   }
 }

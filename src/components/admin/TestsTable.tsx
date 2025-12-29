@@ -45,19 +45,27 @@ const formatDate = (date: Date): string => {
 const getColumns = (
   handleRefresh: () => void,
   onDeleteTest: (testId: number, testName: string) => void,
-  onEditTest: (test: TestWithUser) => void
+  onEditTest: (test: TestWithUser) => void,
+  onViewDetails: (testId: number) => void
 ): ColumnDef<TestWithUser>[] => [
   {
     accessorKey: "name",
     header: "Test Name",
     size: 400, // Make the Test Name column larger
-    cell: ({ row }) => (
-      <div className="font-medium">
-        <div className="truncate" title={row.getValue("name")}>
-          {row.getValue("name")}
+    cell: ({ row }) => {
+      const test = row.original;
+      return (
+        <div className="font-medium">
+          <button
+            onClick={() => onViewDetails(test.id)}
+            className="text-left truncate hover:text-blue-600 hover:underline transition-colors"
+            title={row.getValue("name")}
+          >
+            {row.getValue("name")}
+          </button>
         </div>
-      </div>
-    ),
+      );
+    },
   },
   {
     accessorKey: "username",
@@ -118,7 +126,7 @@ const getColumns = (
               Copy test ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View details</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onViewDetails(test.id)}>View details</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onEditTest(test)}>Edit test</DropdownMenuItem>
             <DropdownMenuItem 
               className="text-red-600"
@@ -161,6 +169,10 @@ export default function TestsTable({ tests, pagination, searchQuery }: TestsTabl
     setEditDialogOpen(true);
   };
 
+  const handleViewDetails = (testId: number) => {
+    router.push(`/admin/tests/${testId}`);
+  };
+
   const handleCloseDeleteDialog = () => {
     setDeleteDialog({
       isOpen: false,
@@ -176,7 +188,7 @@ export default function TestsTable({ tests, pagination, searchQuery }: TestsTabl
 
   const columns = getColumns(() => {
     // Add refresh logic if needed
-  }, handleDeleteTest, handleEditTest);
+  }, handleDeleteTest, handleEditTest, handleViewDetails);
 
   const handleSearch = () => {
     startTransition(() => {
