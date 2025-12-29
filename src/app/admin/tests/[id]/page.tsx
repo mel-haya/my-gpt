@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { getTestDetails } from "@/services/testsService";
 import TestDetailPage from "@/components/admin/TestDetailPage";
 
+// Force dynamic rendering for admin pages
+export const dynamic = 'force-dynamic';
+
 interface TestDetailParams {
   params: Promise<{
     id: string;

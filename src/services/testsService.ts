@@ -7,6 +7,8 @@ import { alias } from "drizzle-orm/pg-core";
 export interface TestWithUser extends SelectTest {
   username?: string;
   created_by_username?: string;
+  latest_test_result_status?: string;
+  latest_test_result_created_at?: Date;
 }
 
 export interface TestRunWithResults extends SelectTestRun {
@@ -46,6 +48,37 @@ export interface LatestTestRunStats {
   lastRunAt?: Date;
 }
 
+export async function getLatestTestRunResultsForTests(testIds: number[]): Promise<Map<number, { status: string; created_at: Date }>> {
+  if (testIds.length === 0) {
+    return new Map();
+  }
+
+  // Get the latest test run result for each test using Drizzle ORM approach
+  const latestResults = await db
+    .select({
+      test_id: testRunResults.test_id,
+      status: testRunResults.status,
+      created_at: testRunResults.created_at,
+    })
+    .from(testRunResults)
+    .where(inArray(testRunResults.test_id, testIds))
+    .orderBy(desc(testRunResults.created_at));
+
+  // Group by test_id and take the latest result for each test
+  const resultMap = new Map<number, { status: string; created_at: Date }>();
+  
+  for (const result of latestResults) {
+    if (!resultMap.has(result.test_id)) {
+      resultMap.set(result.test_id, {
+        status: result.status,
+        created_at: result.created_at
+      });
+    }
+  }
+
+  return resultMap;
+}
+
 export async function getTestsWithPagination(
   searchQuery?: string,
   limit: number = 10,
@@ -65,7 +98,7 @@ export async function getTestsWithPagination(
       )
     : undefined;
 
-  // Build the query
+  // Build the query  
   const query = db
     .select({
       id: tests.id,
@@ -101,12 +134,23 @@ export async function getTestsWithPagination(
 
   const totalPages = Math.ceil(totalCount / limit);
 
+  // Get latest test run results for all tests
+  const testIds = testsData.map(test => test.id);
+  const latestResults = testIds.length > 0 
+    ? await getLatestTestRunResultsForTests(testIds)
+    : new Map();
+
   // Map the results to match the expected interface
-  const mappedTests: TestWithUser[] = testsData.map(test => ({
-    ...test,
-    username: test.username ?? undefined,
-    created_by_username: test.created_by_username ?? undefined,
-  }));
+  const mappedTests: TestWithUser[] = testsData.map(test => {
+    const latestResult = latestResults.get(test.id);
+    return {
+      ...test,
+      username: test.username ?? undefined,
+      created_by_username: test.created_by_username ?? undefined,
+      latest_test_result_status: latestResult?.status,
+      latest_test_result_created_at: latestResult?.created_at,
+    };
+  });
 
   return {
     tests: mappedTests,
@@ -421,7 +465,7 @@ export async function updateTestRunResult(
 
 export async function updateTestRunStatus(
   testRunId: number, 
-  status: "Running" | "Failed" | "Done"
+  status: "Running" | "Failed" | "Done" | "Stopped"
 ) {
   const [updatedRun] = await db
     .update(testRuns)
@@ -432,4 +476,34 @@ export async function updateTestRunStatus(
     .where(eq(testRuns.id, testRunId))
     .returning();
   return updatedRun;
+}
+
+export async function getTestRunStatus(testRunId: number) {
+  const [testRun] = await db
+    .select({
+      status: testRuns.status
+    })
+    .from(testRuns)
+    .where(eq(testRuns.id, testRunId))
+    .limit(1);
+  return testRun?.status;
+}
+
+export async function markRemainingTestsAsStopped(testRunId: number, currentTestId: number) {
+  // Mark all test run results that are still "Running" (not started yet) as "Stopped"
+  const updatedResults = await db
+    .update(testRunResults)
+    .set({ 
+      status: "Stopped",
+      output: "Test stopped before execution",
+      updated_at: new Date() 
+    })
+    .where(
+      and(
+        eq(testRunResults.test_run_id, testRunId),
+        eq(testRunResults.status, "Running")
+      )
+    )
+    .returning();
+  return updatedResults;
 }

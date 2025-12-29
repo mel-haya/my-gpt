@@ -5,17 +5,44 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAvailableModels, type ModelOption } from "@/app/actions/models";
-import { Play, Loader2 } from "lucide-react";
+import { Play, Loader2, Square } from "lucide-react";
+import { toast } from "react-toastify";
 
 export default function TestRunner() {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentTestRunId, setCurrentTestRunId] = useState<number | null>(null);
+  const [testProgress, setTestProgress] = useState<{ completed: number; total: number } | null>(null);
+
+  // Function to check test status
+  const checkTestStatus = async () => {
+    try {
+      const statusResponse = await fetch('/api/admin/test-status');
+      if (statusResponse.ok) {
+        const statusResult = await statusResponse.json();
+        setIsRunning(statusResult.isRunning);
+        if (statusResult.isRunning) {
+          setCurrentTestRunId(statusResult.currentTestRunId);
+          // Set progress if available
+          if (statusResult.progress) {
+            setTestProgress(statusResult.progress);
+          }
+        } else {
+          setCurrentTestRunId(null);
+          setTestProgress(null);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking test status:", error);
+    }
+  };
 
   useEffect(() => {
-    async function loadModels() {
+    async function loadModelsAndCheckStatus() {
       try {
+        // Load available models
         const availableModels = await getAvailableModels();
         setModels(availableModels);
         // Set GPT-4o as default, fallback to first model if not available
@@ -23,22 +50,35 @@ export default function TestRunner() {
         if (defaultModel) {
           setSelectedModel(defaultModel.id);
         }
+
+        // Initial status check
+        await checkTestStatus();
       } catch (error) {
-        console.error("Error loading models:", error);
+        console.error("Error loading models or status:", error);
       } finally {
         setIsLoading(false);
       }
     }
-    loadModels();
+    loadModelsAndCheckStatus();
   }, []);
+
+  // Polling effect for test status updates
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const interval = setInterval(checkTestStatus, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [isRunning]);
 
   const handleRunTests = async () => {
     if (!selectedModel) {
-      alert("Please select a model first");
+      toast.error("Please select a model first");
       return;
     }
 
     setIsRunning(true);
+    setTestProgress(null); // Reset progress
     try {
       const response = await fetch('/api/admin/run-tests', {
         method: 'POST',
@@ -53,17 +93,48 @@ export default function TestRunner() {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        alert(`Tests started successfully! ${result.message}`);
-        // Optionally redirect to view test results or refresh the page
-        window.location.reload();
+        setCurrentTestRunId(result.testRunId);
+        toast.success(`Tests started successfully! ${result.message}`);
       } else {
-        alert(`Failed to start tests: ${result.error || 'Unknown error'}`);
+        toast.error(`Failed to start tests: ${result.error || 'Unknown error'}`);
+        setIsRunning(false);
       }
     } catch (error) {
       console.error("Error running tests:", error);
-      alert("Failed to run tests");
-    } finally {
+      toast.error("Failed to run tests");
       setIsRunning(false);
+    }
+  };
+
+  const handleStopTests = async () => {
+    if (!currentTestRunId) {
+      toast.error("No test run to stop");
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/stop-tests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          testRunId: currentTestRunId
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast.success("Tests will stop after the current test completes");
+        // Check status immediately after stopping
+        await checkTestStatus();
+      } else {
+        toast.error(`Failed to stop tests: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error("Error stopping tests:", error);
+      toast.error("Failed to stop tests");
     }
   };
 
@@ -101,16 +172,30 @@ export default function TestRunner() {
           </Select>
         </div>
         
+        {isRunning && testProgress && (
+          <div className="text-center">
+            <p className="text-sm text-gray-600 mb-2">
+              Progress: {testProgress.completed}/{testProgress.total} tests completed
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                style={{ width: `${(testProgress.completed / testProgress.total) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
+        
         <Button 
-          onClick={handleRunTests} 
-          disabled={isRunning || !selectedModel}
+          onClick={isRunning ? handleStopTests : handleRunTests} 
+          disabled={!selectedModel}
           className="w-full"
           size="lg"
         >
           {isRunning ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Running Tests...
+              <Square className="mr-2 h-4 w-4" />
+              Stop Tests
             </>
           ) : (
             <>

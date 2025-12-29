@@ -2,8 +2,8 @@ import { serial, vector, text, pgTable, index, jsonb, pgEnum, uniqueIndex, integ
 
 export const rolesEnum = pgEnum("roles", ["system", "user", "assistant"]);
 export const statusEnum = pgEnum("file_status", ["processing", "completed", "failed"]);
-export const testRunStatusEnum = pgEnum("test_run_status", ["Running", "Failed", "Done"]);
-export const testResultStatusEnum = pgEnum("test_result_status", ["Running","", "Success", "Failed", "Evaluating"]);
+export const testRunStatusEnum = pgEnum("test_run_status", ["Running", "Failed", "Done", "Stopped"]);
+export const testResultStatusEnum = pgEnum("test_result_status", ["Running","", "Success", "Failed", "Evaluating", "Stopped"]);
 export const documents = pgTable(
   "documents",
   {

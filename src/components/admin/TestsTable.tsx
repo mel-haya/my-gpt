@@ -104,6 +104,51 @@ const getColumns = (
     },
   },
   {
+    accessorKey: "latest_test_result_status",
+    header: "Latest Result",
+    size: 150, // Fit content for Latest Result column
+    cell: ({ row }) => {
+      const status = row.getValue("latest_test_result_status") as string | undefined;
+      const lastRunDate = row.original.latest_test_result_created_at;
+      
+      if (!status) {
+        return (
+          <div className="text-sm text-neutral-500 dark:text-neutral-400">
+            Never run
+          </div>
+        );
+      }
+
+      const getStatusColor = (status: string) => {
+        switch (status) {
+          case "Success":
+            return "text-green-600 dark:text-green-400";
+          case "Failed":
+            return "text-red-600 dark:text-red-400";
+          case "Running":
+            return "text-blue-600 dark:text-blue-400";
+          case "Evaluating":
+            return "text-yellow-600 dark:text-yellow-400";
+          default:
+            return "text-neutral-600 dark:text-neutral-400";
+        }
+      };
+
+      return (
+        <div className="space-y-1">
+          <div className={`text-sm font-medium ${getStatusColor(status)}`}>
+            {status}
+          </div>
+          {lastRunDate && (
+            <div className="text-xs text-neutral-500 dark:text-neutral-400">
+              {formatDate(lastRunDate)}
+            </div>
+          )}
+        </div>
+      );
+    },
+  },
+  {
     id: "actions",
     enableHiding: false,
     size: 50, // Fit icon size for Actions column
