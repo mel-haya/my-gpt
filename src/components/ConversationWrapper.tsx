@@ -110,11 +110,11 @@ export default function ConversationWrapper({
         };
       } else {
         // For assistant messages, keep the original structure
-        const fileParts = parts.filter(
-          (part) =>
-            part.type === "tool-generateImage" &&
-            part.state === "output-available"
-        );
+        // const fileParts = parts.filter(
+        //   (part) =>
+        //     part.type === "tool-generateImage" &&
+        //     part.state === "output-available"
+        // );
         const toolParts = parts.filter(
           (part) =>
             isToolOrDynamicToolUIPart(part)
@@ -126,11 +126,11 @@ export default function ConversationWrapper({
             .filter((part) => part.type === "text")
             .map((part) => part.text)
             .join(""),
-          attachments: fileParts.map((part) => ({
-            type: "file" as const,
-            url: part.output || "",
-            mediaType: "image/png",
-          })),
+          // attachments: fileParts.map((part) => ({
+          //   type: "file" as const,
+          //   url: part.output || "",
+          //   mediaType: "image/png",
+          // })),
           toolsStatus: toolParts
         };
       }
@@ -260,7 +260,7 @@ export default function ConversationWrapper({
                           </MessageResponse>
                         </div>
                       )}
-                      {message.role === "assistant" &&
+                      {/* {message.role === "assistant" &&
                         message.attachments &&
                         message.attachments.length > 0 && (
                           <div className="mt-2">
@@ -275,7 +275,7 @@ export default function ConversationWrapper({
                               />
                             ))}
                           </div>
-                        )}
+                        )} */}
                     </MessageContent>
                   </Message>
                 );

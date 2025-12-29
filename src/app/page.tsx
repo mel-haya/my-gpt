@@ -41,45 +41,45 @@ export default function Home() {
     addToolOutput,
   } = useChat<ChatMessage>({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-    async onToolCall({ toolCall }) {
-      if (toolCall.dynamic) return;
-      switch (toolCall.toolName) {
-        case "changeBackground":
-          {
-            const { imageUrl, background } = toolCall.input;
+    // async onToolCall({ toolCall }) {
+    //   if (toolCall.dynamic) return;
+    //   switch (toolCall.toolName) {
+    //     case "changeBackground":
+    //       {
+    //         const { imageUrl, background } = toolCall.input;
 
-            const transformation = `e-changebg-prompt-${background}`;
-            const transformedUrl = buildTransformationUrl(
-              imageUrl,
-              transformation
-            );
+    //         const transformation = `e-changebg-prompt-${background}`;
+    //         const transformedUrl = buildTransformationUrl(
+    //           imageUrl,
+    //           transformation
+    //         );
 
-            addToolOutput({
-              tool: "changeBackground",
-              toolCallId: toolCall.toolCallId,
-              output: transformedUrl,
-            });
-          }
-          break;
-        case "removeBackground":
-          {
-            const { imageUrl } = toolCall.input;
+    //         addToolOutput({
+    //           tool: "changeBackground",
+    //           toolCallId: toolCall.toolCallId,
+    //           output: transformedUrl,
+    //         });
+    //       }
+    //       break;
+    //     case "removeBackground":
+    //       {
+    //         const { imageUrl } = toolCall.input;
 
-            const transformation = `e-bgremove`;
-            const transformedUrl = buildTransformationUrl(
-              imageUrl,
-              transformation
-            );
+    //         const transformation = `e-bgremove`;
+    //         const transformedUrl = buildTransformationUrl(
+    //           imageUrl,
+    //           transformation
+    //         );
 
-            addToolOutput({
-              tool: "removeBackground",
-              toolCallId: toolCall.toolCallId,
-              output: transformedUrl,
-            });
-          }
-          break;
-      }
-    },
+    //         addToolOutput({
+    //           tool: "removeBackground",
+    //           toolCallId: toolCall.toolCallId,
+    //           output: transformedUrl,
+    //         });
+    //       }
+    //       break;
+    //   }
+    // },
     async onFinish({ messages }) {
       const userMessages = messages.filter((m) => m.role === "user");
       if (userMessages.length === 1) await refetch();

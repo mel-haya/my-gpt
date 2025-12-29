@@ -6,57 +6,57 @@ import { uploadImageToImageKit } from "./imageKit";
 import { searchDocuments } from "@/lib/search";
 
 export const tools = {
-  generateImage: tool({
-    name: "generateImage",
-    description: "Generates an image based on a text prompt.",
-    inputSchema: z.object({
-      prompt: z
-        .string()
-        .describe("The text prompt to generate the image from."),
-    }),
-    execute: async ({ prompt }) => {
-      const { image } = await generateImage({
-        model: openai.imageModel("dall-e-3"),
-        prompt: prompt,
-        size: "1024x1024",
-        providerOptions: {
-          openai: { style: "vivid", quality: "hd" },
-        },
-      });
-      const imageUrl = await uploadImageToImageKit(image.base64);
-      return imageUrl;
-    },
-  }),
-  changeBackground: tool({
-    name: "changeBackground",
-    description:
-      "Changes the background of an image to an AI generated background.",
-    inputSchema: z.object({
-      imageUrl: z
-        .string()
-        .describe("The URL of the image to change the background of."),
-      background: z
-        .string()
-        .describe(
-          "The desired background color (e.g., 'modern office', 'beach sunset', 'forest')."
-        ),
-    }),
-    outputSchema: z
-      .string()
-      .describe("The URL of the image with the changed background."),
-  }),
-  removeBackground: tool({
-    name: "removeBackground",
-    description: "Removes the background from an image.",
-    inputSchema: z.object({
-      imageUrl: z
-        .string()
-        .describe("The URL of the image to remove the background of."),
-    }),
-    outputSchema: z
-      .string()
-      .describe("The URL of the image with the background removed."),
-  }),
+  // generateImage: tool({
+  //   name: "generateImage",
+  //   description: "Generates an image based on a text prompt.",
+  //   inputSchema: z.object({
+  //     prompt: z
+  //       .string()
+  //       .describe("The text prompt to generate the image from."),
+  //   }),
+  //   execute: async ({ prompt }) => {
+  //     const { image } = await generateImage({
+  //       model: openai.imageModel("dall-e-3"),
+  //       prompt: prompt,
+  //       size: "1024x1024",
+  //       providerOptions: {
+  //         openai: { style: "vivid", quality: "hd" },
+  //       },
+  //     });
+  //     const imageUrl = await uploadImageToImageKit(image.base64);
+  //     return imageUrl;
+  //   },
+  // }),
+  // changeBackground: tool({
+  //   name: "changeBackground",
+  //   description:
+  //     "Changes the background of an image to an AI generated background.",
+  //   inputSchema: z.object({
+  //     imageUrl: z
+  //       .string()
+  //       .describe("The URL of the image to change the background of."),
+  //     background: z
+  //       .string()
+  //       .describe(
+  //         "The desired background color (e.g., 'modern office', 'beach sunset', 'forest')."
+  //       ),
+  //   }),
+  //   outputSchema: z
+  //     .string()
+  //     .describe("The URL of the image with the changed background."),
+  // }),
+  // removeBackground: tool({
+  //   name: "removeBackground",
+  //   description: "Removes the background from an image.",
+  //   inputSchema: z.object({
+  //     imageUrl: z
+  //       .string()
+  //       .describe("The URL of the image to remove the background of."),
+  //   }),
+  //   outputSchema: z
+  //     .string()
+  //     .describe("The URL of the image with the background removed."),
+  // }),
   searchKnowledgeBase: tool({
     name: "searchKnowledgeBase",
     description:
