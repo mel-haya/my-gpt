@@ -66,18 +66,42 @@ export const tools = {
         .string()
         .describe("The search query to look for in the knowledge base."),
     }),
+    outputSchema: z.object({
+      success: z.boolean().describe("Whether the search was successful"),
+      message: z.string().describe("Status message"),
+      results: z.array(z.object({
+        id: z.number().describe("Document ID"),
+        content: z.string().describe("Document content"),
+        similarity: z.number().describe("Similarity score")
+      })).optional().describe("Array of search results with similarity scores")
+    }),
     execute: async ({ query }) => {
       try {
         const response = await searchDocuments(query, 5, 0);
         if (response.length === 0) {
           console.log("No relevant documents found.");
-          return "No relevant information found in the knowledge base.";
+          return {
+            success: false,
+            message: "No relevant information found in the knowledge base.",
+            results: []
+          };
         }
-        const results = response.map((doc) => `- ${doc.content}`).join("\n");
-        return `Here are the relevant documents found in the knowledge base:\n${results}`;
+        return {
+          success: true,
+          message: `Found ${response.length} relevant documents in the knowledge base.`,
+          results: response.map(doc => ({
+            id: doc.id,
+            content: doc.content,
+            similarity: Number(doc.similarity.toFixed(3))
+          }))
+        };
       } catch (error) {
         console.error("Error searching knowledge base:", error);
-        return "An error occurred while searching the knowledge base.";
+        return {
+          success: false,
+          message: "An error occurred while searching the knowledge base.",
+          results: []
+        };
       }
     },
   })

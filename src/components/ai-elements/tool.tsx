@@ -19,6 +19,7 @@ import {
 import type { ComponentProps, ReactNode } from "react";
 import { isValidElement } from "react";
 import { CodeBlock } from "./code-block";
+import { KnowledgeBaseResults } from "./knowledge-base-results";
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
 
@@ -122,16 +123,50 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
 export type ToolOutputProps = ComponentProps<"div"> & {
   output: ToolUIPart["output"];
   errorText: ToolUIPart["errorText"];
+  toolName?: string;
+};
+
+// Type guard for knowledge base output
+const isKnowledgeBaseOutput = (output: any): output is {
+  success: boolean;
+  message: string;
+  results?: Array<{
+    id: number;
+    content: string;
+    similarity: number;
+  }>;
+} => {
+  return (
+    typeof output === "object" &&
+    output !== null &&
+    typeof output.success === "boolean" &&
+    typeof output.message === "string" &&
+    (output.results === undefined || Array.isArray(output.results))
+  );
 };
 
 export const ToolOutput = ({
   className,
   output,
   errorText,
+  toolName,
   ...props
 }: ToolOutputProps) => {
   if (!(output || errorText)) {
     return null;
+  }
+
+  // Handle knowledge base results with custom component
+  if (toolName === "searchKnowledgeBase" && isKnowledgeBaseOutput(output)) {
+    return (
+      <div className={cn("p-4", className)} {...props}>
+        <KnowledgeBaseResults
+          success={output.success}
+          message={output.message}
+          results={output.results}
+        />
+      </div>
+    );
   }
 
   let Output = <div>{output as ReactNode}</div>;

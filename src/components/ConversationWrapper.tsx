@@ -240,7 +240,11 @@ export default function ConversationWrapper({
                                   <ToolInput input={tool.input} />
                                 )}
                                 {(tool.output || tool.errorText) && tool.state === "output-available" && (
-                                  <ToolOutput output={tool.output} errorText={tool.errorText} />
+                                  <ToolOutput 
+                                    output={tool.output} 
+                                    errorText={tool.errorText} 
+                                    toolName={getToolOrDynamicToolName(tool)}
+                                  />
                                 )}
                               </ToolContent>
                             </Tool>
