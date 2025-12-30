@@ -260,22 +260,6 @@ export default function ConversationWrapper({
                           </MessageResponse>
                         </div>
                       )}
-                      {/* {message.role === "assistant" &&
-                        message.attachments &&
-                        message.attachments.length > 0 && (
-                          <div className="mt-2">
-                            {message.attachments.map((attachment, i) => (
-                              <Image
-                                key={`${message.key}-img-${i}`}
-                                src={attachment.url}
-                                alt="Generated image"
-                                width={500}
-                                height={500}
-                                className="max-w-full h-auto rounded-lg"
-                              />
-                            ))}
-                          </div>
-                        )} */}
                     </MessageContent>
                   </Message>
                 );

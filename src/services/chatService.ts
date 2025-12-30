@@ -1,6 +1,8 @@
-import { generateText, convertToModelMessages } from "ai";
+import { generateText, convertToModelMessages, stepCountIs } from "ai";
 import { ChatMessage } from "@/types/chatMessage";
 import { getSystemPrompt } from "@/services/settingsService";
+import { tools } from "@/app/api/chat/tools";
+
 
 const supportedModels = [
   "openai/gpt-4o",
@@ -34,15 +36,18 @@ export async function generateChatCompletion(request: ChatRequest): Promise<stri
     try {
       systemPrompt = await getSystemPrompt();
     } catch (systemError) {
-      systemPrompt = "You are a helpful assistant."; // Fallback
+      systemPrompt = "You are a helpful assistant.";
     }
     
     const result = await generateText({
       messages: modelMessages,
       model: selectedModel,
       system: systemPrompt,
+      tools,
+      stopWhen: stepCountIs(2)
     });
     
+    // The result should contain the final text after tool execution
     if (!result.text || result.text.trim() === '') {
       throw new Error(`No text content generated from AI model ${selectedModel}`);
     }
@@ -50,6 +55,13 @@ export async function generateChatCompletion(request: ChatRequest): Promise<stri
     return result.text.trim();
   } catch (error) {
     // For testing, return a simple fallback response to identify if the error is in AI generation
+    console.error("Detailed error generating chat completion:", {
+      error: error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      model: request.model,
+      hasTools: !!tools
+    });
     if (process.env.NODE_ENV === 'development') {
       return "This is a fallback response for testing purposes. The AI service is currently unavailable.";
     }

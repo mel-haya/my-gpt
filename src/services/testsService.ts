@@ -3,12 +3,16 @@ import { tests, users, testRuns, testRunResults } from "@/lib/db-schema";
 import type { SelectTest, SelectTestRun, SelectTestRunResult } from "@/lib/db-schema";
 import { eq, desc, count, or, ilike, inArray, and } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { generateChatCompletion } from "@/services/chatService";
+import { generateObject } from 'ai';
+import { z } from 'zod';
 
 export interface TestWithUser extends SelectTest {
   username?: string;
   created_by_username?: string;
   latest_test_result_status?: string;
   latest_test_result_created_at?: Date;
+  latest_test_result_output?: string;
 }
 
 export interface TestRunWithResults extends SelectTestRun {
@@ -48,30 +52,35 @@ export interface LatestTestRunStats {
   lastRunAt?: Date;
 }
 
-export async function getLatestTestRunResultsForTests(testIds: number[]): Promise<Map<number, { status: string; created_at: Date }>> {
+export async function getLatestTestRunResultsForTests(testIds: number[]): Promise<Map<number, { status: string; created_at: Date; output?: string }>> {
   if (testIds.length === 0) {
     return new Map();
   }
 
-  // Get the latest test run result for each test using Drizzle ORM approach
+  // Get the latest test run result for each test, including individual test runs (test_run_id = NULL)
+  // Using a more robust approach with a subquery to ensure we get the absolute latest result per test
   const latestResults = await db
     .select({
       test_id: testRunResults.test_id,
       status: testRunResults.status,
       created_at: testRunResults.created_at,
+      output: testRunResults.output,
+      id: testRunResults.id,
     })
     .from(testRunResults)
     .where(inArray(testRunResults.test_id, testIds))
-    .orderBy(desc(testRunResults.created_at));
+    .orderBy(desc(testRunResults.created_at), desc(testRunResults.id));
 
   // Group by test_id and take the latest result for each test
-  const resultMap = new Map<number, { status: string; created_at: Date }>();
+  // Use both created_at and id to ensure we get the absolute latest result
+  const resultMap = new Map<number, { status: string; created_at: Date; output?: string }>();
   
   for (const result of latestResults) {
     if (!resultMap.has(result.test_id)) {
       resultMap.set(result.test_id, {
         status: result.status,
-        created_at: result.created_at
+        created_at: result.created_at,
+        output: result.output || undefined
       });
     }
   }
@@ -149,6 +158,7 @@ export async function getTestsWithPagination(
       created_by_username: test.created_by_username ?? undefined,
       latest_test_result_status: latestResult?.status,
       latest_test_result_created_at: latestResult?.created_at,
+      latest_test_result_output: latestResult?.output,
     };
   });
 
@@ -251,7 +261,7 @@ export async function getTestRunsForTest(testId: number): Promise<TestRunWithRes
       return [];
     }
 
-    const runIds = testRunsWithThisTest.map(r => r.test_run_id);
+    const runIds = testRunsWithThisTest.map(r => r.test_run_id).filter((id): id is number => id !== null);
 
     // Get the actual test runs
     const runs = await db
@@ -517,4 +527,119 @@ export async function markRemainingTestsAsStopped(testRunId: number, currentTest
     )
     .returning();
   return updatedResults;
+}
+
+export async function evaluateTestResponse(
+  originalPrompt: string,
+  expectedResult: string,
+  aiResponse: string,
+  evaluatorModel: string = "openai/gpt-4o"
+): Promise<{ status: "Success" | "Failed"; explanation: string }> {
+  // Define evaluation schema with simple enum output
+  const evaluationSchema = z.object({
+    result: z.enum(['success', 'fail']).describe('Whether the AI response is helpful and provides expected information'),
+    explanation: z.string().describe('Brief explanation of why it passed or failed')
+  });
+
+  // Evaluate the response using generateObject with system prompt
+  const { object: evaluation } = await generateObject({
+    model: evaluatorModel,
+    system: `You are an AI response evaluator. Your job is to evaluate if the AI output is helpful and provides the same information as would be expected for the given prompt. 
+    
+    Return 'success' if the response adequately answers the prompt and would be helpful to a user.
+    Return 'fail' if the response is inadequate, unhelpful, or doesn't address the prompt properly.
+    
+    Be objective and fair in your assessment.`,
+    prompt: `Evaluate this AI response:
+
+Original Test Prompt: "${originalPrompt}"
+
+Expected Response: "${expectedResult}"
+
+AI Response: "${aiResponse}"
+
+Determine if this is a success or fail.`,
+    schema: evaluationSchema,
+  });
+
+  // Set status based on evaluation result
+  const status = evaluation.result === 'success' ? 'Success' : 'Failed';
+  const explanation = `Result: ${evaluation.result}\nExplanation: ${evaluation.explanation}`;
+
+  return { status, explanation };
+}
+
+export async function runSingleTest(testId: number, evaluatorModel: string = "openai/gpt-4o"): Promise<{ id: number; output: string; status: string; explanation?: string }> {
+  // Get the test details
+  const test = await db
+    .select()
+    .from(tests)
+    .where(eq(tests.id, testId))
+    .limit(1);
+
+  if (!test || test.length === 0) {
+    throw new Error("Test not found");
+  }
+
+  const testData = test[0];
+  
+  // Execute the test using the actual AI service
+  let output: string;
+  let status: string;
+  let explanation: string | undefined;
+  
+  try {
+    // Call the AI service with the test prompt
+    output = await generateChatCompletion({
+      messages: [
+        {
+          id: crypto.randomUUID(),
+          role: "user",
+          parts: [{ type:"text", text: testData.prompt }]
+        }
+      ],
+      model: "openai/gpt-4o" // Default model, could be configurable
+    });
+
+    if (!output.trim()) {
+      throw new Error('No response content received from chat service');
+    }
+
+    // Evaluate the response using the new evaluation function
+    const evaluation = await evaluateTestResponse(
+      testData.prompt,
+      testData.expected_result,
+      output.trim(),
+      evaluatorModel
+    );
+
+    status = evaluation.status;
+    explanation = evaluation.explanation;
+    
+  } catch (error) {
+    output = `Test execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    status = "Failed";
+    explanation = "Test execution failed due to an error";
+  }
+
+  // Create the test run result with null test_run_id
+  const result = await db
+    .insert(testRunResults)
+    .values({
+      test_run_id: null,
+      test_id: testId,
+      output: output,
+      explanation: explanation,
+      status: status as SelectTestRunResult["status"],
+      created_at: new Date(),
+      updated_at: new Date()
+    })
+    .returning();
+
+  return {
+    id: result[0].id,
+    output: result[0].output || '',
+    status: result[0].status,
+    explanation: result[0].explanation || undefined
+  };
 }

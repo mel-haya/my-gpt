@@ -12,6 +12,7 @@ import {
   updateTestRunStatus,
   getTestRunStatus,
   markRemainingTestsAsStopped,
+  evaluateTestResponse,
   type TestWithUser
 } from "@/services/testsService";
 
@@ -126,53 +127,29 @@ async function runTestsInBackground(
           throw new Error('No response content received from chat service');
         }
 
-        // Now evaluate the response using generateObject with system prompt
-        // Define evaluation schema with simple enum output
-        const evaluationSchema = z.object({
-          result: z.enum(['success', 'fail']).describe('Whether the AI response is helpful and provides expected information'),
-          explanation: z.string().describe('Brief explanation of why it passed or failed')
-        });
-
-        // Evaluate the response using generateObject with system prompt
-        const { object: evaluation } = await generateObject({
-          model: selectedEvaluatorModel,
-          system: `You are an AI response evaluator. Your job is to evaluate if the AI output is helpful and provides the same information as would be expected for the given prompt. 
-          
-          Return 'success' if the response adequately answers the prompt and would be helpful to a user.
-          Return 'fail' if the response is inadequate, unhelpful, or doesn't address the prompt properly.
-          
-          Be objective and fair in your assessment.`,
-          prompt: `Evaluate this AI response:
-
-Original Test Prompt: "${test.prompt}"
-
-Expected Response: "${test.expected_result}"
-
-AI Response: "${fullResponse.trim()}"
-
-Determine if this is a success or fail.`,
-          schema: evaluationSchema,
-        });
-
-        // Format the evaluation result
-        const evaluationResult = `Result: ${evaluation.result}
-Explanation: ${evaluation.explanation}`;
+        // Evaluate the response using the new evaluation function
+        const evaluation = await evaluateTestResponse(
+          test.prompt,
+          test.expected_result,
+          fullResponse.trim(),
+          selectedEvaluatorModel
+        );
 
         // Store only the AI response in output, and evaluation explanation separately
         const finalResult = fullResponse.trim();
 
         // Mark test based on evaluation result
-        const testStatus = evaluation.result === 'success' ? 'Success' : 'Failed';
+        const testStatus = evaluation.status;
         await updateTestRunResult(
           testRunId, 
           test.id, 
           testStatus, 
           finalResult,
-          evaluationResult
+          evaluation.explanation
         );
         
-        const statusEmoji = evaluation.result === 'success' ? '✅' : '❌';
-        console.log(`${statusEmoji} Test ${test.id} (${test.name}) completed with result: ${evaluation.result}`);
+        const statusEmoji = evaluation.status === 'Success' ? '✅' : '❌';
+        console.log(`${statusEmoji} Test ${test.id} (${test.name}) completed with result: ${evaluation.status}`);
         
         // Check if the test run has been stopped after completing this test
         const statusAfterTest = await getTestRunStatus(testRunId);

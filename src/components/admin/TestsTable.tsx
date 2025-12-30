@@ -8,7 +8,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { MoreHorizontal, Search, ChevronLeft, ChevronRight, Upload, Trash2 } from "lucide-react";
+import { MoreHorizontal, Search, ChevronLeft, ChevronRight, Upload, Trash2, Play, Loader2 } from "lucide-react";
 import TestDialog from "./TestDialog";
 import DeleteTestDialog from "./DeleteTestDialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { TestWithUser } from "@/services/testsService";
 import { createTestAction } from "@/app/actions/tests";
+import { runSingleTestAction } from "@/app/actions/tests";
 
 interface TestsTableProps {
   tests: TestWithUser[];
@@ -55,7 +56,9 @@ const getColumns = (
   selectedRows: Set<number>,
   onSelectRow: (testId: number, checked: boolean) => void,
   onSelectAll: (checked: boolean) => void,
-  allTests: TestWithUser[]
+  allTests: TestWithUser[],
+  onRunTest: (testId: number) => void,
+  runningTests: Set<number>
 ): ColumnDef<TestWithUser>[] => [
   {
     id: "select",
@@ -80,7 +83,7 @@ const getColumns = (
   {
     accessorKey: "name",
     header: "Test Name",
-    size: 400, // Make the Test Name column larger
+    size: 200, // Make the Test Name column larger
     cell: ({ row }) => {
       const test = row.original;
       return (
@@ -97,44 +100,54 @@ const getColumns = (
     },
   },
   {
-    accessorKey: "username",
-    header: "User",
-    size: 150, // Fit content for User column
-    cell: ({ row }) => (
-      <div className="font-medium text-sm">
-        {row.getValue("username") || "N/A"}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "created_at",
-    header: "Created Date",
-    size: 200, // Fit content for Created Date column
-    meta: {
-      className: "hidden xl:table-cell",
-    },
+    accessorKey: "latest_test_result_output",
+    header: "Latest Test Output",
+    size: 200,
     cell: ({ row }) => {
-      const date = row.getValue("created_at") as Date;
+      const output = row.original.latest_test_result_output as string | undefined;
+      const status = row.original.latest_test_result_status as string | undefined;
+      
+      if (!output && !status) {
+        return (
+          <div className="text-sm text-neutral-500 dark:text-neutral-400">
+            No output available
+          </div>
+        );
+      }
+
       return (
-        <div className="text-sm text-neutral-600 dark:text-neutral-400">
-          {formatDate(date)}
+        <div className="max-w-xs">
+          <div className="text-sm text-neutral-700 dark:text-neutral-300 truncate" title={output || 'No output'}>
+            {output || 'No output'}
+          </div>
         </div>
       );
     },
   },
   {
-    accessorKey: "updated_at",
-    header: "Updated Date",
-    size: 200, // Fit content for Updated Date column
-    meta: {
-      className: "hidden xl:table-cell",
-    },
+    id: "run",
+    header: "Run",
+    size: 80,
+    enableSorting: false,
+    enableHiding: false,
     cell: ({ row }) => {
-      const date = row.getValue("updated_at") as Date;
+      const test = row.original;
+      const isRunning = runningTests.has(test.id);
+      
       return (
-        <div className="text-sm text-neutral-600 dark:text-neutral-400">
-          {formatDate(date)}
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onRunTest(test.id)}
+          disabled={isRunning}
+          className="h-8 w-8 p-0"
+        >
+          {isRunning ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Play className="h-4 w-4" />
+          )}
+        </Button>
       );
     },
   },
@@ -208,6 +221,7 @@ const getColumns = (
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onViewDetails(test.id)}>View details</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onEditTest(test)}>Edit test</DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem 
               className="text-red-600"
               onClick={() => onDeleteTest(test.id, test.name)}
@@ -242,6 +256,7 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
     isOpen: boolean;
     testIds: number[];
   }>({ isOpen: false, testIds: [] });
+  const [runningTests, setRunningTests] = useState<Set<number>>(new Set());
 
   // Expose refresh function to parent
   useEffect(() => {
@@ -323,6 +338,33 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
     setBulkDeleteDialog({ isOpen: false, testIds: [] });
   };
 
+  const handleRunTest = async (testId: number) => {
+    setRunningTests(prev => new Set(prev).add(testId));
+    
+    try {
+      const result = await runSingleTestAction(testId);
+      
+      if (result.success) {
+        // Refresh the table data to show updated results
+        if (onDataRefresh) {
+          onDataRefresh();
+        } else {
+          router.refresh();
+        }
+      } else {
+        console.error('Failed to run test:', result.error);
+      }
+    } catch (error) {
+      console.error('Error running test:', error);
+    } finally {
+      setRunningTests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(testId);
+        return newSet;
+      });
+    }
+  };
+
   const columns = getColumns(
     () => {
       // Add refresh logic if needed
@@ -333,7 +375,9 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
     selectedRows,
     handleSelectRow,
     handleSelectAll,
-    tests
+    tests,
+    handleRunTest,
+    runningTests
   );
 
   const handleSearch = () => {

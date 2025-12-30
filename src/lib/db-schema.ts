@@ -147,7 +147,7 @@ export const testRunResults = pgTable(
   "test_run_results",
   {
     id: serial("id").primaryKey(),
-    test_run_id: integer("test_run_id").notNull().references(() => testRuns.id),
+    test_run_id: integer("test_run_id").references(() => testRuns.id),
     test_id: integer("test_id").notNull().references(() => tests.id),
     output: text("output"),
     explanation: text("explanation"),
