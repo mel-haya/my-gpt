@@ -273,6 +273,7 @@ export async function getTestRunsForTest(testId: number): Promise<TestRunWithRes
           test_run_id: testRunResults.test_run_id,
           test_id: testRunResults.test_id,
           output: testRunResults.output,
+          explanation: testRunResults.explanation,
           status: testRunResults.status,
           created_at: testRunResults.created_at,
           updated_at: testRunResults.updated_at,
@@ -429,13 +430,15 @@ export async function createTestRunResult(
   testRunId: number, 
   testId: number, 
   status: "Running" | "Success" | "Failed" | "Evaluating",
-  output?: string
+  output?: string,
+  explanation?: string
 ) {
   const [newResult] = await db.insert(testRunResults).values({
     test_run_id: testRunId,
     test_id: testId,
     status,
-    output
+    output,
+    explanation
   }).returning();
   return newResult;
 }
@@ -444,13 +447,15 @@ export async function updateTestRunResult(
   testRunId: number,
   testId: number,
   status: "Running" | "Success" | "Failed" | "Evaluating",
-  output?: string
+  output?: string,
+  explanation?: string
 ) {
   const [updatedResult] = await db
     .update(testRunResults)
     .set({ 
       status, 
       output,
+      explanation,
       updated_at: new Date() 
     })
     .where(

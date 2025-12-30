@@ -150,6 +150,7 @@ export const testRunResults = pgTable(
     test_run_id: integer("test_run_id").notNull().references(() => testRuns.id),
     test_id: integer("test_id").notNull().references(() => tests.id),
     output: text("output"),
+    explanation: text("explanation"),
     status: testResultStatusEnum("status").notNull().default("Running"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),

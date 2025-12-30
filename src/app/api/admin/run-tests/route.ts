@@ -158,8 +158,8 @@ Determine if this is a success or fail.`,
         const evaluationResult = `Result: ${evaluation.result}
 Explanation: ${evaluation.explanation}`;
 
-        // Combine the original response with the evaluation
-        const finalResult = `AI Response:\n${fullResponse.trim()}\n\nEvaluation:\n${evaluationResult}`;
+        // Store only the AI response in output, and evaluation explanation separately
+        const finalResult = fullResponse.trim();
 
         // Mark test based on evaluation result
         const testStatus = evaluation.result === 'success' ? 'Success' : 'Failed';
@@ -167,7 +167,8 @@ Explanation: ${evaluation.explanation}`;
           testRunId, 
           test.id, 
           testStatus, 
-          finalResult
+          finalResult,
+          evaluationResult
         );
         
         const statusEmoji = evaluation.result === 'success' ? '✅' : '❌';

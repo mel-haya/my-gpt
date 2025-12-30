@@ -15,7 +15,7 @@ interface TestsDashboardProps {
 }
 
 export default function TestsDashboard({ searchParams }: TestsDashboardProps) {
-  const currentPage = Number(searchParams?.page) || 1;
+  const currentPage = Number(searchParams?.page || "1");
   const searchQuery = searchParams?.search || "";
   const itemsPerPage = 10;
 

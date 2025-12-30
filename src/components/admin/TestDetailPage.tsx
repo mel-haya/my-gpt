@@ -250,6 +250,14 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
                         </div>
                       </div>
                     )}
+                    {testResult.explanation && (
+                      <div>
+                        <span className="text-sm font-medium">Explanation:</span>
+                        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded mt-1">
+                          <pre className="text-xs whitespace-pre-wrap">{testResult.explanation}</pre>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : null;
