@@ -2,14 +2,16 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { parse } from "csv-parse/sync";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { MoreHorizontal, Search, ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import { MoreHorizontal, Search, ChevronLeft, ChevronRight, Upload, Trash2 } from "lucide-react";
 import TestDialog from "./TestDialog";
 import DeleteTestDialog from "./DeleteTestDialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +34,7 @@ interface TestsTableProps {
   };
   searchQuery: string;
   onRefreshRef?: (refreshFn: () => void) => void;
+  onDataRefresh?: () => void;
 }
 
 const formatDate = (date: Date): string => {
@@ -48,8 +51,32 @@ const getColumns = (
   handleRefresh: () => void,
   onDeleteTest: (testId: number, testName: string) => void,
   onEditTest: (test: TestWithUser) => void,
-  onViewDetails: (testId: number) => void
+  onViewDetails: (testId: number) => void,
+  selectedRows: Set<number>,
+  onSelectRow: (testId: number, checked: boolean) => void,
+  onSelectAll: (checked: boolean) => void,
+  allTests: TestWithUser[]
 ): ColumnDef<TestWithUser>[] => [
+  {
+    id: "select",
+    header: () => (
+      <Checkbox
+        checked={selectedRows.size === allTests.length && allTests.length > 0}
+        onCheckedChange={(checked: boolean | 'indeterminate') => onSelectAll(!!checked)}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={selectedRows.has(row.original.id)}
+        onCheckedChange={(checked: boolean | 'indeterminate') => onSelectRow(row.original.id, !!checked)}
+        aria-label="Select row"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+    size: 50,
+  },
   {
     accessorKey: "name",
     header: "Test Name",
@@ -194,7 +221,7 @@ const getColumns = (
   },
 ];
 
-export default function TestsTable({ tests, pagination, searchQuery, onRefreshRef }: TestsTableProps) {
+export default function TestsTable({ tests, pagination, searchQuery, onRefreshRef, onDataRefresh }: TestsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -210,6 +237,11 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
   });  const [editTest, setEditTest] = useState<TestWithUser | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [bulkDeleteDialog, setBulkDeleteDialog] = useState<{
+    isOpen: boolean;
+    testIds: number[];
+  }>({ isOpen: false, testIds: [] });
 
   // Expose refresh function to parent
   useEffect(() => {
@@ -244,13 +276,65 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
   };
 
   const handleDeleteSuccess = () => {
-    // Refresh the page to show updated data
-    router.refresh();
+    // Use parent refresh callback if available, fallback to router refresh
+    if (onDataRefresh) {
+      onDataRefresh();
+    } else {
+      router.refresh();
+    }
   };
 
-  const columns = getColumns(() => {
-    // Add refresh logic if needed
-  }, handleDeleteTest, handleEditTest, handleViewDetails);
+  const handleSelectRow = (testId: number, checked: boolean) => {
+    const newSelected = new Set(selectedRows);
+    if (checked) {
+      newSelected.add(testId);
+    } else {
+      newSelected.delete(testId);
+    }
+    setSelectedRows(newSelected);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRows(new Set(tests.map(test => test.id)));
+    } else {
+      setSelectedRows(new Set());
+    }
+  };
+
+  const handleBulkDelete = () => {
+    setBulkDeleteDialog({
+      isOpen: true,
+      testIds: Array.from(selectedRows)
+    });
+  };
+
+  const handleBulkDeleteSuccess = () => {
+    setSelectedRows(new Set());
+    // Use parent refresh callback if available, fallback to router refresh
+    if (onDataRefresh) {
+      onDataRefresh();
+    } else {
+      router.refresh();
+    }
+  };
+
+  const handleCloseBulkDeleteDialog = () => {
+    setBulkDeleteDialog({ isOpen: false, testIds: [] });
+  };
+
+  const columns = getColumns(
+    () => {
+      // Add refresh logic if needed
+    }, 
+    handleDeleteTest, 
+    handleEditTest, 
+    handleViewDetails,
+    selectedRows,
+    handleSelectRow,
+    handleSelectAll,
+    tests
+  );
 
   const handleSearch = () => {
     startTransition(() => {
@@ -286,56 +370,37 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
     setIsImporting(true);
     try {
       const text = await file.text();
-      const lines = text.split('\n').filter(line => line.trim());
       
-      if (lines.length < 2) {
-        alert('CSV file must contain at least a header row and one data row');
+      if (!text.trim()) {
+        console.error('CSV file appears to be empty');
         return;
       }
 
-      // Parse CSV (expecting prompt;expectedResult columns with ; delimiter)
-      const header = lines[0].toLowerCase();
-      const promptIndex = header.includes('prompt') ? 
-        header.split(';').findIndex(col => col.trim().includes('prompt')) : 0;
-      const expectedIndex = header.includes('expected') ? 
-        header.split(';').findIndex(col => col.trim().includes('expected')) : 1;
+      // Parse CSV using csv-parse library with semicolon delimiter
+      const records = parse(text, {
+        delimiter: ';',
+        columns: true, // Use first row as headers
+        skip_empty_lines: true,
+        trim: true
+      }) as Record<string, string>[];
 
-      const parseCSVLine = (line: string): string[] => {
-        const result: string[] = [];
-        let current = '';
-        let inQuotes = false;
-        
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i];
-          
-          if (char === '"') {
-            if (inQuotes && line[i + 1] === '"') {
-              current += '"';
-              i++;
-            } else {
-              inQuotes = !inQuotes;
-            }
-          } else if (char === ';' && !inQuotes) {
-            result.push(current.trim());
-            current = '';
-          } else {
-            current += char;
-          }
-        }
-        result.push(current.trim());
-        return result;
-      };
+      if (records.length === 0) {
+        console.error('CSV file must contain at least one data row');
+        return;
+      }
 
-      // Process data rows (skip header)
-      const dataRows = lines.slice(1);
+      // Find column names (case insensitive)
+      const headers = Object.keys(records[0]);
+      const promptColumn = headers.find(h => h.toLowerCase().includes('prompt')) || headers[0];
+      const expectedColumn = headers.find(h => h.toLowerCase().includes('expected')) || headers[1];
+
       let successCount = 0;
       let errorCount = 0;
 
-      for (const line of dataRows) {
+      for (const record of records) {
         try {
-          const columns = parseCSVLine(line);
-          const prompt = columns[promptIndex]?.replace(/^"|"$/g, '') || '';
-          const expectedResult = columns[expectedIndex]?.replace(/^"|"$/g, '') || '';
+          const prompt = record[promptColumn]?.trim() || '';
+          const expectedResult = record[expectedColumn]?.trim() || '';
           
           if (prompt && expectedResult) {
             // Generate test name from first few words of prompt
@@ -362,14 +427,17 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
       }
 
       if (successCount > 0) {
-        alert(`Successfully imported ${successCount} tests!${errorCount > 0 ? ` ${errorCount} failed.` : ''}`);
-        router.refresh();
+        console.log(`Successfully imported ${successCount} tests!${errorCount > 0 ? ` ${errorCount} failed.` : ''}`);
+        if (onDataRefresh) {
+          onDataRefresh();
+        } else {
+          router.refresh();
+        }
       } else {
-        alert('No tests were imported. Please check your CSV format.');
+        console.error('No tests were imported. Please check your CSV format.');
       }
     } catch (error) {
       console.error('Error importing CSV:', error);
-      alert('Error reading CSV file. Please make sure it\'s a valid CSV.');
     } finally {
       setIsImporting(false);
       // Reset file input
@@ -403,6 +471,17 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
             </div>
             
             <div className="flex items-center gap-2">
+              {selectedRows.size > 0 && (
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete ({selectedRows.size})
+                </Button>
+              )}
               <div className="relative">
                 <input
                   type="file"
@@ -420,7 +499,7 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
                   {isImporting ? 'Importing...' : 'Import CSV'}
                 </Button>
               </div>
-              <TestDialog mode="add" onSuccess={() => router.refresh()} />
+              <TestDialog mode="add" onSuccess={() => onDataRefresh ? onDataRefresh() : router.refresh()} />
             </div>
           </div>
 
@@ -468,6 +547,18 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
         onSuccess={handleDeleteSuccess}
       />
       
+      {bulkDeleteDialog.testIds.length > 0 && (
+        <DeleteTestDialog
+          testId={bulkDeleteDialog.testIds[0]} // Pass the first ID for the dialog
+          testName={`${bulkDeleteDialog.testIds.length} selected tests`}
+          isOpen={bulkDeleteDialog.isOpen}
+          onClose={handleCloseBulkDeleteDialog}
+          onSuccess={handleBulkDeleteSuccess}
+          isBulkDelete={true}
+          bulkTestIds={bulkDeleteDialog.testIds}
+        />
+      )}
+      
       {editTest && (
         <TestDialog
           mode="edit"
@@ -482,7 +573,11 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
           onSuccess={() => {
             setEditTest(null);
             setEditDialogOpen(false);
-            router.refresh();
+            if (onDataRefresh) {
+              onDataRefresh();
+            } else {
+              router.refresh();
+            }
           }}
         />
       )}

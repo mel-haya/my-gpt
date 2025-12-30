@@ -146,6 +146,70 @@ export async function deleteTestAction(testId: number) {
   }
 }
 
+export async function bulkDeleteTestsAction(testIds: number[]) {
+  try {
+    // Check if user has admin role
+    const isAdmin = await checkRole('admin');
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    // Get current user
+    const user = await currentUser();
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+
+    if (!testIds || testIds.length === 0) {
+      throw new Error("No tests selected for deletion");
+    }
+
+    const deletedTests = [];
+    let errorCount = 0;
+
+    // Delete tests one by one to ensure proper cleanup
+    for (const testId of testIds) {
+      try {
+        const deletedTest = await deleteTest(testId);
+        if (deletedTest) {
+          deletedTests.push(deletedTest);
+        }
+      } catch (error) {
+        console.error(`Error deleting test ${testId}:`, error);
+        errorCount++;
+      }
+    }
+
+    // Revalidate the tests page
+    revalidatePath("/admin/tests");
+
+    const successCount = deletedTests.length;
+    const totalCount = testIds.length;
+
+    if (successCount === totalCount) {
+      return { 
+        success: true, 
+        message: `Successfully deleted ${successCount} test(s)`,
+        deletedTests 
+      };
+    } else if (successCount > 0) {
+      return { 
+        success: true, 
+        message: `Deleted ${successCount} out of ${totalCount} test(s). ${errorCount} failed.`,
+        deletedTests 
+      };
+    } else {
+      throw new Error("Failed to delete any tests");
+    }
+  } catch (error) {
+    console.error("Error in bulkDeleteTestsAction:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to delete tests" 
+    };
+  }
+}
+
 export async function getLatestTestRunStatsAction() {
   try {
     // Check if user has admin role

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { deleteTestAction } from "@/app/actions/tests";
+import { useTransition } from "react";
+import { deleteTestAction, bulkDeleteTestsAction } from "@/app/actions/tests";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,8 @@ interface DeleteTestDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  isBulkDelete?: boolean;
+  bulkTestIds?: number[];
 }
 
 export default function DeleteTestDialog({
@@ -28,23 +30,35 @@ export default function DeleteTestDialog({
   isOpen,
   onClose,
   onSuccess,
+  isBulkDelete = false,
+  bulkTestIds = [],
 }: DeleteTestDialogProps) {
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = () => {
     startTransition(async () => {
       try {
-        const result = await deleteTestAction(testId);
+        let result;
+        
+        if (isBulkDelete && bulkTestIds.length > 0) {
+          result = await bulkDeleteTestsAction(bulkTestIds);
+        } else {
+          result = await deleteTestAction(testId);
+        }
         
         if (result.success) {
-          toast.success("Test deleted successfully");
+          if (isBulkDelete) {
+            toast.success((result as { success: boolean; message?: string }).message || "Tests deleted successfully");
+          } else {
+            toast.success("Test deleted successfully");
+          }
           onClose();
           onSuccess?.();
         } else {
-          toast.error(result.error || "Failed to delete test");
+          toast.error(result.error || "Failed to delete test(s)");
         }
       } catch (error) {
-        console.error("Error deleting test:", error);
+        console.error("Error deleting test(s):", error);
         toast.error("An unexpected error occurred");
       }
     });
@@ -54,10 +68,14 @@ export default function DeleteTestDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Test</DialogTitle>
+          <DialogTitle>
+            {isBulkDelete ? "Delete Tests" : "Delete Test"}
+          </DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete the test &quot;{testName}&quot;? This action
-            cannot be undone.
+            {isBulkDelete 
+              ? `Are you sure you want to delete ${bulkTestIds.length} selected test(s)? This action cannot be undone.`
+              : `Are you sure you want to delete the test "${testName}"? This action cannot be undone.`
+            }
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -72,10 +90,10 @@ export default function DeleteTestDialog({
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
+                {isBulkDelete ? "Deleting..." : "Deleting..."}
               </>
             ) : (
-              "Delete"
+              isBulkDelete ? "Delete All" : "Delete"
             )}
           </Button>
         </DialogFooter>

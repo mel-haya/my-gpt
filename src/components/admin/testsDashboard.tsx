@@ -91,6 +91,7 @@ export default function TestsDashboard({ searchParams }: TestsDashboardProps) {
         pagination={data.pagination}
         searchQuery={searchQuery}
         onRefreshRef={(refreshFn) => { tableRefreshRef.current = refreshFn; }}
+        onDataRefresh={() => setRefreshTrigger(prev => prev + 1)}
       />
     </div>
   );

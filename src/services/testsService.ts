@@ -192,6 +192,12 @@ export async function updateTest(
 }
 
 export async function deleteTest(id: number) {
+  // First, delete all related test run results
+  await db
+    .delete(testRunResults)
+    .where(eq(testRunResults.test_id, id));
+  
+  // Then delete the test itself
   const [deletedTest] = await db
     .delete(tests)
     .where(eq(tests.id, id))
