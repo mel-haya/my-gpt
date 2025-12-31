@@ -67,7 +67,28 @@ const getResultStatusBadge = (status: string) => {
 
 export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
   const router = useRouter();
-  const { test, latestRun, allRuns } = testDetails;
+  const { test, latestRun, latestIndividualResult, allRuns } = testDetails;
+
+  // Determine the actual latest test result (individual vs bulk run)
+  const getLatestTestResult = () => {
+    if (!latestRun && !latestIndividualResult) return null;
+    if (!latestRun && latestIndividualResult) return { type: 'individual' as const, result: latestIndividualResult };
+    if (!latestIndividualResult && latestRun) return { type: 'bulk' as const, result: latestRun };
+    
+    // Both exist, compare timestamps - individual results have created_at, bulk runs have launched_at
+    if (latestRun && latestIndividualResult) {
+      const bulkDate = latestRun.launched_at;
+      const individualDate = latestIndividualResult.created_at;
+      
+      return individualDate > bulkDate 
+        ? { type: 'individual' as const, result: latestIndividualResult }
+        : { type: 'bulk' as const, result: latestRun };
+    }
+    
+    return null;
+  };
+
+  const latestTestResult = getLatestTestResult();
 
   const testRunsColumns: ColumnDef<TestRunWithResults>[] = [
     {
@@ -171,8 +192,10 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
             <div className="space-y-2">
               <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                 <span>Latest test result: {
-                  latestRun && latestRun.results.length > 0 
-                    ? latestRun.results[0].status 
+                  latestTestResult
+                    ? latestTestResult.type === 'individual' 
+                      ? latestTestResult.result.status 
+                      : (latestTestResult.type === 'bulk' && latestTestResult.result.results.find(r => r.test_id === test.id)?.status || "None")
                     : "None"
                 }</span>
               </div>
@@ -201,67 +224,125 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
       </Card>
 
       {/* Latest Test Run */}
-      {latestRun && (
+      {latestTestResult && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Play className="h-5 w-5" />
-              <span>Latest Test Run</span>
-              {getStatusIcon(latestRun.status)}
+              <span>Latest Test Result</span>
+              <Badge variant="outline" className="text-xs">
+                {latestTestResult.type === 'individual' ? 'Individual Run' : 'Bulk Run'}
+              </Badge>
+              {latestTestResult.type === 'bulk' && getStatusIcon(latestTestResult.result.status)}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium">Run ID:</span>
-                  <Badge variant="outline">#{latestRun.id}</Badge>
+            {latestTestResult.type === 'individual' ? (
+              /* Individual Test Result */
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium">Result ID:</span>
+                      <Badge variant="outline">#{latestTestResult.result.id}</Badge>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium">Status:</span>
+                      {getResultStatusBadge(latestTestResult.result.status)}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm">
+                      <span className="font-medium">Executed:</span> {formatDate(latestTestResult.result.created_at)}
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Type:</span> Individual Test
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium">Status:</span>
-                  {getStatusBadge(latestRun.status)}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="text-sm">
-                  <span className="font-medium">Launched:</span> {formatDate(latestRun.launched_at)}
-                </div>
-                <div className="text-sm">
-                  <span className="font-medium">By:</span> {latestRun.username || "Unknown"}
-                </div>
-              </div>
-            </div>
 
-            {latestRun.results.length > 0 && (() => {
-              const testResult = latestRun.results.find(r => r.test_id === test.id);
-              return testResult ? (
                 <div className="space-y-2">
                   <h5 className="font-medium text-sm">Result:</h5>
                   <div className="border rounded-lg p-3 space-y-2">
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-medium">Status:</span>
-                      {getResultStatusBadge(testResult.status)}
+                      {getResultStatusBadge(latestTestResult.result.status)}
                     </div>
-                    {testResult.output && (
+                    {latestTestResult.result.output && (
                       <div>
                         <span className="text-sm font-medium">Output:</span>
                         <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded mt-1">
-                          <pre className="text-xs whitespace-pre-wrap">{testResult.output}</pre>
+                          <pre className="text-xs whitespace-pre-wrap">{latestTestResult.result.output}</pre>
                         </div>
                       </div>
                     )}
-                    {testResult.explanation && (
+                    {latestTestResult.result.explanation && (
                       <div>
                         <span className="text-sm font-medium">Explanation:</span>
                         <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded mt-1">
-                          <pre className="text-xs whitespace-pre-wrap">{testResult.explanation}</pre>
+                          <pre className="text-xs whitespace-pre-wrap">{latestTestResult.result.explanation}</pre>
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
-              ) : null;
-            })()}
+              </div>
+            ) : (
+              /* Bulk Test Run Result */
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium">Run ID:</span>
+                      <Badge variant="outline">#{latestTestResult.result.id}</Badge>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium">Status:</span>
+                      {getStatusBadge(latestTestResult.result.status)}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm">
+                      <span className="font-medium">Launched:</span> {formatDate(latestTestResult.result.launched_at)}
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">By:</span> {latestTestResult.result.username || "Unknown"}
+                    </div>
+                  </div>
+                </div>
+
+                {latestTestResult.type === 'bulk' && latestTestResult.result.results.length > 0 && (() => {
+                  const testResult = latestTestResult.result.results.find(r => r.test_id === test.id);
+                  return testResult ? (
+                    <div className="space-y-2">
+                      <h5 className="font-medium text-sm">Result:</h5>
+                      <div className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-medium">Status:</span>
+                          {getResultStatusBadge(testResult.status)}
+                        </div>
+                        {testResult.output && (
+                          <div>
+                            <span className="text-sm font-medium">Output:</span>
+                            <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded mt-1">
+                              <pre className="text-xs whitespace-pre-wrap">{testResult.output}</pre>
+                            </div>
+                          </div>
+                        )}
+                        {testResult.explanation && (
+                          <div>
+                            <span className="text-sm font-medium">Explanation:</span>
+                            <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded mt-1">
+                              <pre className="text-xs whitespace-pre-wrap">{testResult.explanation}</pre>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

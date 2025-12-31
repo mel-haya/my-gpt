@@ -1,7 +1,7 @@
 import { db } from "@/lib/db-config";
 import { tests, users, testRuns, testRunResults } from "@/lib/db-schema";
 import type { SelectTest, SelectTestRun, SelectTestRunResult } from "@/lib/db-schema";
-import { eq, desc, count, or, ilike, inArray, and } from "drizzle-orm";
+import { eq, desc, count, or, ilike, inArray, and, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { generateChatCompletion } from "@/services/chatService";
 import { generateObject } from 'ai';
@@ -24,9 +24,20 @@ export interface TestRunResultWithTest extends SelectTestRunResult {
   test_name?: string;
 }
 
+export interface IndividualTestResult {
+  id: number;
+  test_id: number;
+  output: string | null;
+  explanation: string | null;
+  status: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export interface TestDetails {
   test: TestWithUser;
   latestRun: TestRunWithResults | null;
+  latestIndividualResult: IndividualTestResult | null;
   allRuns: TestRunWithResults[];
 }
 
@@ -58,7 +69,7 @@ export async function getLatestTestRunResultsForTests(testIds: number[]): Promis
   }
 
   // Get the latest test run result for each test, including individual test runs (test_run_id = NULL)
-  // Using a more robust approach with a subquery to ensure we get the absolute latest result per test
+  // Simply get the most recent result by timestamp for each test
   const latestResults = await db
     .select({
       test_id: testRunResults.test_id,
@@ -316,6 +327,33 @@ export async function getTestRunsForTest(testId: number): Promise<TestRunWithRes
   }
 }
 
+async function getLatestIndividualTestResult(testId: number): Promise<IndividualTestResult | null> {
+  try {
+    const result = await db
+      .select({
+        id: testRunResults.id,
+        test_id: testRunResults.test_id,
+        output: testRunResults.output,
+        explanation: testRunResults.explanation,
+        status: testRunResults.status,
+        created_at: testRunResults.created_at,
+        updated_at: testRunResults.updated_at,
+      })
+      .from(testRunResults)
+      .where(and(
+        eq(testRunResults.test_id, testId),
+        isNull(testRunResults.test_run_id)
+      ))
+      .orderBy(desc(testRunResults.created_at), desc(testRunResults.id))
+      .limit(1);
+
+    return result.length > 0 ? result[0] : null;
+  } catch (error) {
+    console.error("Error fetching latest individual test result:", error);
+    return null;
+  }
+}
+
 export async function getTestDetails(testId: number): Promise<TestDetails | null> {
   try {
     // Get the test details
@@ -328,9 +366,13 @@ export async function getTestDetails(testId: number): Promise<TestDetails | null
     // Get the latest run (first in the ordered list)
     const latestRun = allRuns.length > 0 ? allRuns[0] : null;
 
+    // Get the latest individual test result (with null test_run_id)
+    const latestIndividualResult = await getLatestIndividualTestResult(testId);
+
     return {
       test,
       latestRun,
+      latestIndividualResult,
       allRuns,
     };
   } catch (error) {
