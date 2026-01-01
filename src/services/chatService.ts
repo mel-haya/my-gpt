@@ -3,10 +3,9 @@ import { ChatMessage } from "@/types/chatMessage";
 import { getSystemPrompt } from "@/services/settingsService";
 import { tools } from "@/app/api/chat/tools";
 
-
 const supportedModels = [
   "openai/gpt-4o",
-  "google/gemini-2.5-flash", 
+  "google/gemini-2.5-flash",
   "anthropic/claude-haiku-4.5",
   "xai/grok-4-fast-non-reasoning",
 ];
@@ -17,55 +16,135 @@ export interface ChatRequest {
   webSearch?: boolean;
 }
 
+export interface ChatResponse {
+  text: string;
+  toolCalls?: Array<{
+    toolCallId: string;
+    toolName: string;
+    args: Record<string, unknown>;
+    result?: unknown;
+  }>;
+}
+
 /**
  * Internal service function for generating chat completions
  * This bypasses the API route authentication and is intended for internal use like testing
  */
-export async function generateChatCompletion(request: ChatRequest): Promise<string> {
+export async function generateChatCompletion(
+  request: ChatRequest
+): Promise<string> {
+  const response = await generateChatCompletionWithToolCalls(request);
+  return response.text;
+}
+
+/**
+ * Internal service function for generating chat completions with tool calls
+ * Returns both the text response and tool call information
+ */
+export async function generateChatCompletionWithToolCalls(
+  request: ChatRequest
+): Promise<ChatResponse> {
   try {
     const { messages, model } = request;
-    
+
     const modelMessages = convertToModelMessages(messages);
-    
+
     const selectedModel = supportedModels.includes(model)
-      ? model 
+      ? model
       : "openai/gpt-4o";
-    
+
     // Get configurable system prompt
-    let systemPrompt = '';
+    let systemPrompt = "";
     try {
       systemPrompt = await getSystemPrompt();
-    } catch (systemError) {
+    } catch {
       systemPrompt = "You are a helpful assistant.";
     }
-    
+
     const result = await generateText({
       messages: modelMessages,
       model: selectedModel,
       system: systemPrompt,
       tools,
-      stopWhen: stepCountIs(2)
+      stopWhen: stepCountIs(5),
     });
-    
+
     // The result should contain the final text after tool execution
-    if (!result.text || result.text.trim() === '') {
-      throw new Error(`No text content generated from AI model ${selectedModel}`);
+    if (!result.text || result.text.trim() === "") {
+      throw new Error(
+        `No text content generated from AI model ${selectedModel}`
+      );
     }
 
-    return result.text.trim();
+    // Extract tool calls information with their results
+    const toolCalls =
+      result.steps
+        ?.filter((step) => step.toolCalls && step.toolCalls.length > 0)
+        .flatMap((step) => {
+          return step.toolCalls.map((toolCall) => {
+            // Find the corresponding tool result
+            const toolResult = step.toolResults?.find(
+              (r) => r.toolCallId === toolCall.toolCallId
+            );
+
+            // Extract args - handle both static and dynamic tool calls
+            let args: Record<string, unknown> = {};
+            if ("args" in toolCall) {
+              args = toolCall.args as Record<string, unknown>;
+            }
+
+            // Extract result - the result might be nested differently
+            let resultData: unknown = undefined;
+            if (toolResult) {
+              // Try to access result property with type assertion
+              const anyResult = toolResult as any;
+              if (anyResult.result !== undefined) {
+                resultData = anyResult.result;
+              } else if (anyResult.content !== undefined) {
+                resultData = anyResult.content;
+              } else {
+                // If neither result nor content, store the whole object
+                resultData = toolResult;
+              }
+            }
+
+            return {
+              toolCallId: toolCall.toolCallId,
+              toolName: toolCall.toolName,
+              args: args,
+              result: resultData,
+            };
+          });
+        }) || [];
+
+    // Debug: Log captured tool calls
+    if (toolCalls.length > 0) {
+      console.log("Captured Tool Calls:", JSON.stringify(toolCalls, null, 2));
+    }
+
+    return {
+      text: result.text.trim(),
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    };
   } catch (error) {
     // For testing, return a simple fallback response to identify if the error is in AI generation
     console.error("Detailed error generating chat completion:", {
       error: error,
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
       model: request.model,
-      hasTools: !!tools
+      hasTools: !!tools,
     });
-    if (process.env.NODE_ENV === 'development') {
-      return "This is a fallback response for testing purposes. The AI service is currently unavailable.";
+    if (process.env.NODE_ENV === "development") {
+      return {
+        text: "This is a fallback response for testing purposes. The AI service is currently unavailable.",
+      };
     }
-    
-    throw new Error(`Failed to generate chat completion: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+    throw new Error(
+      `Failed to generate chat completion: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
   }
 }

@@ -1,11 +1,17 @@
 import { db } from "@/lib/db-config";
 import { tests, users, testRuns, testRunResults } from "@/lib/db-schema";
-import type { SelectTest, SelectTestRun, SelectTestRunResult } from "@/lib/db-schema";
+import type {
+  SelectTest,
+  SelectTestRun,
+  SelectTestRunResult,
+} from "@/lib/db-schema";
 import { eq, desc, count, or, ilike, inArray, and, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { generateChatCompletion } from "@/services/chatService";
-import { generateObject } from 'ai';
-import { z } from 'zod';
+import {
+  generateChatCompletionWithToolCalls,
+} from "@/services/chatService";
+import { generateObject } from "ai";
+import { z } from "zod";
 
 export interface TestWithUser extends SelectTest {
   username?: string;
@@ -29,6 +35,7 @@ export interface IndividualTestResult {
   test_id: number;
   output: string | null;
   explanation: string | null;
+  tool_calls: unknown;
   status: string;
   created_at: Date;
   updated_at: Date;
@@ -63,7 +70,9 @@ export interface LatestTestRunStats {
   lastRunAt?: Date;
 }
 
-export async function getLatestTestRunResultsForTests(testIds: number[]): Promise<Map<number, { status: string; created_at: Date; output?: string }>> {
+export async function getLatestTestRunResultsForTests(
+  testIds: number[]
+): Promise<Map<number, { status: string; created_at: Date; output?: string }>> {
   if (testIds.length === 0) {
     return new Map();
   }
@@ -84,14 +93,17 @@ export async function getLatestTestRunResultsForTests(testIds: number[]): Promis
 
   // Group by test_id and take the latest result for each test
   // Use both created_at and id to ensure we get the absolute latest result
-  const resultMap = new Map<number, { status: string; created_at: Date; output?: string }>();
-  
+  const resultMap = new Map<
+    number,
+    { status: string; created_at: Date; output?: string }
+  >();
+
   for (const result of latestResults) {
     if (!resultMap.has(result.test_id)) {
       resultMap.set(result.test_id, {
         status: result.status,
         created_at: result.created_at,
-        output: result.output || undefined
+        output: result.output || undefined,
       });
     }
   }
@@ -108,7 +120,7 @@ export async function getTestsWithPagination(
 
   // Create aliases for the joins
   const userTable = users;
-  const creatorTable = alias(users, 'creator');
+  const creatorTable = alias(users, "creator");
 
   // Base query conditions
   const baseConditions = searchQuery
@@ -118,7 +130,7 @@ export async function getTestsWithPagination(
       )
     : undefined;
 
-  // Build the query  
+  // Build the query
   const query = db
     .select({
       id: tests.id,
@@ -155,13 +167,14 @@ export async function getTestsWithPagination(
   const totalPages = Math.ceil(totalCount / limit);
 
   // Get latest test run results for all tests
-  const testIds = testsData.map(test => test.id);
-  const latestResults = testIds.length > 0 
-    ? await getLatestTestRunResultsForTests(testIds)
-    : new Map();
+  const testIds = testsData.map((test) => test.id);
+  const latestResults =
+    testIds.length > 0
+      ? await getLatestTestRunResultsForTests(testIds)
+      : new Map();
 
   // Map the results to match the expected interface
-  const mappedTests: TestWithUser[] = testsData.map(test => {
+  const mappedTests: TestWithUser[] = testsData.map((test) => {
     const latestResult = latestResults.get(test.id);
     return {
       ...test,
@@ -214,10 +227,8 @@ export async function updateTest(
 
 export async function deleteTest(id: number) {
   // First, delete all related test run results
-  await db
-    .delete(testRunResults)
-    .where(eq(testRunResults.test_id, id));
-  
+  await db.delete(testRunResults).where(eq(testRunResults.test_id, id));
+
   // Then delete the test itself
   const [deletedTest] = await db
     .delete(tests)
@@ -228,7 +239,7 @@ export async function deleteTest(id: number) {
 
 export async function getTestById(id: number): Promise<TestWithUser | null> {
   const userTable = users;
-  const creatorTable = alias(users, 'creator');
+  const creatorTable = alias(users, "creator");
 
   const result = await db
     .select({
@@ -259,7 +270,9 @@ export async function getTestById(id: number): Promise<TestWithUser | null> {
   };
 }
 
-export async function getTestRunsForTest(testId: number): Promise<TestRunWithResults[]> {
+export async function getTestRunsForTest(
+  testId: number
+): Promise<TestRunWithResults[]> {
   try {
     // First, get all test runs that have results for this specific test
     const testRunsWithThisTest = await db
@@ -272,7 +285,9 @@ export async function getTestRunsForTest(testId: number): Promise<TestRunWithRes
       return [];
     }
 
-    const runIds = testRunsWithThisTest.map(r => r.test_run_id).filter((id): id is number => id !== null);
+    const runIds = testRunsWithThisTest
+      .map((r) => r.test_run_id)
+      .filter((id): id is number => id !== null);
 
     // Get the actual test runs
     const runs = await db
@@ -292,7 +307,7 @@ export async function getTestRunsForTest(testId: number): Promise<TestRunWithRes
 
     // Get results for these runs
     const runDetails: TestRunWithResults[] = [];
-    
+
     for (const run of runs) {
       const results = await db
         .select({
@@ -301,6 +316,7 @@ export async function getTestRunsForTest(testId: number): Promise<TestRunWithRes
           test_id: testRunResults.test_id,
           output: testRunResults.output,
           explanation: testRunResults.explanation,
+          tool_calls: testRunResults.tool_calls,
           status: testRunResults.status,
           created_at: testRunResults.created_at,
           updated_at: testRunResults.updated_at,
@@ -313,7 +329,7 @@ export async function getTestRunsForTest(testId: number): Promise<TestRunWithRes
       runDetails.push({
         ...run,
         username: run.username ?? undefined,
-        results: results.map(result => ({
+        results: results.map((result) => ({
           ...result,
           test_name: result.test_name ?? undefined,
         })),
@@ -327,7 +343,9 @@ export async function getTestRunsForTest(testId: number): Promise<TestRunWithRes
   }
 }
 
-async function getLatestIndividualTestResult(testId: number): Promise<IndividualTestResult | null> {
+async function getLatestIndividualTestResult(
+  testId: number
+): Promise<IndividualTestResult | null> {
   try {
     const result = await db
       .select({
@@ -335,15 +353,18 @@ async function getLatestIndividualTestResult(testId: number): Promise<Individual
         test_id: testRunResults.test_id,
         output: testRunResults.output,
         explanation: testRunResults.explanation,
+        tool_calls: testRunResults.tool_calls,
         status: testRunResults.status,
         created_at: testRunResults.created_at,
         updated_at: testRunResults.updated_at,
       })
       .from(testRunResults)
-      .where(and(
-        eq(testRunResults.test_id, testId),
-        isNull(testRunResults.test_run_id)
-      ))
+      .where(
+        and(
+          eq(testRunResults.test_id, testId),
+          isNull(testRunResults.test_run_id)
+        )
+      )
       .orderBy(desc(testRunResults.created_at), desc(testRunResults.id))
       .limit(1);
 
@@ -354,7 +375,9 @@ async function getLatestIndividualTestResult(testId: number): Promise<Individual
   }
 }
 
-export async function getTestDetails(testId: number): Promise<TestDetails | null> {
+export async function getTestDetails(
+  testId: number
+): Promise<TestDetails | null> {
   try {
     // Get the test details
     const test = await getTestById(testId);
@@ -362,7 +385,7 @@ export async function getTestDetails(testId: number): Promise<TestDetails | null
 
     // Get all test runs for this test
     const allRuns = await getTestRunsForTest(testId);
-    
+
     // Get the latest run (first in the ordered list)
     const latestRun = allRuns.length > 0 ? allRuns[0] : null;
 
@@ -403,9 +426,9 @@ export async function getLatestTestRunStats(): Promise<LatestTestRunStats> {
 
     // If the test run is still running, return running status
     if (latestRun.status === "Running") {
-      return { 
+      return {
         status: "running",
-        lastRunAt: latestRun.launched_at
+        lastRunAt: latestRun.launched_at,
       };
     }
 
@@ -425,7 +448,7 @@ export async function getLatestTestRunStats(): Promise<LatestTestRunStats> {
       running: 0,
     };
 
-    testResults.forEach(result => {
+    testResults.forEach((result) => {
       if (result.status === "Success") {
         results.success++;
       } else if (result.status === "Failed") {
@@ -443,7 +466,7 @@ export async function getLatestTestRunStats(): Promise<LatestTestRunStats> {
     return {
       status: isStillRunning ? "running" : "completed",
       results,
-      lastRunAt: latestRun.launched_at
+      lastRunAt: latestRun.launched_at,
     };
   } catch (error) {
     console.error("Error fetching latest test run stats:", error);
@@ -453,10 +476,13 @@ export async function getLatestTestRunStats(): Promise<LatestTestRunStats> {
 
 // Test running functions
 export async function createTestRun(userId: string) {
-  const [newTestRun] = await db.insert(testRuns).values({
-    user_id: userId,
-    status: "Running"
-  }).returning();
+  const [newTestRun] = await db
+    .insert(testRuns)
+    .values({
+      user_id: userId,
+      status: "Running",
+    })
+    .returning();
   return newTestRun;
 }
 
@@ -477,27 +503,30 @@ export async function getAllTests(): Promise<TestWithUser[]> {
     .leftJoin(users, eq(tests.user_id, users.id))
     .orderBy(tests.id);
 
-  return result.map(test => ({
+  return result.map((test) => ({
     ...test,
     username: test.username ?? undefined,
-    created_by_username: undefined // Not needed for this use case
+    created_by_username: undefined, // Not needed for this use case
   }));
 }
 
 export async function createTestRunResult(
-  testRunId: number, 
-  testId: number, 
+  testRunId: number,
+  testId: number,
   status: "Running" | "Success" | "Failed" | "Evaluating",
   output?: string,
   explanation?: string
 ) {
-  const [newResult] = await db.insert(testRunResults).values({
-    test_run_id: testRunId,
-    test_id: testId,
-    status,
-    output,
-    explanation
-  }).returning();
+  const [newResult] = await db
+    .insert(testRunResults)
+    .values({
+      test_run_id: testRunId,
+      test_id: testId,
+      status,
+      output,
+      explanation,
+    })
+    .returning();
   return newResult;
 }
 
@@ -506,15 +535,17 @@ export async function updateTestRunResult(
   testId: number,
   status: "Running" | "Success" | "Failed" | "Evaluating",
   output?: string,
-  explanation?: string
+  explanation?: string,
+  toolCalls?: unknown
 ) {
   const [updatedResult] = await db
     .update(testRunResults)
-    .set({ 
-      status, 
+    .set({
+      status,
       output,
       explanation,
-      updated_at: new Date() 
+      tool_calls: toolCalls,
+      updated_at: new Date(),
     })
     .where(
       and(
@@ -527,14 +558,14 @@ export async function updateTestRunResult(
 }
 
 export async function updateTestRunStatus(
-  testRunId: number, 
+  testRunId: number,
   status: "Running" | "Failed" | "Done" | "Stopped"
 ) {
   const [updatedRun] = await db
     .update(testRuns)
-    .set({ 
+    .set({
       status,
-      updated_at: new Date() 
+      updated_at: new Date(),
     })
     .where(eq(testRuns.id, testRunId))
     .returning();
@@ -544,7 +575,7 @@ export async function updateTestRunStatus(
 export async function getTestRunStatus(testRunId: number) {
   const [testRun] = await db
     .select({
-      status: testRuns.status
+      status: testRuns.status,
     })
     .from(testRuns)
     .where(eq(testRuns.id, testRunId))
@@ -552,14 +583,17 @@ export async function getTestRunStatus(testRunId: number) {
   return testRun?.status;
 }
 
-export async function markRemainingTestsAsStopped(testRunId: number, currentTestId: number) {
+export async function markRemainingTestsAsStopped(
+  testRunId: number,
+  currentTestId: number
+) {
   // Mark all test run results that are still "Running" (not started yet) as "Stopped"
   const updatedResults = await db
     .update(testRunResults)
-    .set({ 
+    .set({
       status: "Stopped",
       output: "Test stopped before execution",
-      updated_at: new Date() 
+      updated_at: new Date(),
     })
     .where(
       and(
@@ -579,8 +613,14 @@ export async function evaluateTestResponse(
 ): Promise<{ status: "Success" | "Failed"; explanation: string }> {
   // Define evaluation schema with simple enum output
   const evaluationSchema = z.object({
-    result: z.enum(['success', 'fail']).describe('Whether the AI response is helpful and provides expected information'),
-    explanation: z.string().describe('Brief explanation of why it passed or failed')
+    result: z
+      .enum(["success", "fail"])
+      .describe(
+        "Whether the AI response is helpful and provides expected information"
+      ),
+    explanation: z
+      .string()
+      .describe("Brief explanation of why it passed or failed"),
   });
 
   // Evaluate the response using generateObject with system prompt
@@ -605,13 +645,21 @@ Determine if this is a success or fail.`,
   });
 
   // Set status based on evaluation result
-  const status = evaluation.result === 'success' ? 'Success' : 'Failed';
+  const status = evaluation.result === "success" ? "Success" : "Failed";
   const explanation = `Result: ${evaluation.result}\nExplanation: ${evaluation.explanation}`;
 
   return { status, explanation };
 }
 
-export async function runSingleTest(testId: number, evaluatorModel: string = "openai/gpt-4o"): Promise<{ id: number; output: string; status: string; explanation?: string }> {
+export async function runSingleTest(
+  testId: number,
+  evaluatorModel: string = "openai/gpt-4o"
+): Promise<{
+  id: number;
+  output: string;
+  status: string;
+  explanation?: string;
+}> {
   // Get the test details
   const test = await db
     .select()
@@ -624,27 +672,31 @@ export async function runSingleTest(testId: number, evaluatorModel: string = "op
   }
 
   const testData = test[0];
-  
+
   // Execute the test using the actual AI service
   let output: string;
   let status: string;
   let explanation: string | undefined;
-  
+  let toolCalls: unknown = undefined;
+
   try {
     // Call the AI service with the test prompt
-    output = await generateChatCompletion({
+    const chatResponse = await generateChatCompletionWithToolCalls({
       messages: [
         {
           id: crypto.randomUUID(),
           role: "user",
-          parts: [{ type:"text", text: testData.prompt }]
-        }
+          parts: [{ type: "text", text: testData.prompt }],
+        },
       ],
-      model: "openai/gpt-4o" // Default model, could be configurable
+      model: "openai/gpt-4o", // Default model, could be configurable
     });
 
+    output = chatResponse.text;
+    toolCalls = chatResponse.toolCalls;
+
     if (!output.trim()) {
-      throw new Error('No response content received from chat service');
+      throw new Error("No response content received from chat service");
     }
 
     // Evaluate the response using the new evaluation function
@@ -657,9 +709,10 @@ export async function runSingleTest(testId: number, evaluatorModel: string = "op
 
     status = evaluation.status;
     explanation = evaluation.explanation;
-    
   } catch (error) {
-    output = `Test execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    output = `Test execution failed: ${
+      error instanceof Error ? error.message : "Unknown error"
+    }`;
     status = "Failed";
     explanation = "Test execution failed due to an error";
   }
@@ -672,16 +725,17 @@ export async function runSingleTest(testId: number, evaluatorModel: string = "op
       test_id: testId,
       output: output,
       explanation: explanation,
+      tool_calls: toolCalls,
       status: status as SelectTestRunResult["status"],
       created_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
     })
     .returning();
 
   return {
     id: result[0].id,
-    output: result[0].output || '',
+    output: result[0].output || "",
     status: result[0].status,
-    explanation: result[0].explanation || undefined
+    explanation: result[0].explanation || undefined,
   };
 }

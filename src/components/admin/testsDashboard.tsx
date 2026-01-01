@@ -70,12 +70,12 @@ export default function TestsDashboard({ searchParams }: TestsDashboardProps) {
   }
 
   return (
-    <div className="flex flex-col w-full max-w-350 mx-4 2xl:mx-auto my-4 gap-4">
+    <div className="flex flex-col w-full max-w-350 mx-4 2xl:mx-auto my-4 gap-4 px-3">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tests Dashboard</h1>
       </div>
       
-      <div className="flex flex-col lg:flex-row gap-6 items-start px-3">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="w-full lg:w-1/2 order-2 lg:order-1">
           <TestRunPieChart 
             onRefreshRef={(refreshFn) => { pieChartRefreshRef.current = refreshFn; }}

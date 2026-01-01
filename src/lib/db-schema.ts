@@ -1,16 +1,47 @@
-import { serial, vector, text, pgTable, index, jsonb, pgEnum, uniqueIndex, integer, date, timestamp, boolean } from "drizzle-orm/pg-core";
+import {
+  serial,
+  vector,
+  text,
+  pgTable,
+  index,
+  jsonb,
+  pgEnum,
+  uniqueIndex,
+  integer,
+  date,
+  timestamp,
+  boolean,
+} from "drizzle-orm/pg-core";
 
 export const rolesEnum = pgEnum("roles", ["system", "user", "assistant"]);
-export const statusEnum = pgEnum("file_status", ["processing", "completed", "failed"]);
-export const testRunStatusEnum = pgEnum("test_run_status", ["Running", "Failed", "Done", "Stopped"]);
-export const testResultStatusEnum = pgEnum("test_result_status", ["Running","", "Success", "Failed", "Evaluating", "Stopped"]);
+export const statusEnum = pgEnum("file_status", [
+  "processing",
+  "completed",
+  "failed",
+]);
+export const testRunStatusEnum = pgEnum("test_run_status", [
+  "Running",
+  "Failed",
+  "Done",
+  "Stopped",
+]);
+export const testResultStatusEnum = pgEnum("test_result_status", [
+  "Running",
+  "",
+  "Success",
+  "Failed",
+  "Evaluating",
+  "Stopped",
+]);
 export const documents = pgTable(
   "documents",
   {
     id: serial("id").primaryKey(),
     content: text("content").notNull(),
     embedding: vector("embedding", { dimensions: 1536 }),
-    uploaded_file_id: integer("uploaded_file_id").references(() => uploadedFiles.id),
+    uploaded_file_id: integer("uploaded_file_id").references(
+      () => uploadedFiles.id
+    ),
   },
   (table) => [
     index("documents_embedding_index").using(
@@ -20,18 +51,17 @@ export const documents = pgTable(
   ]
 );
 
-export const conversations = pgTable(
-  "conversations",
-  {
-    id: serial("id").primaryKey(),
-    user_id: text("user_id").notNull(),
-    title: text("title"),
-  }
-);
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  user_id: text("user_id").notNull(),
+  title: text("title"),
+});
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
-  conversation_id: integer("conversation_id").notNull().references(() => conversations.id),
+  conversation_id: integer("conversation_id")
+    .notNull()
+    .references(() => conversations.id),
   role: rolesEnum("role").notNull(),
   parts: jsonb("parts").notNull(),
   text_content: text("text_content"),
@@ -44,12 +74,12 @@ export const uploadedFiles = pgTable(
     fileName: text("file_name").notNull(),
     fileHash: text("file_hash").notNull(),
     status: statusEnum("status").notNull().default("completed"),
-    user_id: text("user_id").notNull().references(() => users.id),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id),
     active: boolean("active").notNull().default(true),
   },
-  (table) => [
-    uniqueIndex("file_hash_index").on(table.fileHash),
-  ]
+  (table) => [uniqueIndex("file_hash_index").on(table.fileHash)]
 );
 
 export const userTokenUsage = pgTable(
@@ -85,28 +115,25 @@ export const users = pgTable(
   ]
 );
 
-export const settings = pgTable(
-  "settings",
-  {
-    id: serial("id").primaryKey(),
-    key: text("key").notNull().unique(),
-    value: text("value").notNull(),
-    created_at: timestamp("created_at").notNull().defaultNow(),
-    updated_at: timestamp("updated_at").notNull().defaultNow(),
-  }
-);
+export const settings = pgTable("settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+});
 
 export const subscriptions = pgTable(
   "subscriptions",
   {
     id: serial("id").primaryKey(),
-    user_id: text("user_id").notNull().references(() => users.id),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id),
     created_date: timestamp("created_date").notNull().defaultNow(),
     expiry_date: timestamp("expiry_date").notNull(),
   },
-  (table) => [
-    index("subscriptions_user_id_index").on(table.user_id),
-  ]
+  (table) => [index("subscriptions_user_id_index").on(table.user_id)]
 );
 
 export const tests = pgTable(
@@ -116,8 +143,12 @@ export const tests = pgTable(
     name: text("name").notNull(),
     prompt: text("prompt").notNull(),
     expected_result: text("expected_result").notNull(),
-    user_id: text("user_id").notNull().references(() => users.id),
-    created_by: text("created_by").notNull().references(() => users.id),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    created_by: text("created_by")
+      .notNull()
+      .references(() => users.id),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -133,7 +164,9 @@ export const testRuns = pgTable(
     id: serial("id").primaryKey(),
     status: testRunStatusEnum("status").notNull().default("Running"),
     launched_at: timestamp("launched_at").notNull().defaultNow(),
-    user_id: text("user_id").notNull().references(() => users.id),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -148,9 +181,12 @@ export const testRunResults = pgTable(
   {
     id: serial("id").primaryKey(),
     test_run_id: integer("test_run_id").references(() => testRuns.id),
-    test_id: integer("test_id").notNull().references(() => tests.id),
+    test_id: integer("test_id")
+      .notNull()
+      .references(() => tests.id),
     output: text("output"),
     explanation: text("explanation"),
+    tool_calls: jsonb("tool_calls"),
     status: testResultStatusEnum("status").notNull().default("Running"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
