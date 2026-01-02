@@ -1,7 +1,7 @@
 import { generateText, convertToModelMessages, stepCountIs } from "ai";
 import { ChatMessage } from "@/types/chatMessage";
 import { getSystemPrompt } from "@/services/settingsService";
-import { tools } from "@/app/api/chat/tools";
+import { tools, SearchKnowledgeBaseResult} from "@/app/api/chat/tools";
 
 const supportedModels = [
   "openai/gpt-4o",
@@ -96,12 +96,16 @@ export async function generateChatCompletionWithToolCalls(
             // Extract result - the result might be nested differently
             let resultData: unknown = undefined;
             if (toolResult) {
-              // Try to access result property with type assertion
-              const anyResult = toolResult as any;
-              if (anyResult.result !== undefined) {
-                resultData = anyResult.result;
-              } else if (anyResult.content !== undefined) {
-                resultData = anyResult.content;
+              // Handle tool result wrapper structure
+              const wrappedResult = toolResult as {
+                result?: SearchKnowledgeBaseResult;
+                content?: unknown;
+              };
+              
+              if (wrappedResult.result !== undefined) {
+                resultData = wrappedResult.result;
+              } else if (wrappedResult.content !== undefined) {
+                resultData = wrappedResult.content;
               } else {
                 // If neither result nor content, store the whole object
                 resultData = toolResult;
@@ -116,11 +120,6 @@ export async function generateChatCompletionWithToolCalls(
             };
           });
         }) || [];
-
-    // Debug: Log captured tool calls
-    if (toolCalls.length > 0) {
-      console.log("Captured Tool Calls:", JSON.stringify(toolCalls, null, 2));
-    }
 
     return {
       text: result.text.trim(),

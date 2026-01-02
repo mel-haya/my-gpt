@@ -5,6 +5,25 @@ import { openai as originalOpenAI } from "@ai-sdk/openai";
 import { uploadImageToImageKit } from "./imageKit";
 import { searchDocuments } from "@/lib/search";
 
+const searchKnowledgeBaseInputSchema = z.object({
+  query: z
+    .string()
+    .describe("The search query to look for in the knowledge base."),
+})
+
+const searchKnowledgeBaseOutputSchema = z.object({
+  success: z.boolean().describe("Whether the search was successful"),
+  message: z.string().describe("Status message"),
+  results: z.array(z.object({
+    id: z.number().describe("Document ID"),
+    content: z.string().describe("Document content"),
+    similarity: z.number().describe("Similarity score")
+  })).optional().describe("Array of search results with similarity scores")
+});
+
+export type SearchKnowledgeBaseResult = z.infer<typeof searchKnowledgeBaseOutputSchema>;
+
+
 export const tools = {
   // generateImage: tool({
   //   name: "generateImage",
@@ -61,20 +80,8 @@ export const tools = {
     name: "searchKnowledgeBase",
     description:
       "Searches the knowledge base for relevant information based on a query.",
-    inputSchema: z.object({
-      query: z
-        .string()
-        .describe("The search query to look for in the knowledge base."),
-    }),
-    outputSchema: z.object({
-      success: z.boolean().describe("Whether the search was successful"),
-      message: z.string().describe("Status message"),
-      results: z.array(z.object({
-        id: z.number().describe("Document ID"),
-        content: z.string().describe("Document content"),
-        similarity: z.number().describe("Similarity score")
-      })).optional().describe("Array of search results with similarity scores")
-    }),
+    inputSchema: searchKnowledgeBaseInputSchema,
+    outputSchema: searchKnowledgeBaseOutputSchema,
     execute: async ({ query }) => {
       try {
         const response = await searchDocuments(query, 5, 0);

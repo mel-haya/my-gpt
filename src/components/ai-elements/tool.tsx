@@ -20,6 +20,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { isValidElement } from "react";
 import { CodeBlock } from "./code-block";
 import { KnowledgeBaseResults } from "./knowledge-base-results";
+import { SearchKnowledgeBaseResult } from "@/app/api/chat/tools";
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
 
@@ -127,15 +128,7 @@ export type ToolOutputProps = ComponentProps<"div"> & {
 };
 
 // Type guard for knowledge base output
-const isKnowledgeBaseOutput = (output: any): output is {
-  success: boolean;
-  message: string;
-  results?: Array<{
-    id: number;
-    content: string;
-    similarity: number;
-  }>;
-} => {
+const isKnowledgeBaseOutput = (output: any): output is SearchKnowledgeBaseResult => {
   return (
     typeof output === "object" &&
     output !== null &&
