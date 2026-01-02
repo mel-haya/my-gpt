@@ -1,7 +1,7 @@
 import { streamText, convertToModelMessages, stepCountIs } from "ai";
 import { tools, webSearchTool } from "./tools";
 import { ChatMessage } from "@/types/chatMessage";
-import { saveMessage } from "@/services/messagesService";
+import { saveMessage, getLatestMessageByConversationId, updateMessageTextContent } from "@/services/messagesService";
 import { hasReachedDailyLimit, getRemainingMessages, recordUsage } from "@/services/tokenUsageService";
 import { getSystemPrompt } from "@/services/settingsService";
 import { Tools } from "@/types/Tools";
@@ -50,8 +50,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const { messages, conversation, model, webSearch } = await req.json();
-
+    const { messages, conversation, model, webSearch, trigger } = await req.json();
+    
     const lastMessage = messages[messages.length - 1];
     for (const part of lastMessage.parts) {
       if (part.type === "file" && part.mediaType.startsWith("image/")) {
@@ -60,9 +60,10 @@ export async function POST(req: Request) {
     }
 
     const modelMessages = convertToModelMessages(messages);
+
     const backgroundTasks = Promise.allSettled(
       [
-        saveMessage(lastMessage, conversation.id),
+        trigger === "submit-message" && saveMessage(lastMessage, conversation.id),
         !conversation.title &&
           renameConversationAI(
             modelMessages,
@@ -117,8 +118,29 @@ export async function POST(req: Request) {
             }
           });
 
-          // Save AI response
-          await saveMessage(responseMessage as ChatMessage, conversation.id);
+          // Handle regenerate-message trigger
+          if (trigger === "regenerate-message") {
+            const latestMessage = await getLatestMessageByConversationId(conversation.id);
+            
+            if (latestMessage && latestMessage.role === "assistant") {
+              // Replace the content of the latest assistant message
+              const newTextContent = (responseMessage as ChatMessage).parts
+                .filter((part) => part.type === "text")
+                .map((part) => part.text)
+                .join(" ");
+              
+              await updateMessageTextContent(
+                latestMessage.id, 
+                newTextContent, 
+                (responseMessage as ChatMessage).parts
+              );
+            } else {
+              // Latest message is a user message (previous generation failed), save as usual
+              await saveMessage(responseMessage as ChatMessage, conversation.id);
+            }
+          } else {
+            await saveMessage(responseMessage as ChatMessage, conversation.id);
+          }
 
           // Record message usage with actual token count from AI response
           const actualTokens = streamUsage?.totalTokens || 0;
