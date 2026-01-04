@@ -14,24 +14,21 @@ export async function getAvailableModels(): Promise<ModelOption[]> {
     // Get the authenticated user ID from Clerk
     const { userId } = await auth();
 
-    if (!userId) {
-      // Return basic models for unauthenticated users
-      return [
-        { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
-        { id: "google/gemini-1.5-flash", name: "Gemini 1.5 Flash" },
-      ];
-    }
-
-    // Check if user has an active subscription
-    const isSubscribed = await checkUserSubscription(userId);
-
-    // Basic models available to all authenticated users
     const basicModels: ModelOption[] = [
       // { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
       { id: "openai/gpt-5-nano", name: "GPT-5 Nano" },
       { id: "google/gemini-3-flash", name: "Gemini 3 Flash" },
       { id: "anthropic/claude-haiku-3.5", name: "Claude Haiku 3.5" },
     ];
+    if (!userId) {
+      // Return basic models for unauthenticated users
+      return basicModels
+    }
+
+    // Check if user has an active subscription
+    const isSubscribed = await checkUserSubscription(userId);
+
+    // Basic models available to all authenticated users
 
     // Premium models for subscribed users
     const premiumModels: ModelOption[] = [

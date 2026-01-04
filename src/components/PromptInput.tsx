@@ -162,7 +162,7 @@ const InputDemo = ({
                 <GlobeIcon size={16} />
                 <span>Search</span>
               </PromptInputButton>
-              <PromptInputSelect
+              {Boolean(models.length) &&<PromptInputSelect
                 onValueChange={onModelChange}
                 value={selectedModel}
                 disabled={isLoadingModels}
@@ -172,10 +172,10 @@ const InputDemo = ({
                     placeholder={isLoadingModels ? "Loading models..." : "Select a model"}
                   />
                 </PromptInputSelectTrigger>
-                <PromptInputSelectContent>
+                 <PromptInputSelectContent>
                   {modelOptions}
                 </PromptInputSelectContent>
-              </PromptInputSelect>
+              </PromptInputSelect>}
             </PromptInputTools>
             <PromptInputSubmit disabled={!text && !status} status={status} />
           </PromptInputFooter>
