@@ -5,7 +5,7 @@ import type {
   SelectTestRun,
   SelectTestRunResult,
 } from "@/lib/db-schema";
-import { eq, desc, count, or, ilike, inArray, and, isNull } from "drizzle-orm";
+import { eq, desc, count, or, ilike, inArray, and, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
   generateChatCompletionWithToolCalls,
@@ -77,35 +77,47 @@ export async function getLatestTestRunResultsForTests(
     return new Map();
   }
 
-  // Get the latest test run result for each test, including individual test runs (test_run_id = NULL)
-  // Simply get the most recent result by timestamp for each test
+  // Create subquery to find the latest created_at for each test_id
+  const latestTimestamps = db
+    .select({
+      test_id: testRunResults.test_id,
+      max_created_at: sql<Date>`max(${testRunResults.created_at})`.as('max_created_at'),
+      max_id: sql<number>`max(${testRunResults.id})`.as('max_id'),
+    })
+    .from(testRunResults)
+    .where(inArray(testRunResults.test_id, testIds))
+    .groupBy(testRunResults.test_id)
+    .as('latest_timestamps');
+
+  // Join with the original table to get full records
   const latestResults = await db
     .select({
       test_id: testRunResults.test_id,
       status: testRunResults.status,
       created_at: testRunResults.created_at,
       output: testRunResults.output,
-      id: testRunResults.id,
     })
     .from(testRunResults)
-    .where(inArray(testRunResults.test_id, testIds))
-    .orderBy(desc(testRunResults.created_at), desc(testRunResults.id));
+    .innerJoin(
+      latestTimestamps,
+      and(
+        eq(testRunResults.test_id, latestTimestamps.test_id),
+        eq(testRunResults.created_at, latestTimestamps.max_created_at)
+      )
+    );
 
-  // Group by test_id and take the latest result for each test
-  // Use both created_at and id to ensure we get the absolute latest result
+  // Convert to Map format
   const resultMap = new Map<
     number,
     { status: string; created_at: Date; output?: string }
   >();
 
   for (const result of latestResults) {
-    if (!resultMap.has(result.test_id)) {
-      resultMap.set(result.test_id, {
-        status: result.status,
-        created_at: result.created_at,
-        output: result.output || undefined,
-      });
-    }
+    resultMap.set(result.test_id, {
+      status: result.status,
+      created_at: result.created_at,
+      output: result.output || undefined,
+    });
   }
 
   return resultMap;
@@ -130,7 +142,34 @@ export async function getTestsWithPagination(
       )
     : undefined;
 
-  // Build the query
+  // Create a subquery for the latest test results using MAX aggregation
+  const latestTimestamps = db
+    .select({
+      test_id: testRunResults.test_id,
+      max_created_at: sql<Date>`max(${testRunResults.created_at})`.as('max_created_at'),
+    })
+    .from(testRunResults)
+    .groupBy(testRunResults.test_id)
+    .as('latest_timestamps');
+
+  const latestResultsSubquery = db
+    .select({
+      test_id: testRunResults.test_id,
+      status: testRunResults.status,
+      created_at: testRunResults.created_at,
+      output: testRunResults.output,
+    })
+    .from(testRunResults)
+    .innerJoin(
+      latestTimestamps,
+      and(
+        eq(testRunResults.test_id, latestTimestamps.test_id),
+        eq(testRunResults.created_at, latestTimestamps.max_created_at)
+      )
+    )
+    .as('latest_results');
+
+  // Build the optimized query with a single JOIN
   const query = db
     .select({
       id: tests.id,
@@ -143,13 +182,20 @@ export async function getTestsWithPagination(
       updated_at: tests.updated_at,
       username: userTable.username,
       created_by_username: creatorTable.username,
+      latest_test_result_status: latestResultsSubquery.status,
+      latest_test_result_created_at: latestResultsSubquery.created_at,
+      latest_test_result_output: latestResultsSubquery.output,
     })
     .from(tests)
     .leftJoin(userTable, eq(tests.user_id, userTable.id))
     .leftJoin(creatorTable, eq(tests.created_by, creatorTable.id))
+    .leftJoin(
+      latestResultsSubquery,
+      eq(tests.id, latestResultsSubquery.test_id)
+    )
     .where(baseConditions);
 
-  // Get total count for pagination
+  // Get total count for pagination (unchanged)
   const totalCountQuery = db
     .select({ count: count() })
     .from(tests)
@@ -158,7 +204,7 @@ export async function getTestsWithPagination(
   const totalCountResult = await totalCountQuery;
   const totalCount = totalCountResult[0]?.count || 0;
 
-  // Get paginated results
+  // Get paginated results with latest test results in a single query
   const testsData = await query
     .orderBy(desc(tests.created_at))
     .limit(limit)
@@ -166,25 +212,15 @@ export async function getTestsWithPagination(
 
   const totalPages = Math.ceil(totalCount / limit);
 
-  // Get latest test run results for all tests
-  const testIds = testsData.map((test) => test.id);
-  const latestResults =
-    testIds.length > 0
-      ? await getLatestTestRunResultsForTests(testIds)
-      : new Map();
-
-  // Map the results to match the expected interface
-  const mappedTests: TestWithUser[] = testsData.map((test) => {
-    const latestResult = latestResults.get(test.id);
-    return {
-      ...test,
-      username: test.username ?? undefined,
-      created_by_username: test.created_by_username ?? undefined,
-      latest_test_result_status: latestResult?.status,
-      latest_test_result_created_at: latestResult?.created_at,
-      latest_test_result_output: latestResult?.output,
-    };
-  });
+  // Map the results to match the expected interface (no need for additional query)
+  const mappedTests: TestWithUser[] = testsData.map((test) => ({
+    ...test,
+    username: test.username ?? undefined,
+    created_by_username: test.created_by_username ?? undefined,
+    latest_test_result_status: test.latest_test_result_status ?? undefined,
+    latest_test_result_created_at: test.latest_test_result_created_at ?? undefined,
+    latest_test_result_output: test.latest_test_result_output ?? undefined,
+  }));
 
   return {
     tests: mappedTests,
