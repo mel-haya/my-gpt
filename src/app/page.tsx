@@ -36,50 +36,51 @@ export default function Home() {
     sendMessage,
     status,
     error,
+    regenerate,
     stop,
     setMessages,
     addToolOutput,
   } = useChat<ChatMessage>({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-    async onToolCall({ toolCall }) {
-      if (toolCall.dynamic) return;
-      switch (toolCall.toolName) {
-        case "changeBackground":
-          {
-            const { imageUrl, background } = toolCall.input;
+    // async onToolCall({ toolCall }) {
+    //   if (toolCall.dynamic) return;
+    //   switch (toolCall.toolName) {
+    //     case "changeBackground":
+    //       {
+    //         const { imageUrl, background } = toolCall.input;
 
-            const transformation = `e-changebg-prompt-${background}`;
-            const transformedUrl = buildTransformationUrl(
-              imageUrl,
-              transformation
-            );
+    //         const transformation = `e-changebg-prompt-${background}`;
+    //         const transformedUrl = buildTransformationUrl(
+    //           imageUrl,
+    //           transformation
+    //         );
 
-            addToolOutput({
-              tool: "changeBackground",
-              toolCallId: toolCall.toolCallId,
-              output: transformedUrl,
-            });
-          }
-          break;
-        case "removeBackground":
-          {
-            const { imageUrl } = toolCall.input;
+    //         addToolOutput({
+    //           tool: "changeBackground",
+    //           toolCallId: toolCall.toolCallId,
+    //           output: transformedUrl,
+    //         });
+    //       }
+    //       break;
+    //     case "removeBackground":
+    //       {
+    //         const { imageUrl } = toolCall.input;
 
-            const transformation = `e-bgremove`;
-            const transformedUrl = buildTransformationUrl(
-              imageUrl,
-              transformation
-            );
+    //         const transformation = `e-bgremove`;
+    //         const transformedUrl = buildTransformationUrl(
+    //           imageUrl,
+    //           transformation
+    //         );
 
-            addToolOutput({
-              tool: "removeBackground",
-              toolCallId: toolCall.toolCallId,
-              output: transformedUrl,
-            });
-          }
-          break;
-      }
-    },
+    //         addToolOutput({
+    //           tool: "removeBackground",
+    //           toolCallId: toolCall.toolCallId,
+    //           output: transformedUrl,
+    //         });
+    //       }
+    //       break;
+    //   }
+    // },
     async onFinish({ messages }) {
       const userMessages = messages.filter((m) => m.role === "user");
       if (userMessages.length === 1) await refetch();
@@ -185,6 +186,68 @@ export default function Home() {
     }
   }
 
+  async function regenerateMessage(
+    options?: ChatRequestOptions): Promise<void> {
+    // Check if user is signed in
+    if (!isSignedIn) {
+      setShowSignInPopup(true);
+      return;
+    }
+
+    if (usage?.hasReachedLimit) {
+      const resetTime = new Date();
+      resetTime.setHours(24, 0, 0, 0); // Next midnight
+      const hoursUntilReset = Math.ceil(
+        (resetTime.getTime() - Date.now()) / (1000 * 60 * 60)
+      );
+
+      addSystemMessage(
+        `⚠️ **Daily message limit reached!**\n\nYou've used all your messages for today. Your limit will reset in ${hoursUntilReset} hour${
+          hoursUntilReset !== 1 ? "s" : ""
+        }.\n\nPlease try again tomorrow.`
+      );
+      return;
+    }
+    try {
+      const conversation = currentConversation;
+      const body = { conversation, ...options?.body };
+      await regenerate({ body });
+      // Refresh usage immediately after sending (in addition to onFinish)
+      await refreshUsage();
+    } catch (error: unknown) {
+      console.error("Error regenerating message:", error);
+
+      // Handle 429 rate limit error specifically
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const isRateLimit =
+        errorMessage.includes("429") ||
+        errorMessage.includes("Rate limit") ||
+        errorMessage.includes("Daily message limit reached");
+
+      if (isRateLimit) {
+        const resetTime = new Date();
+        resetTime.setHours(24, 0, 0, 0); // Next midnight
+        const hoursUntilReset = Math.ceil(
+          (resetTime.getTime() - Date.now()) / (1000 * 60 * 60)
+        );
+
+        addSystemMessage(
+          `🚫 **Rate limit exceeded!**\n\nYou've reached your daily message limit. Your limit will reset in ${hoursUntilReset} hour${
+            hoursUntilReset !== 1 ? "s" : ""
+          }.\n\nPlease try again tomorrow. We appreciate your patience! ✨`
+        );
+      } else {
+        // Handle other errors
+        addSystemMessage(
+          `❌ **Message failed to send**\n\nThere was an issue sending your message. Please try again.\n\nIf the problem persists, please check your connection or contact support.`
+        );
+      }
+
+      // Still refresh usage even if there's an error, in case the message was processed
+      await refreshUsage();
+    }
+  }
   function resetConversation() {
     setMessages([]);
     setCurrentConversation(null);
@@ -272,6 +335,7 @@ export default function Home() {
         status={status}
         error={error}
         stop={stop}
+        regenerate={regenerateMessage}
       />
       <ToastContainer autoClose={3000} theme="dark" pauseOnHover={false} />
       <SignInPopup

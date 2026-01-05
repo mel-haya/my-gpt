@@ -7,15 +7,32 @@ import { chunkContent } from "@/lib/chunking";
 import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { del } from "@vercel/blob";
+import { eq } from "drizzle-orm";
 import mammoth from "mammoth";
 
-async function embedAndSave(text: string) {
+function extractOriginalFilename(pathname: string): string {
+  // Use regex to match pattern: (filename)-(vercel-code).(extension)
+  // and extract just (filename).(extension)
+  const regex = /^(.+)-[a-zA-Z0-9]{30}(\.[^.]+)$/;
+  const match = pathname.match(regex);
+  
+  if (match) {
+    // Return filename + extension without the Vercel code
+    return match[1] + match[2];
+  }
+  
+  // Return original if pattern doesn't match
+  return pathname;
+}
+
+async function embedAndSave(text: string, uploadedFileId: number) {
   const chunks = await chunkContent(text);
   const embeddings = await generateEmbeddings(chunks);
 
   const records = chunks.map((chunk, index) => ({
     content: chunk,
     embedding: embeddings[index],
+    uploaded_file_id: uploadedFileId,
   }));
   await db.insert(documents).values(records);
 
@@ -25,18 +42,19 @@ async function embedAndSave(text: string) {
   };
 }
 
-export async function parsePDF(url: string) {
+export async function parsePDF(url: string, uploadedFileId: number) {
   try {
+    console.log("Fetching PDF from URL:", url);
+    console.log("uploadedFileId:", uploadedFileId);
     const data = new PDFParse({ url, CanvasFactory });
     const text = (await data.getText()).text;
-    console.log("Extracted text length:", text.length);
     if (text.trim().length === 0) {
       return {
         success: false,
         error: "No extractable text found in PDF",
       };
     }
-    return await embedAndSave(text);
+    return await embedAndSave(text, uploadedFileId);
   } catch (error) {
     console.log("Error processing PDF:", error);
     return {
@@ -46,7 +64,7 @@ export async function parsePDF(url: string) {
   }
 }
 
-export async function parseDOCX(url: string) {
+export async function parseDOCX(url: string, uploadedFileId: number) {
   try {
     const response = await fetch(url);
     if (!response.ok) {
@@ -58,14 +76,14 @@ export async function parseDOCX(url: string) {
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);  
     const text = (await mammoth.extractRawText({ buffer: buffer })).value;
-    console.log("Extracted text length:", text.length);
+
     if (text.trim().length === 0) {
       return {
         success: false,
         error: "No extractable text found in DOCX",
       };
     }
-    return await embedAndSave(text);
+    return await embedAndSave(text, uploadedFileId);
     
   } catch (error) {
     console.log("Error processing DOCX:", error);
@@ -85,47 +103,62 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
   const body = (await request.json()) as HandleUploadBody;
-
+  
   try {
     const jsonResponse = await handleUpload({
       body,
       request,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
+
         return {
           allowedContentTypes: ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
           addRandomSuffix: true,
-          tokenPayload: clientPayload,
+          tokenPayload: clientPayload, // This should be the userId from frontend
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
-        console.log("blob upload completed", blob, tokenPayload);
+
 
         if (!tokenPayload) {
           console.error(
-            "No tokenPayload (hash) received on upload completion."
+            "No tokenPayload received on upload completion."
           );
           await del(blob.url); // Clean up the uploaded file.
           return;
         }
 
-        try {
-          // Attempt to insert the file hash immediately to "lock" it.
-          await db.insert(uploadedFiles).values({
-            fileName: blob.pathname,
-            fileHash: tokenPayload,
-          });
+        // Parse tokenPayload to extract userId and fileHash
+        const lastColonIndex = tokenPayload.lastIndexOf(':');
+        if (lastColonIndex === -1) {
+          console.error("Invalid tokenPayload format - expected 'userId:fileHash'");
+          await del(blob.url);
+          return;
+        }
+        
+        const fileUserId = tokenPayload.substring(0, lastColonIndex);
+        const fileHash = tokenPayload.substring(lastColonIndex + 1);
 
+        try {
+          const originalFileName = extractOriginalFilename(blob.pathname);
+          
+          const [insertedFile] = await db.insert(uploadedFiles).values({
+            fileName: originalFileName,
+            fileHash: fileHash,
+            user_id: fileUserId,
+            status: "processing",
+          }).returning();
+          
           // Determine file type based on file extension
           const fileExtension = blob.pathname.toLowerCase().split('.').pop();
           let result;
-          console.log("Processing file with extension:", fileExtension);
+
           switch (fileExtension) {
             case 'pdf':
-              result = await parsePDF(blob.downloadUrl);
+              result = await parsePDF(blob.downloadUrl, insertedFile.id);
               console.log("PDF processing result:", result);
               break;
             case 'docx':
-              result = await parseDOCX(blob.downloadUrl);
+              result = await parseDOCX(blob.downloadUrl, insertedFile.id);
               console.log("DOCX processing result:", result);
               break;
             default:
@@ -136,15 +169,24 @@ export async function POST(request: Request): Promise<NextResponse> {
               };
               break;
           }
+
+          if (result.success) {
+            await db.update(uploadedFiles)
+              .set({ status: "completed" })
+              .where(eq(uploadedFiles.id, insertedFile.id));
+          } else {
+            await db.update(uploadedFiles)
+              .set({ status: "failed" })
+              .where(eq(uploadedFiles.id, insertedFile.id));
+          }
         } catch (error) {
-          // If the insert fails, it's likely due to the unique constraint,
-          // meaning the file is already being processed or has been processed.
+
           console.log(
             "File hash already exists or another error occurred, skipping processing:",
-            (error as Error).message
+            (error as Error)
           );
         } finally {
-          // Always delete the temporary blob file.
+
           await del(blob.url);
         }
       },

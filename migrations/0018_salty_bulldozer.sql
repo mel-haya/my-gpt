@@ -1,0 +1,1 @@
+ALTER TABLE "messages" ALTER COLUMN "conversation_id" SET DATA TYPE integer;

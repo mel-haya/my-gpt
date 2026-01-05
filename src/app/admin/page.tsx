@@ -1,10 +1,5 @@
-import TokenUsageAdmin  from '@/components/admin/TokenUsageAdmin';
+import { redirect } from "next/navigation";
 
 export default function AdminPage() {
-  return (
-    <div className="">
-      <TokenUsageAdmin />
-      {/* Admin functionalities go here */}
-    </div>
-  );
+  redirect("/admin/users");
 }

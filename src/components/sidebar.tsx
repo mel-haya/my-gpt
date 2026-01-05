@@ -1,8 +1,7 @@
-import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { SelectConversation } from "@/lib/db-schema";
 import { SignedIn, useAuth } from "@clerk/nextjs";
-import UploadFile from "./UploadFile";
+
 import Styles from "@/assets/styles/customScrollbar.module.css";
 import { PenLine, PanelLeft, Search } from "lucide-react";
 import bgStyles from "@/assets/styles/background.module.css";
@@ -11,6 +10,7 @@ import MessagesLimit from "./messagesLimit";
 import ConversationActionMenu from "@/components/conversationActionMenu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageSquareX } from "lucide-react";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export default function Sidebar({
   reset,
@@ -52,6 +52,7 @@ export default function Sidebar({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
+  const { isSubscribed, loading: subscriptionLoading } = useSubscription();
 
   const handleNewConversation = () => {
     if (!isSignedIn) {
@@ -61,8 +62,15 @@ export default function Sidebar({
     reset();
   };
 
+  const handleDeleteConversation = useCallback(
+    (conversationId: number) => {
+      return () => deleteConversation(conversationId);
+    },
+    [deleteConversation]
+  );
+
   return (
-    <div className={`flex z-20 ${bgStyles.sideBarBackground}`}>
+    <div className={`flex z-30 ${bgStyles.sideBarBackground}`}>
       <div
         className={`fixed top-0 left-0 mt-4 ml-2 flex gap-2 p-1 rounded-lg transition-all ${
           isOpen ? "bg-gray-transparent" : "bg-gray-200 dark:bg-neutral-800"
@@ -94,17 +102,19 @@ export default function Sidebar({
       >
         <div className="flex flex-col h-screen w-[300px] robert pt-16">
           {/* <h1 className="text-2xl font-bold font-goldman px-4 py-6">My GPT</h1> */}
-          {/* {toggleUpload && <UploadFile onSignInRequired={onSignInRequired} />} */}
+
           <SignedIn>
-            <div
-              className="px-4 py-3 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
-              style={{
-                background:
-                  "linear-gradient(90deg,rgba(2, 0, 36, 1) 0%, rgba(68, 0, 150, 1) 100%)",
-              }}
-            >
-              <MessagesLimit />
-            </div>
+            {!isSubscribed && !subscriptionLoading && (
+              <div
+                className="px-4 py-3 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
+                style={{
+                  background:
+                    "linear-gradient(90deg,rgba(2, 0, 36, 1) 0%, rgba(68, 0, 150, 1) 100%)",
+                }}
+              >
+                <MessagesLimit />
+              </div>
+            )}
           </SignedIn>
           <div
             className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-300 dark:border-gray-800 flex items-center gap-2"
@@ -147,7 +157,7 @@ export default function Sidebar({
                   >
                     {/* <i className="fa-solid fa-xmark"></i> */}
                     <ConversationActionMenu
-                      onDelete={() => deleteConversation(conversation.id)}
+                      onDelete={handleDeleteConversation(conversation.id)}
                     />
                   </div>
                 </div>
