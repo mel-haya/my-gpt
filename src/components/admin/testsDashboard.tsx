@@ -8,6 +8,20 @@ import TestRunner from "./TestRunner";
 import { getTestsWithStatus } from "@/app/actions/tests";
 import type { TestWithUser } from "@/services/testsService";
 
+interface TestStatusResult {
+  isRunning: boolean;
+  progress?: {
+    Success: number;
+    Failed: number;
+    Running: number;
+    Pending: number;
+    Evaluating: number;
+    Stopped: number;
+    total: number;
+  };
+  startedAt?: string;
+}
+
 interface TestsDashboardProps {
   initialData: {
     tests: TestWithUser[];
@@ -25,7 +39,7 @@ interface TestsDashboardProps {
 export default function TestsDashboard({ initialData, searchQuery }: TestsDashboardProps) {
   const searchParams = useSearchParams();
   const [isTestsRunning, setIsTestsRunning] = useState(false);
-  const [lastStatusResult, setLastStatusResult] = useState<any>(null);
+  const [lastStatusResult, setLastStatusResult] = useState<TestStatusResult | undefined>(undefined);
   const [lastCompletedCount, setLastCompletedCount] = useState<number>(0);
   const [tableData, setTableData] = useState(initialData);
   
@@ -50,7 +64,9 @@ export default function TestsDashboard({ initialData, searchQuery }: TestsDashbo
 
   // Update table data when URL search params change (for pagination/search)
   useEffect(() => {
-    refreshTableData();
+    Promise.resolve().then(() => {
+      refreshTableData();
+    });
   }, [searchParams, refreshTableData]);
 
   // Function to check test status and update polling state
@@ -98,7 +114,7 @@ export default function TestsDashboard({ initialData, searchQuery }: TestsDashbo
     } catch (error) {
       console.error("Error checking test status:", error);
     }
-  }, [searchQuery, lastStatusResult, lastCompletedCount, refreshTableData]);
+  }, [lastStatusResult, lastCompletedCount, refreshTableData]);
 
   // Initial status check to see if tests are already running
   useEffect(() => {
