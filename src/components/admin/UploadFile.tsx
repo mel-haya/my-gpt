@@ -1,21 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import PdfIcon from "@/components/Icons/pdfIcon";
-import { shortenText } from "@/lib/utils";
 import { toast } from "react-toastify";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "../ui/button";
 import { upload } from "@vercel/blob/client";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { UploadIcon } from "lucide-react";
 import CryptoJS from "crypto-js";
 
@@ -24,18 +13,16 @@ interface UploadFileProps {
 }
 
 export default function UploadFile({ onUploadComplete }: UploadFileProps) {
-  const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { isSignedIn, userId } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const checkFile = () => {
-    const file = fileInputRef.current?.files?.[0];
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
-      setFile(file);
-    } else {
-      alert("No file chosen");
+      await handleUpload(file);
+      // Reset the input to allow selecting the same file again
+      event.target.value = '';
     }
   };
 
@@ -64,7 +51,7 @@ export default function UploadFile({ onUploadComplete }: UploadFileProps) {
   };
 
   const pollFileStatus = async (hash: string, maxAttempts = 30) => {
-    let dialogClosed = false;
+    let processingNotified = false;
     
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
@@ -76,18 +63,10 @@ export default function UploadFile({ onUploadComplete }: UploadFileProps) {
         } else if (statusData.exists && statusData.status === "failed") {
           return { success: false, status: "failed" };
         } else if (statusData.exists && statusData.status === "processing") {
-          // Close dialog on first detection of processing status
-          if (!dialogClosed) {
-            setLoading(false);
-            setIsDialogOpen(false);
-            setFile(null);
-            if (fileInputRef.current) {
-              fileInputRef.current.value = "";
-            }
-            toast.info("File is being processed in the background. You'll be notified when it's complete.");
-            // Trigger refresh to show file with processing status
+          // Only trigger refresh on first detection of processing
+          if (!processingNotified) {
             onUploadComplete?.();
-            dialogClosed = true;
+            processingNotified = true;
           }
           // Wait 2 seconds before next poll
           await new Promise(resolve => setTimeout(resolve, 2000));
@@ -107,19 +86,16 @@ export default function UploadFile({ onUploadComplete }: UploadFileProps) {
     return { success: false, status: "timeout" };
   };
 
-  const handleUploadClick = async () => {
+  const handleUpload = async (file: File) => {
     if (!isSignedIn) {
       toast.error("You must be signed in to upload files.");
       return;
     }
 
-    if (!file) {
-      toast.error("Please select a PDF file first.");
-      return;
-    }
-
     try {
       setLoading(true);
+      toast.info(`Uploading ${file.name}...`);
+      
       const hash = await calculateFileHash(file);
 
       const checkRes = await fetch(`/api/upload/check-hash?hash=${hash}`);
@@ -128,10 +104,6 @@ export default function UploadFile({ onUploadComplete }: UploadFileProps) {
       if (checkJson.exists) {
         toast.info("This file has already been processed.");
         setLoading(false);
-        setFile(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
         return;
       }
 
@@ -142,7 +114,9 @@ export default function UploadFile({ onUploadComplete }: UploadFileProps) {
       });
 
       if (newBlob) {
-        // Start background polling - this will close the dialog when processing begins
+        setLoading(false); // Reset loading state after successful upload
+        
+        // Start background polling
         pollFileStatus(hash).then(pollResult => {
           if (pollResult.success && pollResult.status === "completed") {
             toast.success("File has been processed and added to the knowledge base successfully!");
@@ -164,58 +138,32 @@ export default function UploadFile({ onUploadComplete }: UploadFileProps) {
     } catch (error) {
       toast.error("Failed to upload the PDF file.");
       console.error("Upload error:", error);
-    } finally {
       setLoading(false);
     }
   };
+
+  const handleButtonClick = () => {
+    if (loading) return;
+    fileInputRef.current?.click();
+  };
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <div className="flex flex-col gap-2">
-        <DialogTrigger asChild>
-          <Button className="px-4" variant="outline" onClick={() => setIsDialogOpen(true)}> <UploadIcon className="h-4 w-4" /> Upload File</Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Upload File</DialogTitle>
-            <DialogDescription>
-              You can upload PDF or DOCX files to add information to the
-              knowledge base.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="border-2 border-dashed border-neutral-500 rounded-lg relative">
-            {file ? (
-              loading ? (
-                <div className="text-center text-neutral-700 dark:text-neutral-300 italic px-4 py-12 flex justify-center items-center">
-                  <h2>Processing file and saving to database...</h2>
-                </div>
-              ) : (
-                <div className="text-center text-neutral-700 dark:text-neutral-300 italic px-4 py-12 flex justify-center items-center gap-1">
-                  <PdfIcon width="24" height="24" />
-                  {shortenText(file.name)}
-                </div>
-              )
-            ) : (
-              <div className="text-center text-neutral-500 italic px-4 py-12">
-                drag or select your File here
-              </div>
-            )}
-
-            <input
-              ref={fileInputRef}
-              onChange={checkFile}
-              type="file"
-              accept=".pdf,.docx"
-              className="w-full h-full opacity-0 absolute top-0 left-0 cursor-pointer"
-            />
-          </div>
-          <DialogFooter className="flex sm:justify-center">
-            <Button className="cursor-pointer mt-2" onClick={handleUploadClick}>
-              Upload file to the knowledge base
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </div>
-    </Dialog>
+    <div className="flex flex-col gap-2">
+      <Button 
+        className="px-4" 
+        variant="outline" 
+        onClick={handleButtonClick}
+        disabled={loading}
+      >
+        <UploadIcon className="h-4 w-4" />
+        {loading ? "Uploading..." : "Upload File"}
+      </Button>
+      <input
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        type="file"
+        accept=".pdf,.docx"
+        className="hidden"
+      />
+    </div>
   );
 }
