@@ -100,6 +100,38 @@ const getColumns = (
     },
   },
   {
+    accessorKey: "expected_result",
+    header: "Expected Response",
+    size: 200,
+    cell: ({ row }) => {
+      const expectedResult = row.original.expected_result as string | undefined;
+      
+      if (!expectedResult) {
+        return (
+          <div className="text-sm text-neutral-500 dark:text-neutral-400">
+            No expected response
+          </div>
+        );
+      }
+
+      // Truncate to approximately 100 characters
+      const truncatedText = expectedResult.length > 100 
+        ? expectedResult.substring(0, 100) + "..."
+        : expectedResult;
+
+      return (
+        <div className="max-w-xs">
+          <div 
+            className="text-sm text-neutral-700 dark:text-neutral-300 truncate cursor-help" 
+            title={expectedResult}
+          >
+            {truncatedText}
+          </div>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "latest_test_result_output",
     header: "Latest Test Output",
     size: 200,
