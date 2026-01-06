@@ -26,6 +26,7 @@ interface UploadFileProps {
 export default function UploadFile({ onUploadComplete }: UploadFileProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { isSignedIn, userId } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -62,6 +63,50 @@ export default function UploadFile({ onUploadComplete }: UploadFileProps) {
     return hash;
   };
 
+  const pollFileStatus = async (hash: string, maxAttempts = 30) => {
+    let dialogClosed = false;
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const statusRes = await fetch(`/api/upload/status?hash=${hash}`);
+        const statusData = await statusRes.json();
+
+        if (statusData.exists && statusData.status === "completed") {
+          return { success: true, status: "completed" };
+        } else if (statusData.exists && statusData.status === "failed") {
+          return { success: false, status: "failed" };
+        } else if (statusData.exists && statusData.status === "processing") {
+          // Close dialog on first detection of processing status
+          if (!dialogClosed) {
+            setLoading(false);
+            setIsDialogOpen(false);
+            setFile(null);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = "";
+            }
+            toast.info("File is being processed in the background. You'll be notified when it's complete.");
+            // Trigger refresh to show file with processing status
+            onUploadComplete?.();
+            dialogClosed = true;
+          }
+          // Wait 2 seconds before next poll
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        } else {
+          // File not found yet, wait and retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+      } catch (error) {
+        console.error("Error polling file status:", error);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        continue;
+      }
+    }
+    
+    return { success: false, status: "timeout" };
+  };
+
   const handleUploadClick = async () => {
     if (!isSignedIn) {
       toast.error("You must be signed in to upload files.");
@@ -95,31 +140,39 @@ export default function UploadFile({ onUploadComplete }: UploadFileProps) {
         handleUploadUrl: "/api/upload",
         clientPayload: `${userId}:${hash}`,
       });
-      console.log("Upload result:", newBlob);
-      setLoading(false);
+
       if (newBlob) {
-        toast.success("PDF file uploaded and processed successfully.");
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-        // Trigger refresh callback if provided
-        onUploadComplete?.();
+        // Start background polling - this will close the dialog when processing begins
+        pollFileStatus(hash).then(pollResult => {
+          if (pollResult.success && pollResult.status === "completed") {
+            toast.success("File has been processed and added to the knowledge base successfully!");
+            // Only trigger refresh after successful processing
+            onUploadComplete?.();
+          } else if (pollResult.status === "failed") {
+            toast.error("File processing failed. Please try uploading again.");
+          } else if (pollResult.status === "timeout") {
+            toast.warning("File processing is taking longer than expected. Please refresh manually to see the results.");
+          }
+        }).catch(error => {
+          console.error("Error during background polling:", error);
+          toast.error("Error monitoring file processing status.");
+        });
       } else {
-        toast.error("Error processing PDF: ");
+        toast.error("Error uploading the file.");
+        setLoading(false);
       }
     } catch (error) {
       toast.error("Failed to upload the PDF file.");
       console.error("Upload error:", error);
     } finally {
       setLoading(false);
-      setFile(null);
     }
   };
   return (
-    <Dialog>
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <div className="flex flex-col gap-2">
         <DialogTrigger asChild>
-          <Button className="px-4" variant="outline"> <UploadIcon className="h-4 w-4" /> Upload File</Button>
+          <Button className="px-4" variant="outline" onClick={() => setIsDialogOpen(true)}> <UploadIcon className="h-4 w-4" /> Upload File</Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -134,7 +187,7 @@ export default function UploadFile({ onUploadComplete }: UploadFileProps) {
             {file ? (
               loading ? (
                 <div className="text-center text-neutral-700 dark:text-neutral-300 italic px-4 py-12 flex justify-center items-center">
-                  <h2>Processing File...</h2>
+                  <h2>Processing file and saving to database...</h2>
                 </div>
               ) : (
                 <div className="text-center text-neutral-700 dark:text-neutral-300 italic px-4 py-12 flex justify-center items-center gap-1">
@@ -158,7 +211,7 @@ export default function UploadFile({ onUploadComplete }: UploadFileProps) {
           </div>
           <DialogFooter className="flex sm:justify-center">
             <Button className="cursor-pointer mt-2" onClick={handleUploadClick}>
-              Upload PDF to the knowledge base
+              Upload file to the knowledge base
             </Button>
           </DialogFooter>
         </DialogContent>
