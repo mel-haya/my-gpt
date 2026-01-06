@@ -84,6 +84,12 @@ export default function TestsDashboard({ initialData, searchQuery }: TestsDashbo
         const isStillRunning = statusResult.isRunning;
         
         setIsTestsRunning(isStillRunning);
+        
+        // If tests just started (weren't running before, but are now), refresh table immediately
+        if (!wasRunning && isStillRunning) {
+          refreshTableData();
+        }
+        
         if (isStillRunning) {
           // Calculate completed count (Success + Failed) from progress
           if (statusResult.progress) {
@@ -157,9 +163,11 @@ export default function TestsDashboard({ initialData, searchQuery }: TestsDashbo
     if (!isTestsRunning) {
       setIsTestsRunning(true);
     }
+    // Immediately refresh table data when tests start
+    refreshTableData();
     // Force a status check
     checkTestStatus();
-  }, [checkTestStatus, isTestsRunning]);
+  }, [checkTestStatus, isTestsRunning, refreshTableData]);
 
   return (
     <div className="flex flex-col w-full max-w-350 mx-4 2xl:mx-auto my-4 gap-4 px-3">
