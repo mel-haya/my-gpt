@@ -5,11 +5,19 @@ import type {
   SelectTestRun,
   SelectTestRunResult,
 } from "@/lib/db-schema";
-import { eq, desc, count, or, ilike, inArray, and, isNull, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
 import {
-  generateChatCompletionWithToolCalls,
-} from "@/services/chatService";
+  eq,
+  desc,
+  count,
+  or,
+  ilike,
+  inArray,
+  and,
+  isNull,
+  sql,
+} from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { generateChatCompletionWithToolCalls } from "@/services/chatService";
 import { generateObject } from "ai";
 import { z } from "zod";
 
@@ -81,13 +89,15 @@ export async function getLatestTestRunResultsForTests(
   const latestTimestamps = db
     .select({
       test_id: testRunResults.test_id,
-      max_created_at: sql<Date>`max(${testRunResults.created_at})`.as('max_created_at'),
-      max_id: sql<number>`max(${testRunResults.id})`.as('max_id'),
+      max_created_at: sql<Date>`max(${testRunResults.created_at})`.as(
+        "max_created_at"
+      ),
+      max_id: sql<number>`max(${testRunResults.id})`.as("max_id"),
     })
     .from(testRunResults)
     .where(inArray(testRunResults.test_id, testIds))
     .groupBy(testRunResults.test_id)
-    .as('latest_timestamps');
+    .as("latest_timestamps");
 
   // Join with the original table to get full records
   const latestResults = await db
@@ -146,11 +156,13 @@ export async function getTestsWithPagination(
   const latestTimestamps = db
     .select({
       test_id: testRunResults.test_id,
-      max_created_at: sql<Date>`max(${testRunResults.created_at})`.as('max_created_at'),
+      max_created_at: sql<Date>`max(${testRunResults.created_at})`.as(
+        "max_created_at"
+      ),
     })
     .from(testRunResults)
     .groupBy(testRunResults.test_id)
-    .as('latest_timestamps');
+    .as("latest_timestamps");
 
   const latestResultsSubquery = db
     .select({
@@ -167,7 +179,7 @@ export async function getTestsWithPagination(
         eq(testRunResults.created_at, latestTimestamps.max_created_at)
       )
     )
-    .as('latest_results');
+    .as("latest_results");
 
   // Build the optimized query with a single JOIN
   const query = db
@@ -218,7 +230,8 @@ export async function getTestsWithPagination(
     username: test.username ?? undefined,
     created_by_username: test.created_by_username ?? undefined,
     latest_test_result_status: test.latest_test_result_status ?? undefined,
-    latest_test_result_created_at: test.latest_test_result_created_at ?? undefined,
+    latest_test_result_created_at:
+      test.latest_test_result_created_at ?? undefined,
     latest_test_result_output: test.latest_test_result_output ?? undefined,
   }));
 
@@ -662,12 +675,23 @@ export async function evaluateTestResponse(
   // Evaluate the response using generateObject with system prompt
   const { object: evaluation } = await generateObject({
     model: evaluatorModel,
-    system: `You are an AI response evaluator. Your job is to evaluate if the AI output is helpful and provides the same information as would be expected for the given prompt. 
-    
-    Return 'success' if the response adequately answers the prompt and would be helpful to a user.
-    Return 'fail' if the response is inadequate, unhelpful, or doesn't address the prompt properly.
-    
-    Be objective and fair in your assessment.`,
+    system: `You are an AI response evaluator. Your job is to judge whether the AI’s response is:
+1. Short and concise.
+2. Contains the essential information from the expected response.
+3. Helpful and relevant to the original prompt.
+
+Return "success" if:
+- The AI includes the key information present in the expected response (paraphrasing allowed).
+- The answer is generally concise and on-topic.
+- Minor wording differences, additional small clarifications, or alternative phrasing are acceptable.
+
+Return "fail" if:
+- The key information from the expected response is missing or incorrect.
+- The response is overly long, off-topic, or confusing.
+- The AI invents details not supported by the expected response.
+- The response avoids answering the prompt.
+
+Be fair and balanced: do not require exact wording, but do require that the essential meaning matches.`,
     prompt: `Evaluate this AI response:
 
 Original Test Prompt: "${originalPrompt}"
