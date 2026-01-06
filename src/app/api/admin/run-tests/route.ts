@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { checkRole } from "@/lib/checkRole";
-import { generateObject } from "ai";
-import { z } from "zod";
 import { generateChatCompletionWithToolCalls } from "@/services/chatService";
 import {
   createTestRun,
   getAllTests,
-  createTestRunResult,
+  createAllTestRunResults,
   updateTestRunResult,
   updateTestRunStatus,
   getTestRunStatus,
@@ -62,6 +60,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Create all test run results immediately with pending status
+    const testIds = allTests.map(test => test.id);
+    await createAllTestRunResults(testRun.id, testIds);
+
     // Start running tests in the background
     runTestsInBackground(
       testRun.id,
@@ -99,13 +101,13 @@ async function runTestsInBackground(
           `🛑 Test run ${testRunId} was stopped. Marking remaining tests as stopped.`
         );
         // Mark all remaining tests that haven't started as stopped
-        await markRemainingTestsAsStopped(testRunId, test.id);
+        await markRemainingTestsAsStopped(testRunId);
         return; // Exit the function early
       }
 
       try {
-        // Create initial test result record
-        await createTestRunResult(testRunId, test.id, "Running");
+        // Update test result to Running status
+        await updateTestRunResult(testRunId, test.id, "Running");
 
         console.log(
           `Running test ${test.id} (${test.name}) with model: ${selectedModel}`
@@ -167,7 +169,7 @@ async function runTestsInBackground(
             `🛑 Test run ${testRunId} was stopped after test ${test.id}. Marking remaining tests as stopped.`
           );
           // Mark all remaining tests that haven't started as stopped
-          await markRemainingTestsAsStopped(testRunId, test.id);
+          await markRemainingTestsAsStopped(testRunId);
           return; // Exit the function early
         }
       } catch (testError) {

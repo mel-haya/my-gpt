@@ -112,7 +112,7 @@ export async function chunkContent(content: string): Promise<string[]> {
     const finalChunks = mergeSemanticChunks(semanticChunks, 0.6, 1000);
     
     // Ensure no chunk is too small (unless it's the only one)
-    const filteredChunks = finalChunks.filter((chunk, index) => 
+    const filteredChunks = finalChunks.filter((chunk) => 
       chunk.trim().length >= 50 || finalChunks.length === 1
     );
     

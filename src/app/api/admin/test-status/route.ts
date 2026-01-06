@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { checkRole } from "@/lib/checkRole";
 import { db } from "@/lib/db-config";
 import { testRuns, testRunResults, tests } from "@/lib/db-schema";
-import { eq, desc, count, and, or } from "drizzle-orm";
+import { eq, desc, count} from "drizzle-orm";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // Get the authenticated user ID from Clerk
     const { userId } = await auth();
@@ -26,54 +26,67 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Check for any running test runs
-    const [runningTestRun] = await db
+    // Get the latest test run (running or most recent)
+    const [latestTestRun] = await db
       .select({
         id: testRuns.id,
         status: testRuns.status,
         created_at: testRuns.created_at
       })
       .from(testRuns)
-      .where(eq(testRuns.status, "Running"))
       .orderBy(desc(testRuns.created_at))
       .limit(1);
 
     let progress = null;
     
-    // If there's a running test, get progress information
-    if (runningTestRun) {
+    // If there's a test run, get detailed progress information
+    if (latestTestRun) {
       // Get total test count from the tests table (all available tests)
       const [totalResult] = await db
         .select({ count: count() })
         .from(tests);
-      
-      // Get completed test count from testRunResults (Success, Failed, or Stopped status)
-      const [completedResult] = await db
-        .select({ count: count() })
+
+      // Get status counts for the latest test run
+      const statusCounts = await db
+        .select({
+          status: testRunResults.status,
+          count: count()
+        })
         .from(testRunResults)
-        .where(
-          and(
-            eq(testRunResults.test_run_id, runningTestRun.id),
-            or(
-              eq(testRunResults.status, "Success"),
-              eq(testRunResults.status, "Failed"),
-              eq(testRunResults.status, "Stopped")
-            )
-          )
-        );
+        .where(eq(testRunResults.test_run_id, latestTestRun.id))
+        .groupBy(testRunResults.status);
 
       const total = totalResult?.count || 0;
-      const completed = completedResult?.count || 0;
       
-      if (total > 0) {
-        progress = { completed, total };
-      }
+      // Initialize all statuses with 0
+      const statusMap = {
+        "Pending": 0,
+        "Running": 0,
+        "Success": 0,
+        "Failed": 0,
+        "Evaluating": 0,
+        "Stopped": 0
+      };
+
+      // Update with actual counts
+      statusCounts.forEach(({ status, count }) => {
+        if (status in statusMap) {
+          statusMap[status as keyof typeof statusMap] = count;
+        }
+      });
+      
+      progress = {
+        ...statusMap,
+        total
+      };
     }
 
+    const isRunning = latestTestRun?.status === "Running";
+
     return NextResponse.json({
-      isRunning: !!runningTestRun,
-      currentTestRunId: runningTestRun?.id || null,
-      startedAt: runningTestRun?.created_at || null,
+      isRunning,
+      currentTestRunId: latestTestRun?.id || null,
+      startedAt: latestTestRun?.created_at || null,
       progress
     });
   } catch (error) {

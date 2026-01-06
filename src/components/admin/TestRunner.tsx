@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,62 +10,25 @@ import { toast } from "react-toastify";
 
 interface TestRunnerProps {
   onTestsComplete?: () => void;
+  isTestsRunning?: boolean;
 }
 
-export default function TestRunner({ onTestsComplete }: TestRunnerProps) {
+export default function TestRunner({ onTestsComplete, isTestsRunning }: TestRunnerProps) {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [selectedEvaluatorModel, setSelectedEvaluatorModel] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTestRunId, setCurrentTestRunId] = useState<number | null>(null);
-  const [testProgress, setTestProgress] = useState<{ completed: number; total: number } | null>(null);
-  const wasRunningRef = useRef(false);
 
-  // Function to check test status
-  const checkTestStatus = useCallback(async () => {
-    try {
-      const statusResponse = await fetch('/api/admin/test-status');
-      if (statusResponse.ok) {
-        const statusResult = await statusResponse.json();
-        
-        // Check if tests were running and now completed
-        const wasRunning = wasRunningRef.current;
-        const isStillRunning = statusResult.isRunning;
-        
-        setIsRunning(isStillRunning);
-        if (isStillRunning) {
-          setCurrentTestRunId(statusResult.currentTestRunId);
-          // Set progress if available
-          if (statusResult.progress) {
-            setTestProgress(statusResult.progress);
-          }
-        } else {
-          setCurrentTestRunId(null);
-          setTestProgress(null);
-          
-          // If tests were running and now stopped, trigger refresh
-          if (wasRunning && !isStillRunning) {
-            setTimeout(() => {
-              onTestsComplete?.();
-            }, 1000); // Small delay to ensure backend processing is complete
-          }
-        }
-        
-        // Update the ref for next iteration
-        wasRunningRef.current = isStillRunning;
-      }
-    } catch (error) {
-      console.error("Error checking test status:", error);
-    }
-  }, [onTestsComplete]);
-
+  // Check initial test status on component mount
   useEffect(() => {
     async function loadModelsAndCheckStatus() {
       try {
         // Load available models
         const availableModels = await getAvailableModels();
         setModels(availableModels);
+        
         // Set GPT-4o as default, fallback to first model if not available
         const defaultModel = availableModels.find(model => model.id === "openai/gpt-4o") || availableModels[0];
         if (defaultModel) {
@@ -78,8 +41,15 @@ export default function TestRunner({ onTestsComplete }: TestRunnerProps) {
           setSelectedEvaluatorModel(defaultEvaluatorModel.id);
         }
 
-        // Initial status check
-        await checkTestStatus();
+        // Check if tests are currently running
+        const statusResponse = await fetch('/api/admin/test-status');
+        if (statusResponse.ok) {
+          const statusResult = await statusResponse.json();
+          setIsRunning(statusResult.isRunning);
+          if (statusResult.isRunning) {
+            setCurrentTestRunId(statusResult.currentTestRunId);
+          }
+        }
       } catch (error) {
         console.error("Error loading models or status:", error);
       } finally {
@@ -87,16 +57,7 @@ export default function TestRunner({ onTestsComplete }: TestRunnerProps) {
       }
     }
     loadModelsAndCheckStatus();
-  }, [checkTestStatus]);
-
-  // Polling effect for test status updates
-  useEffect(() => {
-    if (!isRunning) return;
-
-    const interval = setInterval(checkTestStatus, 3000); // Poll every 3 seconds
-
-    return () => clearInterval(interval);
-  }, [isRunning, checkTestStatus]);
+  }, []);
 
   const handleRunTests = async () => {
     if (!selectedModel || !selectedEvaluatorModel) {
@@ -105,7 +66,6 @@ export default function TestRunner({ onTestsComplete }: TestRunnerProps) {
     }
 
     setIsRunning(true);
-    setTestProgress(null); // Reset progress
     try {
       const response = await fetch('/api/admin/run-tests', {
         method: 'POST',
@@ -123,6 +83,8 @@ export default function TestRunner({ onTestsComplete }: TestRunnerProps) {
       if (response.ok && result.success) {
         setCurrentTestRunId(result.testRunId);
         toast.success(`Tests started successfully! ${result.message}`);
+        // Notify parent component that tests have started
+        onTestsComplete?.();
       } else {
         toast.error(`Failed to start tests: ${result.error || 'Unknown error'}`);
         setIsRunning(false);
@@ -155,8 +117,11 @@ export default function TestRunner({ onTestsComplete }: TestRunnerProps) {
 
       if (response.ok && result.success) {
         toast.success("Tests will stop after the current test completes");
-        // Check status immediately after stopping
-        await checkTestStatus();
+        // Reset local state since stop was successful
+        setIsRunning(false);
+        setCurrentTestRunId(null);
+        // Notify parent component that stop was requested
+        onTestsComplete?.();
       } else {
         toast.error(`Failed to stop tests: ${result.error || 'Unknown error'}`);
       }
@@ -182,7 +147,7 @@ export default function TestRunner({ onTestsComplete }: TestRunnerProps) {
         <CardTitle className="text-xl font-semibold text-center">Run Tests</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!isRunning && (
+        {!(isTestsRunning ?? isRunning) && (
           <>
             <div>
               <label htmlFor="model-select" className="block text-sm font-medium mb-2">
@@ -222,27 +187,13 @@ export default function TestRunner({ onTestsComplete }: TestRunnerProps) {
           </>
         )}
         
-        {isRunning && testProgress && (
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-2">
-              Progress: {testProgress.completed}/{testProgress.total} tests completed
-            </p>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                style={{ width: `${(testProgress.completed / testProgress.total) * 100}%` }}
-              ></div>
-            </div>
-          </div>
-        )}
-        
         <Button 
-          onClick={isRunning ? handleStopTests : handleRunTests} 
+          onClick={(isTestsRunning ?? isRunning) ? handleStopTests : handleRunTests} 
           disabled={!selectedModel || !selectedEvaluatorModel}
           className="w-full"
           size="lg"
         >
-          {isRunning ? (
+          {(isTestsRunning ?? isRunning) ? (
             <>
               <Square className="mr-2 h-4 w-4" />
               Stop Tests

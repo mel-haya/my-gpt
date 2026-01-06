@@ -97,6 +97,12 @@ const getResultStatusBadge = (status: string) => {
           Evaluating
         </Badge>
       );
+    case "Pending":
+      return (
+        <Badge variant="outline" className="bg-gray-500 text-white">
+          Pending
+        </Badge>
+      );
     default:
       return <Badge variant="outline">{status}</Badge>;
   }

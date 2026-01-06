@@ -26,8 +26,8 @@ export const testRunStatusEnum = pgEnum("test_run_status", [
   "Stopped",
 ]);
 export const testResultStatusEnum = pgEnum("test_result_status", [
+  "Pending",
   "Running",
-  "",
   "Success",
   "Failed",
   "Evaluating",

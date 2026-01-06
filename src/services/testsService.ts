@@ -74,6 +74,7 @@ export interface LatestTestRunStats {
     failed: number;
     evaluating: number;
     running: number;
+    pending: number;
   };
   lastRunAt?: Date;
 }
@@ -473,11 +474,43 @@ export async function getLatestTestRunStats(): Promise<LatestTestRunStats> {
 
     const latestRun = latestTestRun[0];
 
-    // If the test run is still running, return running status
+    // If the test run is still running, get the current progress and return it
     if (latestRun.status === "Running") {
+      // Get current test results for this run to show progress
+      const testResults = await db
+        .select({
+          status: testRunResults.status,
+        })
+        .from(testRunResults)
+        .where(eq(testRunResults.test_run_id, latestRun.id));
+
+      // Count results by status
+      const results = {
+        success: 0,
+        failed: 0,
+        evaluating: 0,
+        running: 0,
+        pending: 0,
+      };
+
+      testResults.forEach((result) => {
+        if (result.status === "Success") {
+          results.success++;
+        } else if (result.status === "Failed") {
+          results.failed++;
+        } else if (result.status === "Evaluating") {
+          results.evaluating++;
+        } else if (result.status === "Running") {
+          results.running++;
+        } else if (result.status === "Pending") {
+          results.pending++;
+        }
+      });
+
       return {
         status: "running",
         lastRunAt: latestRun.launched_at,
+        results: results,
       };
     }
 
@@ -495,6 +528,7 @@ export async function getLatestTestRunStats(): Promise<LatestTestRunStats> {
       failed: 0,
       evaluating: 0,
       running: 0,
+      pending: 0,
     };
 
     testResults.forEach((result) => {
@@ -506,11 +540,13 @@ export async function getLatestTestRunStats(): Promise<LatestTestRunStats> {
         results.evaluating++;
       } else if (result.status === "Running") {
         results.running++;
+      } else if (result.status === "Pending") {
+        results.pending++;
       }
     });
 
-    // If there are still running or evaluating tests, consider it running
-    const isStillRunning = results.running > 0 || results.evaluating > 0;
+    // If there are still running, evaluating, or pending tests, consider it running
+    const isStillRunning = results.running > 0 || results.evaluating > 0 || results.pending > 0;
 
     return {
       status: isStillRunning ? "running" : "completed",
@@ -562,7 +598,7 @@ export async function getAllTests(): Promise<TestWithUser[]> {
 export async function createTestRunResult(
   testRunId: number,
   testId: number,
-  status: "Running" | "Success" | "Failed" | "Evaluating",
+  status: "Running" | "Success" | "Failed" | "Evaluating" | "Pending",
   output?: string,
   explanation?: string
 ) {
@@ -579,10 +615,30 @@ export async function createTestRunResult(
   return newResult;
 }
 
+export async function createAllTestRunResults(
+  testRunId: number,
+  testIds: number[]
+) {
+  const values = testIds.map(testId => ({
+    test_run_id: testRunId,
+    test_id: testId,
+    status: "Pending" as const,
+    output: null,
+    explanation: null,
+  }));
+
+  const newResults = await db
+    .insert(testRunResults)
+    .values(values)
+    .returning();
+  
+  return newResults;
+}
+
 export async function updateTestRunResult(
   testRunId: number,
   testId: number,
-  status: "Running" | "Success" | "Failed" | "Evaluating",
+  status: "Running" | "Success" | "Failed" | "Evaluating" | "Pending",
   output?: string,
   explanation?: string,
   toolCalls?: unknown
@@ -634,9 +690,8 @@ export async function getTestRunStatus(testRunId: number) {
 
 export async function markRemainingTestsAsStopped(
   testRunId: number,
-  currentTestId: number
 ) {
-  // Mark all test run results that are still "Running" (not started yet) as "Stopped"
+  // Mark all test run results that are still "Pending" (not started yet) as "Stopped"
   const updatedResults = await db
     .update(testRunResults)
     .set({
@@ -647,7 +702,7 @@ export async function markRemainingTestsAsStopped(
     .where(
       and(
         eq(testRunResults.test_run_id, testRunId),
-        eq(testRunResults.status, "Running")
+        eq(testRunResults.status, "Pending")
       )
     )
     .returning();

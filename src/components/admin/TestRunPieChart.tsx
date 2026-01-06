@@ -22,14 +22,55 @@ import { FlaskConical, TrendingUp } from "lucide-react";
 
 interface TestRunPieChartProps {
   onRefreshRef?: (refreshFn: () => void) => void;
+  isTestsRunning?: boolean;
+  pollingStats?: {
+    isRunning: boolean;
+    progress?: {
+      Success: number;
+      Failed: number;
+      Running: number;
+      Pending: number;
+      Evaluating: number;
+      Stopped: number;
+      total: number;
+    };
+    startedAt?: string;
+  };
 }
 
-export default function TestRunPieChart({ onRefreshRef }: TestRunPieChartProps) {
+export default function TestRunPieChart({ 
+  onRefreshRef, 
+  isTestsRunning, 
+  pollingStats 
+}: TestRunPieChartProps) {
   const [stats, setStats] = useState<LatestTestRunStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
+    // If tests are running, use polling data instead of fetching
+    if (isTestsRunning && pollingStats?.progress) {
+      setLoading(false);
+      setError(null);
+      
+      // Convert polling data to expected format
+      const convertedStats: LatestTestRunStats = {
+        status: "running",
+        lastRunAt: pollingStats.startedAt ? new Date(pollingStats.startedAt) : new Date(),
+        results: {
+          success: pollingStats.progress.Success || 0,
+          failed: pollingStats.progress.Failed || 0,
+          evaluating: pollingStats.progress.Evaluating || 0,
+          running: pollingStats.progress.Running || 0,
+          pending: pollingStats.progress.Pending || 0,
+        }
+      };
+      
+      setStats(convertedStats);
+      return;
+    }
+
+    // Only fetch from DB if tests are not running or no polling data
     try {
       setLoading(true);
       setError(null);
@@ -42,11 +83,16 @@ export default function TestRunPieChart({ onRefreshRef }: TestRunPieChartProps) 
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isTestsRunning, pollingStats]);
 
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  // Refresh when test status changes or polling data updates
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats, pollingStats]);
 
   // Expose refresh function to parent
   useEffect(() => {
@@ -128,11 +174,140 @@ export default function TestRunPieChart({ onRefreshRef }: TestRunPieChartProps) 
     );
   }
 
+  if (stats.status === "running" && stats.results) {
+    const { success, failed, evaluating, running, pending } = stats.results;
+    const total = success + failed + evaluating + running + pending;
+
+    // Prepare data for the chart - show current progress even while running
+    const chartData = [];
+    if (success > 0) {
+      chartData.push({ 
+        status: "success", 
+        count: success, 
+        fill: "var(--color-success)" 
+      });
+    }
+    if (failed > 0) {
+      chartData.push({ 
+        status: "failed", 
+        count: failed, 
+        fill: "var(--color-failed)" 
+      });
+    }
+    if (evaluating > 0) {
+      chartData.push({ 
+        status: "evaluating", 
+        count: evaluating, 
+        fill: "var(--color-evaluating)" 
+      });
+    }
+    if (running > 0) {
+      chartData.push({ 
+        status: "running", 
+        count: running, 
+        fill: "var(--color-running)" 
+      });
+    }
+    if (pending > 0) {
+      chartData.push({ 
+        status: "pending", 
+        count: pending, 
+        fill: "var(--color-pending)" 
+      });
+    }
+
+    const chartConfig = {
+      count: {
+        label: "Tests",
+      },
+      success: {
+        label: "Success",
+        color: "#10b981", // green
+      },
+      failed: {
+        label: "Failed", 
+        color: "#ef4444", // red
+      },
+      evaluating: {
+        label: "Evaluating",
+        color: "#f59e0b", // amber
+      },
+      running: {
+        label: "Running",
+        color: "#3b82f6", // blue
+      },
+      pending: {
+        label: "Pending",
+        color: "#6b7280", // gray
+      },
+    } satisfies ChartConfig;
+
+    const completedTests = success + failed;
+    const progressPercentage = total > 0 ? ((completedTests / total) * 100).toFixed(1) : "0";
+
+    return (
+      <Card className="flex flex-col">
+        <CardHeader className="items-center pb-0">
+          <CardTitle>Test Run Progress</CardTitle>
+          <CardDescription>
+            Tests are currently running...
+            {stats.lastRunAt && (
+              <span className="block text-xs mt-1">
+                Started: {new Date(stats.lastRunAt).toLocaleString()}
+              </span>
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 pb-0">
+          {total > 0 ? (
+            <ChartContainer
+              config={chartConfig}
+              className="mx-auto aspect-square max-h-62.5"
+            >
+              <PieChart>
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent hideLabel />}
+                />
+                <Pie 
+                  data={chartData} 
+                  dataKey="count" 
+                  nameKey="status"
+                />
+              </PieChart>
+            </ChartContainer>
+          ) : (
+            <div className="flex items-center justify-center h-48">
+              <div className="text-blue-500 dark:text-blue-400">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-center text-blue-600 dark:text-blue-400">
+                  Starting tests...
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+        <CardFooter className="flex-col gap-2 text-sm">
+          <div className="flex items-center gap-2 leading-none font-medium">
+            Progress: {progressPercentage}% complete ({completedTests}/{total})
+            <div className="animate-pulse">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            </div>
+          </div>
+          <div className="text-muted-foreground leading-none">
+            Running: {running} | Pending: {pending} | Success: {success} | Failed: {failed}
+          </div>
+        </CardFooter>
+      </Card>
+    );
+  }
+
+  // If tests are running but no results data, show loading
   if (stats.status === "running") {
     return (
       <Card className="flex flex-col">
         <CardHeader className="items-center pb-0">
-          <CardTitle>Latest Test Run Results</CardTitle>
+          <CardTitle>Test Run Progress</CardTitle>
           <CardDescription>
             Tests are currently running...
             {stats.lastRunAt && (
@@ -145,7 +320,10 @@ export default function TestRunPieChart({ onRefreshRef }: TestRunPieChartProps) 
         <CardContent className="flex-1 pb-0">
           <div className="flex items-center justify-center h-48">
             <div className="text-blue-500 dark:text-blue-400">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-center text-blue-600 dark:text-blue-400">
+                Initializing tests...
+              </p>
             </div>
           </div>
         </CardContent>
@@ -155,8 +333,8 @@ export default function TestRunPieChart({ onRefreshRef }: TestRunPieChartProps) 
 
   // Handle completed state with results
   if (stats.status === "completed" && stats.results) {
-    const { success, failed, evaluating, running } = stats.results;
-    const total = success + failed + evaluating + running;
+    const { success, failed, evaluating, running, pending } = stats.results;
+    const total = success + failed + evaluating + running + pending;
 
     if (total === 0) {
       return (
@@ -209,6 +387,13 @@ export default function TestRunPieChart({ onRefreshRef }: TestRunPieChartProps) 
         fill: "var(--color-running)" 
       });
     }
+    if (pending > 0) {
+      chartData.push({ 
+        status: "pending", 
+        count: pending, 
+        fill: "var(--color-pending)" 
+      });
+    }
 
     const chartConfig = {
       count: {
@@ -229,6 +414,10 @@ export default function TestRunPieChart({ onRefreshRef }: TestRunPieChartProps) 
       running: {
         label: "Running",
         color: "#3b82f6", // blue
+      },
+      pending: {
+        label: "Pending",
+        color: "#6b7280", // gray
       },
     } satisfies ChartConfig;
 

@@ -209,6 +209,8 @@ const getColumns = (
             return "text-blue-600 dark:text-blue-400";
           case "Evaluating":
             return "text-yellow-600 dark:text-yellow-400";
+          case "Pending":
+            return "text-gray-600 dark:text-gray-400";
           default:
             return "text-neutral-600 dark:text-neutral-400";
         }
@@ -297,6 +299,11 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
     };
     onRefreshRef?.(refreshTable);
   }, [onRefreshRef, router]);
+
+  // Keep local search query in sync with prop
+  useEffect(() => {
+    setLocalSearchQuery(searchQuery);
+  }, [searchQuery]);
   const handleDeleteTest = (testId: number, testName: string) => {
     setDeleteDialog({
       isOpen: true,
@@ -587,7 +594,7 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
           {/* Pagination */}
           <div className="flex items-center justify-between">
             <div className="text-sm text-neutral-600 dark:text-neutral-400">
-              Page {pagination.currentPage} of {pagination.totalPages}
+              Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalCount} total tests)
             </div>
             
             <div className="flex items-center space-x-2">

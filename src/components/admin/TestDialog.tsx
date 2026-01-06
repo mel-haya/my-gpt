@@ -139,7 +139,7 @@ export default function TestDialog({ mode, test, onSuccess, trigger, isOpen, onO
           {trigger || defaultTrigger}
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-150">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{isEditMode ? "Edit Test" : "Add New Test"}</DialogTitle>
