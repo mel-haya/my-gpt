@@ -46,6 +46,7 @@ export default function TestsDashboard({ initialData, searchQuery }: TestsDashbo
   const pieChartRefreshRef = useRef<(() => void) | null>(null);
   const tableRefreshRef = useRef<(() => void) | null>(null);
   const wasRunningRef = useRef(false);
+  const currentPageRef = useRef(Number(searchParams.get('page')) || 1);
 
   // Function to refresh table data while preserving current page
   const refreshTableData = useCallback(async () => {
@@ -64,6 +65,19 @@ export default function TestsDashboard({ initialData, searchQuery }: TestsDashbo
 
   // Update table data when URL search params change (for pagination/search)
   useEffect(() => {
+    const newPage = Number(searchParams.get('page')) || 1;
+    const pageChanged = newPage !== currentPageRef.current;
+    
+    if (pageChanged) {
+      // Update page reference and schedule state reset
+      currentPageRef.current = newPage;
+      // Use setTimeout to avoid cascading renders
+      setTimeout(() => {
+        setLastCompletedCount(0);
+        setLastStatusResult(undefined);
+      }, 0);
+    }
+    
     Promise.resolve().then(() => {
       refreshTableData();
     });
@@ -94,10 +108,21 @@ export default function TestsDashboard({ initialData, searchQuery }: TestsDashbo
           // Calculate completed count (Success + Failed) from progress
           if (statusResult.progress) {
             const currentCompletedCount = (statusResult.progress.Success || 0) + (statusResult.progress.Failed || 0);
+            
+            // Initialize lastCompletedCount if it's 0 (first run or after page change)
+            if (lastCompletedCount === 0 && currentCompletedCount > 0) {
+              setLastCompletedCount(currentCompletedCount);
+            }
             // Refresh table when completed count increases (tests finish)
-            if (currentCompletedCount > lastCompletedCount) {
+            else if (currentCompletedCount > lastCompletedCount) {
               setLastCompletedCount(currentCompletedCount);
               // Refresh table data when tests complete
+              setTimeout(() => {
+                refreshTableData();
+              }, 1000);
+            }
+            // Also refresh if status changed significantly (could indicate test completion)
+            else if (statusChanged && currentCompletedCount > 0) {
               setTimeout(() => {
                 refreshTableData();
               }, 1000);
@@ -106,6 +131,8 @@ export default function TestsDashboard({ initialData, searchQuery }: TestsDashbo
         } else {
           // If tests were running and now stopped, refresh table with final results
           if ((wasRunning && !isStillRunning) || statusChanged) {
+            // Reset completion tracking when tests stop
+            setLastCompletedCount(0);
             // Refresh table data
             setTimeout(() => {
               refreshTableData();
@@ -162,6 +189,9 @@ export default function TestsDashboard({ initialData, searchQuery }: TestsDashbo
     // When tests start, immediately begin polling
     if (!isTestsRunning) {
       setIsTestsRunning(true);
+      // Reset completion tracking when starting new tests
+      setLastCompletedCount(0);
+      setLastStatusResult(undefined);
     }
     // Immediately refresh table data when tests start
     refreshTableData();
