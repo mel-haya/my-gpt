@@ -91,21 +91,19 @@ async function runTestsInBackground(
   selectedEvaluatorModel: string
 ) {
   try {
-    for (let i = 0; i < tests.length; i++) {
-      const test = tests[i];
-
-      // Check if the test run has been stopped before processing each test
-      const currentStatus = await getTestRunStatus(testRunId);
-      if (currentStatus === "Stopped") {
-        console.log(
-          `🛑 Test run ${testRunId} was stopped. Marking remaining tests as stopped.`
-        );
-        // Mark all remaining tests that haven't started as stopped
-        await markRemainingTestsAsStopped(testRunId);
-        return; // Exit the function early
-      }
-
+    // Create individual test runner functions
+    const testPromises = tests.map(async (test) => {
       try {
+        // Check if the test run has been stopped before starting this test
+        const currentStatus = await getTestRunStatus(testRunId);
+        if (currentStatus === "Stopped") {
+          console.log(
+            `🛑 Test run ${testRunId} was stopped. Skipping test ${test.id}.`
+          );
+          await updateTestRunResult(testRunId, test.id, "Failed", "Test run was stopped");
+          return { testId: test.id, status: "Stopped" };
+        }
+
         // Update test result to Running status
         await updateTestRunResult(testRunId, test.id, "Running");
 
@@ -135,6 +133,16 @@ async function runTestsInBackground(
           throw new Error("No response content received from chat service");
         }
 
+        // Check again if stopped before evaluation (in case it was stopped during chat)
+        const statusBeforeEval = await getTestRunStatus(testRunId);
+        if (statusBeforeEval === "Stopped") {
+          console.log(
+            `🛑 Test run ${testRunId} was stopped during test ${test.id}. Marking as stopped.`
+          );
+          await updateTestRunResult(testRunId, test.id, "Failed", "Test run was stopped during execution");
+          return { testId: test.id, status: "Stopped" };
+        }
+
         // Evaluate the response using the new evaluation function
         const evaluation = await evaluateTestResponse(
           test.prompt,
@@ -162,16 +170,7 @@ async function runTestsInBackground(
           `${statusEmoji} Test ${test.id} (${test.name}) completed with result: ${evaluation.status}`
         );
 
-        // Check if the test run has been stopped after completing this test
-        const statusAfterTest = await getTestRunStatus(testRunId);
-        if (statusAfterTest === "Stopped") {
-          console.log(
-            `🛑 Test run ${testRunId} was stopped after test ${test.id}. Marking remaining tests as stopped.`
-          );
-          // Mark all remaining tests that haven't started as stopped
-          await markRemainingTestsAsStopped(testRunId);
-          return; // Exit the function early
-        }
+        return { testId: test.id, status: testStatus };
       } catch (testError) {
         console.error(`❌ Error running test ${test.id}:`, testError);
 
@@ -181,14 +180,36 @@ async function runTestsInBackground(
         }`;
 
         await updateTestRunResult(testRunId, test.id, "Failed", errorMessage);
+        return { testId: test.id, status: "Failed", error: errorMessage };
       }
-    }
+    });
+
+    // Run all tests concurrently using Promise.allSettled
+    console.log(`🚀 Starting ${tests.length} tests in parallel...`);
+    const results = await Promise.allSettled(testPromises);
+
+    // Check final status and log results
+    const successCount = results.filter(
+      (result) => result.status === "fulfilled" && result.value.status === "Success"
+    ).length;
+    const failedCount = results.filter(
+      (result) => 
+        result.status === "rejected" || 
+        (result.status === "fulfilled" && result.value.status === "Failed")
+    ).length;
+    const stoppedCount = results.filter(
+      (result) => result.status === "fulfilled" && result.value.status === "Stopped"
+    ).length;
+
+    console.log(
+      `📊 Test run ${testRunId} completed: ${successCount} passed, ${failedCount} failed, ${stoppedCount} stopped`
+    );
 
     // Mark the entire test run as done
     await updateTestRunStatus(testRunId, "Done");
 
     console.log(
-      `🎉 Test run ${testRunId} completed successfully with ${tests.length} tests`
+      `🎉 Test run ${testRunId} completed with ${tests.length} tests`
     );
   } catch (error) {
     console.error("💥 Error in background test execution:", error);
