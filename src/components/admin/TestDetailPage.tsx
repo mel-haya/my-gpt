@@ -41,6 +41,21 @@ const formatDate = (date: Date): string => {
   }).format(new Date(date));
 };
 
+const formatCost = (cost: number | null): string => {
+  if (cost === null) return "N/A";
+  return (cost / 1000000).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 6,
+  });
+};
+
+const formatExecutionTime = (timeMs: number | null): string => {
+  if (timeMs === null) return "N/A";
+  if (timeMs < 1000) return `${timeMs}ms`;
+  return `${(timeMs / 1000).toFixed(2)}s`;
+};
+
 const getStatusIcon = (status: string) => {
   switch (status) {
     case "Done":
@@ -380,6 +395,10 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
                       <span className="text-sm font-medium">Status:</span>
                       {getResultStatusBadge(latestTestResult.result.status)}
                     </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium">Cost:</span>
+                      <span className="text-sm">{formatCost(latestTestResult.result.tokens_cost)}</span>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <div className="text-sm">
@@ -388,6 +407,10 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
                     </div>
                     <div className="text-sm">
                       <span className="font-medium">Type:</span> Individual Test
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Execution Time:</span>{" "}
+                      {formatExecutionTime(latestTestResult.result.execution_time_ms)}
                     </div>
                   </div>
                 </div>
@@ -470,6 +493,20 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium">Status:</span>
                             {getResultStatusBadge(testResult.status)}
+                          </div>
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <div className="text-sm">
+                                <span className="font-medium">Cost:</span>{" "}
+                                {formatCost(testResult.tokens_cost)}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-sm">
+                                <span className="font-medium">Execution Time:</span>{" "}
+                                {formatExecutionTime(testResult.execution_time_ms)}
+                              </div>
+                            </div>
                           </div>
                           {testResult.output && (
                             <div>

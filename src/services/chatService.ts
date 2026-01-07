@@ -14,6 +14,7 @@ export interface ChatRequest {
   messages: ChatMessage[];
   model: string;
   webSearch?: boolean;
+  systemPrompt?: string;
 }
 
 export interface ChatResponse {
@@ -24,6 +25,11 @@ export interface ChatResponse {
     args: Record<string, unknown>;
     result?: unknown;
   }>;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }
 
 /**
@@ -45,7 +51,7 @@ export async function generateChatCompletionWithToolCalls(
   request: ChatRequest
 ): Promise<ChatResponse> {
   try {
-    const { messages, model } = request;
+    const { messages, model, systemPrompt: customSystemPrompt } = request;
 
     const modelMessages = convertToModelMessages(messages);
 
@@ -53,12 +59,16 @@ export async function generateChatCompletionWithToolCalls(
       ? model
       : "openai/gpt-4o";
 
-    // Get configurable system prompt
+    // Use custom system prompt if provided, otherwise get configurable system prompt
     let systemPrompt = "";
-    try {
-      systemPrompt = await getSystemPrompt();
-    } catch {
-      systemPrompt = "You are a helpful assistant.";
+    if (customSystemPrompt) {
+      systemPrompt = customSystemPrompt;
+    } else {
+      try {
+        systemPrompt = await getSystemPrompt();
+      } catch {
+        systemPrompt = "You are a helpful assistant.";
+      }
     }
 
     const result = await generateText({
@@ -124,6 +134,11 @@ export async function generateChatCompletionWithToolCalls(
     return {
       text: result.text.trim(),
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      usage: result.usage ? {
+        promptTokens: result.usage.inputTokens || 0,
+        completionTokens: result.usage.outputTokens || 0,
+        totalTokens: result.usage.totalTokens || 0,
+      } : undefined,
     };
   } catch (error) {
     // For testing, return a simple fallback response to identify if the error is in AI generation

@@ -11,7 +11,6 @@ import {
   count,
   or,
   ilike,
-  inArray,
   and,
   isNull,
   sql,
@@ -45,6 +44,8 @@ export interface IndividualTestResult {
   explanation: string | null;
   tool_calls: unknown;
   status: string;
+  tokens_cost: number | null;
+  execution_time_ms: number | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -77,61 +78,6 @@ export interface LatestTestRunStats {
     pending: number;
   };
   lastRunAt?: Date;
-}
-
-export async function getLatestTestRunResultsForTests(
-  testIds: number[]
-): Promise<Map<number, { status: string; created_at: Date; output?: string }>> {
-  if (testIds.length === 0) {
-    return new Map();
-  }
-
-  // Create subquery to find the latest created_at for each test_id
-  const latestTimestamps = db
-    .select({
-      test_id: testRunResults.test_id,
-      max_created_at: sql<Date>`max(${testRunResults.created_at})`.as(
-        "max_created_at"
-      ),
-      max_id: sql<number>`max(${testRunResults.id})`.as("max_id"),
-    })
-    .from(testRunResults)
-    .where(inArray(testRunResults.test_id, testIds))
-    .groupBy(testRunResults.test_id)
-    .as("latest_timestamps");
-
-  // Join with the original table to get full records
-  const latestResults = await db
-    .select({
-      test_id: testRunResults.test_id,
-      status: testRunResults.status,
-      created_at: testRunResults.created_at,
-      output: testRunResults.output,
-    })
-    .from(testRunResults)
-    .innerJoin(
-      latestTimestamps,
-      and(
-        eq(testRunResults.test_id, latestTimestamps.test_id),
-        eq(testRunResults.created_at, latestTimestamps.max_created_at)
-      )
-    );
-
-  // Convert to Map format
-  const resultMap = new Map<
-    number,
-    { status: string; created_at: Date; output?: string }
-  >();
-
-  for (const result of latestResults) {
-    resultMap.set(result.test_id, {
-      status: result.status,
-      created_at: result.created_at,
-      output: result.output || undefined,
-    });
-  }
-
-  return resultMap;
 }
 
 export async function getTestsWithPagination(
@@ -324,69 +270,81 @@ export async function getTestRunsForTest(
   testId: number
 ): Promise<TestRunWithResults[]> {
   try {
-    // First, get all test runs that have results for this specific test
-    const testRunsWithThisTest = await db
-      .select({ test_run_id: testRunResults.test_run_id })
+    // Get all test runs and their results in a single query using joins
+    const runResultsData = await db
+      .select({
+        // Test run data
+        run_id: testRuns.id,
+        run_status: testRuns.status,
+        run_launched_at: testRuns.launched_at,
+        run_user_id: testRuns.user_id,
+        run_created_at: testRuns.created_at,
+        run_updated_at: testRuns.updated_at,
+        username: users.username,
+        // Test result data
+        result_id: testRunResults.id,
+        result_test_run_id: testRunResults.test_run_id,
+        result_test_id: testRunResults.test_id,
+        result_output: testRunResults.output,
+        result_explanation: testRunResults.explanation,
+        result_tool_calls: testRunResults.tool_calls,
+        result_model_used: testRunResults.model_used,
+        result_system_prompt: testRunResults.system_prompt,
+        result_tokens_cost: testRunResults.tokens_cost,
+        result_execution_time_ms: testRunResults.execution_time_ms,
+        result_status: testRunResults.status,
+        result_created_at: testRunResults.created_at,
+        result_updated_at: testRunResults.updated_at,
+        test_name: tests.name,
+      })
       .from(testRunResults)
+      .innerJoin(testRuns, eq(testRunResults.test_run_id, testRuns.id))
+      .leftJoin(users, eq(testRuns.user_id, users.id))
+      .leftJoin(tests, eq(testRunResults.test_id, tests.id))
       .where(eq(testRunResults.test_id, testId))
-      .groupBy(testRunResults.test_run_id);
+      .orderBy(desc(testRuns.created_at));
 
-    if (testRunsWithThisTest.length === 0) {
+    if (runResultsData.length === 0) {
       return [];
     }
 
-    const runIds = testRunsWithThisTest
-      .map((r) => r.test_run_id)
-      .filter((id): id is number => id !== null);
+    // Group the results by test run
+    const runMap = new Map<number, TestRunWithResults>();
 
-    // Get the actual test runs
-    const runs = await db
-      .select({
-        id: testRuns.id,
-        status: testRuns.status,
-        launched_at: testRuns.launched_at,
-        user_id: testRuns.user_id,
-        created_at: testRuns.created_at,
-        updated_at: testRuns.updated_at,
-        username: users.username,
-      })
-      .from(testRuns)
-      .leftJoin(users, eq(testRuns.user_id, users.id))
-      .where(inArray(testRuns.id, runIds))
-      .orderBy(desc(testRuns.created_at));
+    for (const row of runResultsData) {
+      if (!runMap.has(row.run_id)) {
+        runMap.set(row.run_id, {
+          id: row.run_id,
+          status: row.run_status,
+          launched_at: row.run_launched_at,
+          user_id: row.run_user_id,
+          created_at: row.run_created_at,
+          updated_at: row.run_updated_at,
+          username: row.username ?? undefined,
+          results: [],
+        });
+      }
 
-    // Get results for these runs
-    const runDetails: TestRunWithResults[] = [];
-
-    for (const run of runs) {
-      const results = await db
-        .select({
-          id: testRunResults.id,
-          test_run_id: testRunResults.test_run_id,
-          test_id: testRunResults.test_id,
-          output: testRunResults.output,
-          explanation: testRunResults.explanation,
-          tool_calls: testRunResults.tool_calls,
-          status: testRunResults.status,
-          created_at: testRunResults.created_at,
-          updated_at: testRunResults.updated_at,
-          test_name: tests.name,
-        })
-        .from(testRunResults)
-        .leftJoin(tests, eq(testRunResults.test_id, tests.id))
-        .where(eq(testRunResults.test_run_id, run.id));
-
-      runDetails.push({
-        ...run,
-        username: run.username ?? undefined,
-        results: results.map((result) => ({
-          ...result,
-          test_name: result.test_name ?? undefined,
-        })),
+      const run = runMap.get(row.run_id)!;
+      run.results.push({
+        id: row.result_id,
+        test_run_id: row.result_test_run_id,
+        test_id: row.result_test_id,
+        output: row.result_output,
+        explanation: row.result_explanation,
+        tool_calls: row.result_tool_calls,
+        model_used: row.result_model_used,
+        system_prompt: row.result_system_prompt,
+        tokens_cost: row.result_tokens_cost,
+        execution_time_ms: row.result_execution_time_ms,
+        status: row.result_status,
+        created_at: row.result_created_at,
+        updated_at: row.result_updated_at,
+        test_name: row.test_name ?? undefined,
       });
     }
 
-    return runDetails;
+    return Array.from(runMap.values());
   } catch (error) {
     console.error("Error fetching test runs:", error);
     return [];
@@ -404,6 +362,8 @@ async function getLatestIndividualTestResult(
         output: testRunResults.output,
         explanation: testRunResults.explanation,
         tool_calls: testRunResults.tool_calls,
+        tokens_cost: testRunResults.tokens_cost,
+        execution_time_ms: testRunResults.execution_time_ms,
         status: testRunResults.status,
         created_at: testRunResults.created_at,
         updated_at: testRunResults.updated_at,
@@ -595,26 +555,6 @@ export async function getAllTests(): Promise<TestWithUser[]> {
   }));
 }
 
-export async function createTestRunResult(
-  testRunId: number,
-  testId: number,
-  status: "Running" | "Success" | "Failed" | "Evaluating" | "Pending",
-  output?: string,
-  explanation?: string
-) {
-  const [newResult] = await db
-    .insert(testRunResults)
-    .values({
-      test_run_id: testRunId,
-      test_id: testId,
-      status,
-      output,
-      explanation,
-    })
-    .returning();
-  return newResult;
-}
-
 export async function createAllTestRunResults(
   testRunId: number,
   testIds: number[]
@@ -641,7 +581,11 @@ export async function updateTestRunResult(
   status: "Running" | "Success" | "Failed" | "Evaluating" | "Pending",
   output?: string,
   explanation?: string,
-  toolCalls?: unknown
+  toolCalls?: unknown,
+  modelUsed?: string,
+  systemPrompt?: string,
+  tokensCost?: number,
+  executionTimeMs?: number
 ) {
   const [updatedResult] = await db
     .update(testRunResults)
@@ -650,6 +594,10 @@ export async function updateTestRunResult(
       output,
       explanation,
       tool_calls: toolCalls,
+      model_used: modelUsed,
+      system_prompt: systemPrompt,
+      tokens_cost: tokensCost,
+      execution_time_ms: executionTimeMs,
       updated_at: new Date(),
     })
     .where(
@@ -686,27 +634,6 @@ export async function getTestRunStatus(testRunId: number) {
     .where(eq(testRuns.id, testRunId))
     .limit(1);
   return testRun?.status;
-}
-
-export async function markRemainingTestsAsStopped(
-  testRunId: number,
-) {
-  // Mark all test run results that are still "Pending" (not started yet) as "Stopped"
-  const updatedResults = await db
-    .update(testRunResults)
-    .set({
-      status: "Stopped",
-      output: "Test stopped before execution",
-      updated_at: new Date(),
-    })
-    .where(
-      and(
-        eq(testRunResults.test_run_id, testRunId),
-        eq(testRunResults.status, "Pending")
-      )
-    )
-    .returning();
-  return updatedResults;
 }
 
 export async function evaluateTestResponse(

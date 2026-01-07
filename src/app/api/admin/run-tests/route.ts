@@ -9,7 +9,6 @@ import {
   updateTestRunResult,
   updateTestRunStatus,
   getTestRunStatus,
-  markRemainingTestsAsStopped,
   evaluateTestResponse,
   type TestWithUser,
 } from "@/services/testsService";
@@ -35,7 +34,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { selectedModel, selectedEvaluatorModel } = await req.json();
+    const { selectedModel, selectedEvaluatorModel, systemPrompt } = await req.json();
 
     if (!selectedModel || !selectedEvaluatorModel) {
       return NextResponse.json(
@@ -69,7 +68,8 @@ export async function POST(req: NextRequest) {
       testRun.id,
       allTests,
       selectedModel,
-      selectedEvaluatorModel
+      selectedEvaluatorModel,
+      systemPrompt
     );
 
     return NextResponse.json({
@@ -88,7 +88,8 @@ async function runTestsInBackground(
   testRunId: number,
   tests: TestWithUser[],
   selectedModel: string,
-  selectedEvaluatorModel: string
+  selectedEvaluatorModel: string,
+  systemPrompt?: string
 ) {
   try {
     // Create individual test runner functions
@@ -100,7 +101,16 @@ async function runTestsInBackground(
           console.log(
             `🛑 Test run ${testRunId} was stopped. Skipping test ${test.id}.`
           );
-          await updateTestRunResult(testRunId, test.id, "Failed", "Test run was stopped");
+          await updateTestRunResult(
+            testRunId,
+            test.id,
+            "Failed",
+            "Test run was stopped",
+            undefined,
+            undefined,
+            selectedModel,
+            systemPrompt
+          );
           return { testId: test.id, status: "Stopped" };
         }
 
@@ -110,6 +120,9 @@ async function runTestsInBackground(
         console.log(
           `Running test ${test.id} (${test.name}) with model: ${selectedModel}`
         );
+
+        // Track execution time
+        const startTime = Date.now();
 
         // Use internal chat service instead of making HTTP API calls
         const chatResponse = await generateChatCompletionWithToolCalls({
@@ -127,7 +140,10 @@ async function runTestsInBackground(
           ],
           model: selectedModel,
           webSearch: false,
+          systemPrompt: systemPrompt,
         });
+
+        const executionTime = Date.now() - startTime;
 
         if (!chatResponse.text.trim()) {
           throw new Error("No response content received from chat service");
@@ -139,7 +155,16 @@ async function runTestsInBackground(
           console.log(
             `🛑 Test run ${testRunId} was stopped during test ${test.id}. Marking as stopped.`
           );
-          await updateTestRunResult(testRunId, test.id, "Failed", "Test run was stopped during execution");
+          await updateTestRunResult(
+            testRunId,
+            test.id,
+            "Failed",
+            "Test run was stopped during execution",
+            undefined,
+            undefined,
+            selectedModel,
+            systemPrompt
+          );
           return { testId: test.id, status: "Stopped" };
         }
 
@@ -162,7 +187,11 @@ async function runTestsInBackground(
           testStatus,
           finalResult,
           evaluation.explanation,
-          chatResponse.toolCalls
+          chatResponse.toolCalls,
+          selectedModel,
+          systemPrompt,
+          chatResponse.usage?.totalTokens,
+          executionTime
         );
 
         const statusEmoji = evaluation.status === "Success" ? "✅" : "❌";
@@ -179,7 +208,16 @@ async function runTestsInBackground(
           testError instanceof Error ? testError.message : "Unknown error"
         }`;
 
-        await updateTestRunResult(testRunId, test.id, "Failed", errorMessage);
+        await updateTestRunResult(
+          testRunId,
+          test.id,
+          "Failed",
+          errorMessage,
+          undefined,
+          undefined,
+          selectedModel,
+          systemPrompt
+        );
         return { testId: test.id, status: "Failed", error: errorMessage };
       }
     });
