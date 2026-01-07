@@ -30,10 +30,27 @@ export default function Sidebar({
   loading: boolean;
 }) {
   const { isSignedIn } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpenState] = useState<boolean>(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const skeletonWidths = [25, 22, 30, 18, 27, 20, 24, 28, 21];
+
+  useEffect(() => {
+    // Only read from localStorage after hydration to prevent mismatch
+    const savedState = localStorage.getItem('sidebarOpen');
+    const initialState = savedState !== null ? savedState === 'true' : false;
+    setIsOpenState(initialState);
+    setIsLoaded(true);
+  }, []);
+
+  const setIsOpen = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+    const newValue = typeof value === 'function' ? value(isOpen) : value;
+    setIsOpenState(newValue);
+    setHasUserInteracted(true);
+    localStorage.setItem('sidebarOpen', newValue.toString());
+  }, [isOpen]);
 
   // Debounced search effect
   useEffect(() => {
@@ -96,11 +113,17 @@ export default function Sidebar({
         )}
       </div>
       <div
-        className={`lg:block h-screen transition-all duration-300 ease-in-out overflow-hidden ${
-          isOpen ? "w-[300px] " : "w-0"
+        className={`lg:block h-screen overflow-hidden ${
+          !isLoaded
+            ? "w-0 opacity-0"
+            : !hasUserInteracted
+              ? isOpen
+                ? "w-75 opacity-100"
+                : "w-0 opacity-0"
+              : `transition-all duration-300 ease-in-out ${isOpen ? "w-75 opacity-100" : "w-0 opacity-0"}`
         }`}
       >
-        <div className="flex flex-col h-screen w-[300px] robert pt-16">
+        <div className="flex flex-col h-screen w-75 robert pt-16">
           {/* <h1 className="text-2xl font-bold font-goldman px-4 py-6">My GPT</h1> */}
 
           <SignedIn>

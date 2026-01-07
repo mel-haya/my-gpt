@@ -7,7 +7,6 @@ import { useChat } from "@ai-sdk/react";
 import { ChatMessage } from "@/types/chatMessage";
 import { ToastContainer } from "react-toastify";
 import { FileUIPart, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { buildTransformationUrl } from "@/lib/utils";
 import { useEffect, useState, useEffectEvent } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { ChatRequestOptions } from "ai";
@@ -27,7 +26,6 @@ export default function Home() {
     data: conversationsData,
     isLoading: conversationsLoading,
     isFetching: conversationsFetching,
-    error: conversationsError,
     refetch,
   } = useConversations(searchQuery, { enabled: isSignedIn });
   const queryClient = useQueryClient();
@@ -39,7 +37,6 @@ export default function Home() {
     regenerate,
     stop,
     setMessages,
-    addToolOutput,
   } = useChat<ChatMessage>({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     // async onToolCall({ toolCall }) {
