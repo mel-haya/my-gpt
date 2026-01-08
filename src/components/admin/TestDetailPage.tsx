@@ -43,7 +43,7 @@ const formatDate = (date: Date): string => {
 
 const formatCost = (cost: number | null): string => {
   if (cost === null) return "N/A";
-  return (cost / 1000000).toLocaleString("en-US", {
+  return (cost).toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 6,

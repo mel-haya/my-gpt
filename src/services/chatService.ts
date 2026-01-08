@@ -2,6 +2,7 @@ import { generateText, convertToModelMessages, stepCountIs } from "ai";
 import { ChatMessage } from "@/types/chatMessage";
 import { getSystemPrompt } from "@/services/settingsService";
 import { tools, SearchKnowledgeBaseResult} from "@/app/api/chat/tools";
+import { metadata } from "@/app/layout";
 
 const supportedModels = [
   "openai/gpt-4o",
@@ -30,6 +31,7 @@ export interface ChatResponse {
     completionTokens: number;
     totalTokens: number;
   };
+  cost?: number;
 }
 
 /**
@@ -139,6 +141,7 @@ export async function generateChatCompletionWithToolCalls(
         completionTokens: result.usage.outputTokens || 0,
         totalTokens: result.usage.totalTokens || 0,
       } : undefined,
+      cost: result.providerMetadata?.gateway?.cost as number,
     };
   } catch (error) {
     // For testing, return a simple fallback response to identify if the error is in AI generation

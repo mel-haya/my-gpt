@@ -11,6 +11,7 @@ import {
   date,
   timestamp,
   boolean,
+  real,
 } from "drizzle-orm/pg-core";
 
 export const rolesEnum = pgEnum("roles", ["system", "user", "assistant"]);
@@ -190,7 +191,7 @@ export const testRunResults = pgTable(
     tool_calls: jsonb("tool_calls"),
     model_used: text("model_used"),
     system_prompt: text("system_prompt"),
-    tokens_cost: integer("tokens_cost"),
+    tokens_cost: real("tokens_cost"), // Changed from integer to real to store dollar amounts
     execution_time_ms: integer("execution_time_ms"),
     status: testResultStatusEnum("status").notNull().default("Running"),
     created_at: timestamp("created_at").notNull().defaultNow(),

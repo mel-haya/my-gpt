@@ -732,6 +732,10 @@ export async function runSingleTest(
   let explanation: string | undefined;
   let score: number | undefined;
   let toolCalls: unknown = undefined;
+  let tokensCost: number | undefined;
+  let executionTimeMs: number | undefined;
+
+  const startTime = Date.now();
 
   try {
     // Call the AI service with the test prompt
@@ -748,6 +752,7 @@ export async function runSingleTest(
 
     output = chatResponse.text;
     toolCalls = chatResponse.toolCalls;
+    tokensCost = chatResponse.cost;
 
     if (!output.trim()) {
       throw new Error("No response content received from chat service");
@@ -764,7 +769,10 @@ export async function runSingleTest(
     status = evaluation.status;
     explanation = evaluation.explanation;
     score = evaluation.score;
+    
+    executionTimeMs = Date.now() - startTime;
   } catch (error) {
+    executionTimeMs = Date.now() - startTime;
     output = `Test execution failed: ${
       error instanceof Error ? error.message : "Unknown error"
     }`;
@@ -782,6 +790,8 @@ export async function runSingleTest(
       explanation: explanation,
       score: score,
       tool_calls: toolCalls,
+      tokens_cost: tokensCost,
+      execution_time_ms: executionTimeMs,
       status: status as SelectTestRunResult["status"],
       created_at: new Date(),
       updated_at: new Date(),

@@ -176,8 +176,8 @@ async function runTestsInBackground(
           selectedEvaluatorModel
         );
 
-        // Store only the AI response in output, and evaluation explanation separately
         const finalResult = chatResponse.text.trim();
+        const costInDollars= chatResponse.cost;
 
         // Mark test based on evaluation result
         const testStatus = evaluation.status;
@@ -190,7 +190,7 @@ async function runTestsInBackground(
           chatResponse.toolCalls,
           selectedModel,
           systemPrompt,
-          chatResponse.usage?.totalTokens,
+          costInDollars ?? 0,
           executionTime,
           evaluation.score
         );

@@ -1,0 +1,1 @@
+ALTER TABLE "test_run_results" ALTER COLUMN "tokens_cost" SET DATA TYPE real;
