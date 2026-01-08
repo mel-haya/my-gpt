@@ -7,6 +7,14 @@ export default function SidebarAdmin() {
   const router = useRouter();
   const pathname = usePathname();
 
+  const navItems = [
+    { label: "Users", path: "/admin/users", icon: UsersIcon },
+    { label: "Files", path: "/admin/files", icon: FilesIcon },
+    { label: "Tests", path: "/admin/tests", icon: FlaskConicalIcon },
+    { label: "Questions", path: "/admin/questions", icon: BookOpenText },
+    { label: "Settings", path: "/admin/settings", icon: SettingsIcon },
+  ];
+
   return (
     <div className="flex flex-col gap-2 min-w-60 bg-gray-200 dark:bg-neutral-900  h-screen">
       <div className="flex flex-col gap-4 items-center mt-8">
@@ -25,9 +33,9 @@ export default function SidebarAdmin() {
             {user.firstName && user.lastName
               ? `${user.firstName} ${user.lastName}`
               : user.firstName ||
-                user.lastName ||
-                user.username ||
-                user.emailAddresses[0]?.emailAddress}
+              user.lastName ||
+              user.username ||
+              user.emailAddresses[0]?.emailAddress}
           </div>
         )}
         {/* Home Button */}
@@ -40,51 +48,21 @@ export default function SidebarAdmin() {
         </button>
       </div>
       <ul className="flex flex-col mt-8">
-        <li
-          className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${
-            pathname === "/admin/users" ? "bg-gray-300 dark:bg-neutral-700" : ""
-          }`}
-          onClick={() => router.push("/admin/users")}
-        >
-          <UsersIcon size={20}/>
-          Users
-        </li>
-        <li
-          className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${
-            pathname === "/admin/files" ? "bg-gray-300 dark:bg-neutral-700" : ""
-          }`}
-          onClick={() => router.push("/admin/files")}
-        >
-          <FilesIcon size={20}/>
-          Files
-        </li>
-        <li
-          className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${
-            pathname === "/admin/tests" ? "bg-gray-300 dark:bg-neutral-700" : ""
-          }`}
-          onClick={() => router.push("/admin/tests")}
-        >
-          <FlaskConicalIcon size={20}/>
-          Tests
-        </li>
-        <li
-          className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${
-            pathname === "/admin/questions" ? "bg-gray-300 dark:bg-neutral-700" : ""
-          }`}
-          onClick={() => router.push("/admin/questions")}
-        >
-          <BookOpenText size={20}/>
-          Questions
-        </li>
-        <li
-          className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${
-            pathname === "/admin/settings" ? "bg-gray-300 dark:bg-neutral-700" : ""
-          }`}
-          onClick={() => router.push("/admin/settings")}
-        >
-          <SettingsIcon size={20}/>
-          Settings
-        </li>
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.path;
+          return (
+            <li
+              key={item.path}
+              className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${isActive ? "bg-gray-300 dark:bg-neutral-700" : ""
+                }`}
+              onClick={() => router.push(item.path)}
+            >
+              <Icon size={20} />
+              {item.label}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
