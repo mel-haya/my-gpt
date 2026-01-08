@@ -263,6 +263,16 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               {getResultStatusBadge(testResult.status)}
+              {testResult.score && (
+                <Badge variant="outline" className={`text-xs ${
+                  testResult.score >= 9 ? "bg-green-100 text-green-800" :
+                  testResult.score >= 7 ? "bg-blue-100 text-blue-800" :
+                  testResult.score >= 5 ? "bg-yellow-100 text-yellow-800" :
+                  "bg-red-100 text-red-800"
+                }`}>
+                  {testResult.score}/10
+                </Badge>
+              )}
               {testResult.output && (
                 <div className="max-w-xs">
                   <div
@@ -422,6 +432,19 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
                       <span className="text-sm font-medium">Status:</span>
                       {getResultStatusBadge(latestTestResult.result.status)}
                     </div>
+                    {latestTestResult.result.score && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium">Score:</span>
+                        <Badge variant="outline" className={`${
+                          latestTestResult.result.score >= 9 ? "bg-green-100 text-green-800" :
+                          latestTestResult.result.score >= 7 ? "bg-blue-100 text-blue-800" :
+                          latestTestResult.result.score >= 5 ? "bg-yellow-100 text-yellow-800" :
+                          "bg-red-100 text-red-800"
+                        }`}>
+                          {latestTestResult.result.score}/10
+                        </Badge>
+                      </div>
+                    )}
                     {latestTestResult.result.output && (
                       <div>
                         <span className="text-sm font-medium">Output:</span>
@@ -490,9 +513,24 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
                       <div className="space-y-2">
                         <h5 className="font-medium text-sm">Result:</h5>
                         <div className="border rounded-lg p-3 space-y-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium">Status:</span>
-                            {getResultStatusBadge(testResult.status)}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium">Status:</span>
+                              {getResultStatusBadge(testResult.status)}
+                            </div>
+                            {testResult.score && (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm font-medium">Score:</span>
+                                <Badge variant="outline" className={`${
+                                  testResult.score >= 9 ? "bg-green-100 text-green-800" :
+                                  testResult.score >= 7 ? "bg-blue-100 text-blue-800" :
+                                  testResult.score >= 5 ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-red-100 text-red-800"
+                                }`}>
+                                  {testResult.score}/10
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                           <div className="grid md:grid-cols-2 gap-4">
                             <div className="space-y-1">

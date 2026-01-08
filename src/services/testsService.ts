@@ -42,6 +42,7 @@ export interface IndividualTestResult {
   test_id: number;
   output: string | null;
   explanation: string | null;
+  score: number | null;
   tool_calls: unknown;
   status: string;
   tokens_cost: number | null;
@@ -287,6 +288,7 @@ export async function getTestRunsForTest(
         result_test_id: testRunResults.test_id,
         result_output: testRunResults.output,
         result_explanation: testRunResults.explanation,
+        result_score: testRunResults.score,
         result_tool_calls: testRunResults.tool_calls,
         result_model_used: testRunResults.model_used,
         result_system_prompt: testRunResults.system_prompt,
@@ -332,6 +334,7 @@ export async function getTestRunsForTest(
         test_id: row.result_test_id,
         output: row.result_output,
         explanation: row.result_explanation,
+        score: row.result_score,
         tool_calls: row.result_tool_calls,
         model_used: row.result_model_used,
         system_prompt: row.result_system_prompt,
@@ -361,6 +364,7 @@ async function getLatestIndividualTestResult(
         test_id: testRunResults.test_id,
         output: testRunResults.output,
         explanation: testRunResults.explanation,
+        score: testRunResults.score,
         tool_calls: testRunResults.tool_calls,
         tokens_cost: testRunResults.tokens_cost,
         execution_time_ms: testRunResults.execution_time_ms,
@@ -585,7 +589,8 @@ export async function updateTestRunResult(
   modelUsed?: string,
   systemPrompt?: string,
   tokensCost?: number,
-  executionTimeMs?: number
+  executionTimeMs?: number,
+  score?: number
 ) {
   const [updatedResult] = await db
     .update(testRunResults)
@@ -593,6 +598,7 @@ export async function updateTestRunResult(
       status,
       output,
       explanation,
+      score,
       tool_calls: toolCalls,
       model_used: modelUsed,
       system_prompt: systemPrompt,
@@ -641,39 +647,44 @@ export async function evaluateTestResponse(
   expectedResult: string,
   aiResponse: string,
   evaluatorModel: string = "openai/gpt-4o"
-): Promise<{ status: "Success" | "Failed"; explanation: string }> {
-  // Define evaluation schema with simple enum output
+): Promise<{ status: "Success" | "Failed"; explanation: string; score: number }> {
+  // Define evaluation schema with score from 1-10
   const evaluationSchema = z.object({
-    result: z
-      .enum(["success", "fail"])
+    score: z
+      .number()
+      .min(1)
+      .max(10)
       .describe(
-        "Whether the AI response is helpful and provides expected information"
+        "Score from 1 to 10: 1 = misleading and inaccurate, 10 = helpful and has all information from expected response"
       ),
     explanation: z
       .string()
-      .describe("Brief explanation of why it passed or failed"),
+      .describe("Brief explanation of the score and why it was given"),
   });
 
   // Evaluate the response using generateObject with system prompt
   const { object: evaluation } = await generateObject({
     model: evaluatorModel,
-    system: `You are an AI response evaluator. Your job is to judge whether the AI’s response is:
-1. Short and concise.
-2. Contains the essential information from the expected response.
-3. Helpful and relevant to the original prompt.
+    system: `You are an AI response evaluator. Your job is to score the AI's response on a scale from 1 to 10:
 
-Return "success" if:
-- The AI includes the key information present in the expected response (paraphrasing allowed).
-- The answer is generally concise and on-topic.
-- Minor wording differences, additional small clarifications, or alternative phrasing are acceptable.
+**Scoring Guidelines:**
+- **1-2 (Very Poor):** Misleading, inaccurate, or completely wrong information. Harmful or confusing response.
+- **3-4 (Poor):** Major inaccuracies or missing critical information. Not helpful to the user.
+- **5-6 (Average):** Some correct information but missing key details or has minor inaccuracies. Partially helpful.
+- **7-8 (Good):** Contains most of the essential information from the expected response. Generally helpful and accurate.
+- **9-10 (Excellent):** Comprehensive, accurate, and contains all the information from the expected response. Highly helpful.
 
-Return "fail" if:
-- The key information from the expected response is missing or incorrect.
-- The response is overly long, off-topic, or confusing.
-- The AI invents details not supported by the expected response.
-- The response avoids answering the prompt.
+**Evaluation Criteria:**
+1. **Accuracy:** How correct is the information compared to the expected response?
+2. **Completeness:** Does it include all essential information from the expected response?
+3. **Helpfulness:** How useful is the response for answering the original prompt?
+4. **Clarity:** Is the response clear and understandable?
 
-Be fair and balanced: do not require exact wording, but do require that the essential meaning matches.`,
+**Guidelines:**
+- Paraphrasing and alternative wording are acceptable if the meaning is preserved
+- Minor additional clarifications are acceptable and can even improve the score
+- Focus on whether the user gets the essential information they need
+- Consider both what's included and what's missing`,
     prompt: `Evaluate this AI response:
 
 Original Test Prompt: "${originalPrompt}"
@@ -682,15 +693,15 @@ Expected Response: "${expectedResult}"
 
 AI Response: "${aiResponse}"
 
-Determine if this is a success or fail.`,
+Score this response from 1 to 10 based on accuracy, completeness, and helpfulness.`,
     schema: evaluationSchema,
   });
 
-  // Set status based on evaluation result
-  const status = evaluation.result === "success" ? "Success" : "Failed";
-  const explanation = `Result: ${evaluation.result}\nExplanation: ${evaluation.explanation}`;
+  // Set status based on evaluation score (7+ is Success, below 7 is Failed)
+  const status = evaluation.score >= 7 ? "Success" : "Failed";
+  const explanation = `Score: ${evaluation.score}/10\nExplanation: ${evaluation.explanation}`;
 
-  return { status, explanation };
+  return { status, explanation, score: evaluation.score };
 }
 
 export async function runSingleTest(
@@ -719,6 +730,7 @@ export async function runSingleTest(
   let output: string;
   let status: string;
   let explanation: string | undefined;
+  let score: number | undefined;
   let toolCalls: unknown = undefined;
 
   try {
@@ -751,6 +763,7 @@ export async function runSingleTest(
 
     status = evaluation.status;
     explanation = evaluation.explanation;
+    score = evaluation.score;
   } catch (error) {
     output = `Test execution failed: ${
       error instanceof Error ? error.message : "Unknown error"
@@ -767,6 +780,7 @@ export async function runSingleTest(
       test_id: testId,
       output: output,
       explanation: explanation,
+      score: score,
       tool_calls: toolCalls,
       status: status as SelectTestRunResult["status"],
       created_at: new Date(),

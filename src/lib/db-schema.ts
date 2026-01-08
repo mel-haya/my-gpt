@@ -186,6 +186,7 @@ export const testRunResults = pgTable(
       .references(() => tests.id),
     output: text("output"),
     explanation: text("explanation"),
+    score: integer("score"), // Added score field for evaluation scores (1-10)
     tool_calls: jsonb("tool_calls"),
     model_used: text("model_used"),
     system_prompt: text("system_prompt"),

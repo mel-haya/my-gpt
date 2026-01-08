@@ -1,0 +1,1 @@
+ALTER TABLE "test_run_results" ADD COLUMN "score" integer;

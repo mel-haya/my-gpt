@@ -191,7 +191,8 @@ async function runTestsInBackground(
           selectedModel,
           systemPrompt,
           chatResponse.usage?.totalTokens,
-          executionTime
+          executionTime,
+          evaluation.score
         );
 
         const statusEmoji = evaluation.status === "Success" ? "✅" : "❌";
