@@ -1,5 +1,5 @@
 import { UserAvatar, useUser } from "@clerk/nextjs";
-import { UsersIcon, FilesIcon, SettingsIcon, HomeIcon, FlaskConicalIcon } from "lucide-react";
+import { UsersIcon, FilesIcon, SettingsIcon, HomeIcon, FlaskConicalIcon, BookOpenText } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 
 export default function SidebarAdmin() {
@@ -66,6 +66,15 @@ export default function SidebarAdmin() {
         >
           <FlaskConicalIcon size={20}/>
           Tests
+        </li>
+        <li
+          className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${
+            pathname === "/admin/questions" ? "bg-gray-300 dark:bg-neutral-700" : ""
+          }`}
+          onClick={() => router.push("/admin/questions")}
+        >
+          <BookOpenText size={20}/>
+          Questions
         </li>
         <li
           className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${
