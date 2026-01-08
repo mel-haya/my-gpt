@@ -91,11 +91,29 @@ async function runTestsInBackground(
   selectedEvaluatorModel: string,
   systemPrompt?: string
 ) {
+  // Timeout helper
+  const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+    let timeoutId: NodeJS.Timeout;
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(errorMessage));
+      }, timeoutMs);
+    });
+
+    return Promise.race([
+      promise.then((result) => {
+        clearTimeout(timeoutId);
+        return result;
+      }),
+      timeoutPromise,
+    ]);
+  };
+
   try {
     // Create individual test runner functions
     const testPromises = tests.map(async (test) => {
       try {
-        // Check if the test run has been stopped before starting this test
+        // Check if the test run has been stopped before start
         const currentStatus = await getTestRunStatus(testRunId);
         if (currentStatus === "Stopped") {
           console.log(
@@ -124,24 +142,29 @@ async function runTestsInBackground(
         // Track execution time
         const startTime = Date.now();
 
-        // Use internal chat service instead of making HTTP API calls
-        const chatResponse = await generateChatCompletionWithToolCalls({
-          messages: [
-            {
-              id: `test-${test.id}-${Date.now()}`,
-              role: "user",
-              parts: [
-                {
-                  type: "text",
-                  text: test.prompt,
-                },
-              ],
-            },
-          ],
-          model: selectedModel,
-          webSearch: false,
-          systemPrompt: systemPrompt,
-        });
+        // Use internal chat service with a timeout (e.g., 3 minutes)
+        // This prevents infinite hanging if the LLM provider doesn't respond
+        const chatResponse = await withTimeout(
+          generateChatCompletionWithToolCalls({
+            messages: [
+              {
+                id: `test-${test.id}-${Date.now()}`,
+                role: "user",
+                parts: [
+                  {
+                    type: "text",
+                    text: test.prompt,
+                  },
+                ],
+              },
+            ],
+            model: selectedModel,
+            webSearch: false,
+            systemPrompt: systemPrompt,
+          }),
+          60000, // 1 minute timeout for generation
+          "Test execution timed out after 60 seconds"
+        );
 
         const executionTime = Date.now() - startTime;
 
@@ -168,16 +191,20 @@ async function runTestsInBackground(
           return { testId: test.id, status: "Stopped" };
         }
 
-        // Evaluate the response using the new evaluation function
-        const evaluation = await evaluateTestResponse(
-          test.prompt,
-          test.expected_result,
-          chatResponse.text.trim(),
-          selectedEvaluatorModel
+        // Evaluate the response using the new evaluation function with timeout
+        const evaluation = await withTimeout(
+          evaluateTestResponse(
+            test.prompt,
+            test.expected_result,
+            chatResponse.text.trim(),
+            selectedEvaluatorModel
+          ),
+          60000, // 1 minute timeout for evaluation
+          "Evaluation timed out after 1 minute"
         );
 
         const finalResult = chatResponse.text.trim();
-        const costInDollars= chatResponse.cost;
+        const costInDollars = chatResponse.cost;
 
         // Mark test based on evaluation result
         const testStatus = evaluation.status;
@@ -205,9 +232,8 @@ async function runTestsInBackground(
         console.error(`❌ Error running test ${test.id}:`, testError);
 
         // Mark individual test as failed
-        const errorMessage = `Error: ${
-          testError instanceof Error ? testError.message : "Unknown error"
-        }`;
+        const errorMessage = `Error: ${testError instanceof Error ? testError.message : "Unknown error"
+          }`;
 
         await updateTestRunResult(
           testRunId,
@@ -232,8 +258,8 @@ async function runTestsInBackground(
       (result) => result.status === "fulfilled" && result.value.status === "Success"
     ).length;
     const failedCount = results.filter(
-      (result) => 
-        result.status === "rejected" || 
+      (result) =>
+        result.status === "rejected" ||
         (result.status === "fulfilled" && result.value.status === "Failed")
     ).length;
     const stoppedCount = results.filter(
