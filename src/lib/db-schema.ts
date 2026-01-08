@@ -210,13 +210,12 @@ export const systemPrompts = pgTable(
     user_id: text("user_id")
       .notNull()
       .references(() => users.id),
-    is_active: boolean("is_active").notNull().default(false),
+    default: boolean("default").notNull().default(false),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
     index("system_prompts_user_id_index").on(table.user_id),
-    index("system_prompts_is_active_index").on(table.is_active),
     uniqueIndex("system_prompts_name_user_index").on(table.name, table.user_id),
   ]
 );

@@ -13,13 +13,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Edit2, Trash2, Check, X, Search, Eye } from "lucide-react";
+import { Edit2, Trash2, Check, X, Search, Eye, Star } from "lucide-react";
 import type { SelectSystemPrompt } from "@/lib/db-schema";
 
 interface SystemPromptsTableProps {
   systemPrompts: SelectSystemPrompt[];
   onEdit: (prompt: SelectSystemPrompt) => void;
   onDelete: (promptId: number, promptName: string) => void;
+  onSetDefault: (promptId: number, promptName: string) => void;
   selectedRows: Set<number>;
   onSelectRow: (promptId: number, checked: boolean) => void;
   searchQuery: string;
@@ -33,6 +34,7 @@ export default function SystemPromptsTable({
   systemPrompts,
   onEdit,
   onDelete,
+  onSetDefault,
   selectedRows,
   onSelectRow,
   searchQuery,
@@ -130,19 +132,24 @@ export default function SystemPromptsTable({
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
                       <h3 className="font-semibold text-sm">{prompt.name}</h3>
-                      {prompt.is_active ? (
-                        <Badge variant="default" className="bg-green-500">
-                          <Check className="w-3 h-3 mr-1" />
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          <X className="w-3 h-3 mr-1" />
-                          Inactive
+                      {prompt.default && (
+                        <Badge variant="default" className="text-xs">
+                          <Star className="h-3 w-3 mr-1" />
+                          Default
                         </Badge>
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
+                      {!prompt.default && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onSetDefault(prompt.id, prompt.name)}
+                          title="Set as default for testing"
+                        >
+                          <Star className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"

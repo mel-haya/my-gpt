@@ -72,11 +72,11 @@ export async function getSystemPrompts(
 export async function createSystemPrompt(
   data: Omit<InsertSystemPrompt, "id" | "created_at" | "updated_at">
 ): Promise<SelectSystemPrompt> {
-  // If this prompt is being set as active, deactivate all others for this user
-  if (data.is_active) {
+  // If this prompt is being set as default, remove default from all others for this user
+  if (data.default) {
     await db
       .update(systemPrompts)
-      .set({ is_active: false, updated_at: new Date() })
+      .set({ default: false, updated_at: new Date() })
       .where(eq(systemPrompts.user_id, data.user_id));
   }
 
@@ -93,11 +93,11 @@ export async function updateSystemPrompt(
   userId: string,
   data: Partial<Omit<InsertSystemPrompt, "id" | "user_id" | "created_at">>
 ): Promise<SelectSystemPrompt | null> {
-  // If this prompt is being set as active, deactivate all others for this user
-  if (data.is_active) {
+  // If this prompt is being set as default, remove default from all others for this user
+  if (data.default) {
     await db
       .update(systemPrompts)
-      .set({ is_active: false, updated_at: new Date() })
+      .set({ default: false, updated_at: new Date() })
       .where(eq(systemPrompts.user_id, userId));
   }
 
@@ -142,16 +142,16 @@ export async function bulkDeleteSystemPrompts(
 
   return result.length; // Return actual count of deleted records
 }
-export async function getActiveSystemPrompt(
+export async function getDefaultSystemPrompt(
   userId: string
 ): Promise<SelectSystemPrompt | null> {
-  const [activePrompt] = await db
+  const [defaultPrompt] = await db
     .select()
     .from(systemPrompts)
-    .where(and(eq(systemPrompts.user_id, userId), eq(systemPrompts.is_active, true)))
+    .where(and(eq(systemPrompts.user_id, userId), eq(systemPrompts.default, true)))
     .limit(1);
 
-  return activePrompt || null;
+  return defaultPrompt || null;
 }
 
 export async function getSystemPromptById(

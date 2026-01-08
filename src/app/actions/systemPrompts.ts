@@ -53,7 +53,7 @@ export async function getSystemPromptsAction(
 export async function createSystemPromptAction(data: {
   name: string;
   prompt: string;
-  is_active: boolean;
+
 }): Promise<ActionResult<SelectSystemPrompt>> {
   try {
     const { userId } = await auth();
@@ -74,7 +74,6 @@ export async function createSystemPromptAction(data: {
       name: data.name.trim(),
       prompt: data.prompt.trim(),
       user_id: userId,
-      is_active: data.is_active,
     });
 
     // Revalidate the system prompts page
@@ -98,7 +97,7 @@ export async function updateSystemPromptAction(
   data: {
     name?: string;
     prompt?: string;
-    is_active?: boolean;
+    default?: boolean;
   }
 ): Promise<ActionResult<SelectSystemPrompt>> {
   try {
@@ -125,7 +124,7 @@ export async function updateSystemPromptAction(
     const updatedPrompt = await updateSystemPromptService(id, userId, {
       ...(data.name !== undefined && { name: data.name.trim() }),
       ...(data.prompt !== undefined && { prompt: data.prompt.trim() }),
-      ...(data.is_active !== undefined && { is_active: data.is_active }),
+      ...(data.default !== undefined && { default: data.default }),
     });
 
     if (!updatedPrompt) {

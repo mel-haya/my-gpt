@@ -5,9 +5,20 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
-  Plus
+  Plus,
+  Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "react-toastify";
+import { updateSystemPromptAction } from "@/app/actions/systemPrompts";
 import SystemPromptDialog from "./SystemPromptDialog";
 import DeleteSystemPromptDialog from "./DeleteSystemPromptDialog";
 import SystemPromptsTable from "./SystemPromptsTable";
@@ -34,6 +45,16 @@ export default function SystemPromptsDashboard({ initialData, searchQuery }: Sys
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
   
   const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    promptId: number;
+    promptName: string;
+  }>({
+    isOpen: false,
+    promptId: 0,
+    promptName: "",
+  });
+
+  const [setDefaultDialog, setSetDefaultDialog] = useState<{
     isOpen: boolean;
     promptId: number;
     promptName: string;
@@ -85,6 +106,34 @@ export default function SystemPromptsDashboard({ initialData, searchQuery }: Sys
       promptId,
       promptName,
     });
+  };
+
+  const handleSetDefault = (promptId: number, promptName: string) => {
+    setSetDefaultDialog({
+      isOpen: true,
+      promptId,
+      promptName,
+    });
+  };
+
+  const confirmSetDefault = async () => {
+    try {
+      const result = await updateSystemPromptAction(setDefaultDialog.promptId, {
+        default: true,
+      });
+
+      if (result.success) {
+        toast.success(`"${setDefaultDialog.promptName}" set as default system prompt`);
+        handleDataRefresh();
+      } else {
+        toast.error(result.error || "Failed to set default system prompt");
+      }
+    } catch (error) {
+      console.error("Error setting default system prompt:", error);
+      toast.error("Failed to set default system prompt");
+    } finally {
+      setSetDefaultDialog({ isOpen: false, promptId: 0, promptName: "" });
+    }
   };
 
   const handleEditPrompt = (prompt: SelectSystemPrompt) => {
@@ -154,6 +203,7 @@ export default function SystemPromptsDashboard({ initialData, searchQuery }: Sys
         systemPrompts={initialData.systemPrompts}
         onEdit={handleEditPrompt}
         onDelete={handleDeletePrompt}
+        onSetDefault={handleSetDefault}
         selectedRows={selectedRows}
         onSelectRow={handleSelectRow}
         searchQuery={localSearchQuery}
@@ -231,6 +281,36 @@ export default function SystemPromptsDashboard({ initialData, searchQuery }: Sys
         onSuccess={handleBulkDeleteSuccess}
         isBulkDelete
       />
+
+      {/* Set Default Confirmation Dialog */}
+      <Dialog 
+        open={setDefaultDialog.isOpen} 
+        onOpenChange={(open) => !open && setSetDefaultDialog({ isOpen: false, promptId: 0, promptName: "" })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5" />
+              Set Default System Prompt
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to set <strong>"{setDefaultDialog.promptName}"</strong> as the default system prompt for testing? This will replace the current default prompt.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSetDefaultDialog({ isOpen: false, promptId: 0, promptName: "" })}
+            >
+              Cancel
+            </Button>
+            <Button onClick={confirmSetDefault}>
+              <Star className="h-4 w-4 mr-2" />
+              Set as Default
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

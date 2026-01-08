@@ -13,7 +13,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "react-toastify";
 import { createSystemPromptAction, updateSystemPromptAction } from "@/app/actions/systemPrompts";
 import type { SelectSystemPrompt } from "@/lib/db-schema";
@@ -34,7 +33,6 @@ export default function SystemPromptDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState(systemPrompt?.name || "");
   const [prompt, setPrompt] = useState(systemPrompt?.prompt || "");
-  const [isActive, setIsActive] = useState(systemPrompt?.is_active || false);
 
   const isEdit = !!systemPrompt;
 
@@ -43,7 +41,6 @@ export default function SystemPromptDialog({
     if (systemPrompt) {
       setName(systemPrompt.name);
       setPrompt(systemPrompt.prompt);
-      setIsActive(systemPrompt.is_active);
     } else {
       resetForm();
     }
@@ -65,14 +62,12 @@ export default function SystemPromptDialog({
       if (isEdit) {
         result = await updateSystemPromptAction(systemPrompt.id, {
           name: name.trim(),
-          prompt: prompt.trim(),
-          is_active: isActive,
+
         });
       } else {
         result = await createSystemPromptAction({
           name: name.trim(),
           prompt: prompt.trim(),
-          is_active: isActive,
         });
       }
 
@@ -102,7 +97,6 @@ export default function SystemPromptDialog({
   const resetForm = () => {
     setName("");
     setPrompt("");
-    setIsActive(false);
   };
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -157,22 +151,6 @@ export default function SystemPromptDialog({
               This prompt will be used as the system message when testing the chatbot.
             </p>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="is_active"
-              checked={isActive}
-              onCheckedChange={(checked) => setIsActive(checked === true)}
-              disabled={isLoading}
-            />
-            <Label htmlFor="is_active" className="text-sm font-normal">
-              Set as active prompt
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              (Only one prompt can be active at a time)
-            </p>
-          </div>
-
           <DialogFooter>
             <Button
               type="button"

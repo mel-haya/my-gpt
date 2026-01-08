@@ -1,6 +1,6 @@
 {
-  "id": "d2aec42a-513c-4edf-adab-3d8a4d894798",
-  "prevId": "18fde1b7-2a8f-4fea-8d2e-b32aba9a77ba",
+  "id": "0e6af0ae-7925-43a0-a5ee-83dba42455a3",
+  "prevId": "d2aec42a-513c-4edf-adab-3d8a4d894798",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -310,8 +310,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "is_active": {
-          "name": "is_active",
+        "default": {
+          "name": "default",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -338,21 +338,6 @@
           "columns": [
             {
               "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "system_prompts_is_active_index": {
-          "name": "system_prompts_is_active_index",
-          "columns": [
-            {
-              "expression": "is_active",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
