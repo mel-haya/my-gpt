@@ -321,7 +321,7 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
             <div className="space-y-2">
               <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                 <User className="h-4 w-4" />
-                <span>Created by: {test.created_by_username || "Unknown"}</span>
+                <span>Created by: {test.username || "Unknown"}</span>
               </div>
               <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                 <Calendar className="h-4 w-4" />

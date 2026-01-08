@@ -41,7 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 # Ignore meta directory
-migrations/meta/
+
 
 .vercel
 .env*.local

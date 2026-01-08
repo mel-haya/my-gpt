@@ -55,8 +55,7 @@ export async function createTestAction(
     // Create the test
     const newTest = await createTest({
       ...testData,
-      user_id: user.id,
-      created_by: user.id,
+      user_id: user.id
     });
 
     // Revalidate the tests page

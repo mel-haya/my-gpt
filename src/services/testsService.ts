@@ -22,7 +22,6 @@ import { z } from "zod";
 
 export interface TestWithUser extends SelectTest {
   username?: string;
-  created_by_username?: string;
   latest_test_result_status?: string;
   latest_test_result_created_at?: Date;
   latest_test_result_output?: string;
@@ -90,7 +89,6 @@ export async function getTestsWithPagination(
 
   // Create aliases for the joins
   const userTable = users;
-  const creatorTable = alias(users, "creator");
 
   // Base query conditions
   const baseConditions = searchQuery
@@ -137,18 +135,15 @@ export async function getTestsWithPagination(
       prompt: tests.prompt,
       expected_result: tests.expected_result,
       user_id: tests.user_id,
-      created_by: tests.created_by,
       created_at: tests.created_at,
       updated_at: tests.updated_at,
       username: userTable.username,
-      created_by_username: creatorTable.username,
       latest_test_result_status: latestResultsSubquery.status,
       latest_test_result_created_at: latestResultsSubquery.created_at,
       latest_test_result_output: latestResultsSubquery.output,
     })
     .from(tests)
     .leftJoin(userTable, eq(tests.user_id, userTable.id))
-    .leftJoin(creatorTable, eq(tests.created_by, creatorTable.id))
     .leftJoin(
       latestResultsSubquery,
       eq(tests.id, latestResultsSubquery.test_id)
@@ -176,7 +171,6 @@ export async function getTestsWithPagination(
   const mappedTests: TestWithUser[] = testsData.map((test) => ({
     ...test,
     username: test.username ?? undefined,
-    created_by_username: test.created_by_username ?? undefined,
     latest_test_result_status: test.latest_test_result_status ?? undefined,
     latest_test_result_created_at:
       test.latest_test_result_created_at ?? undefined,
@@ -200,7 +194,6 @@ export async function createTest(testData: {
   prompt: string;
   expected_result: string;
   user_id: string;
-  created_by: string;
 }) {
   const [newTest] = await db.insert(tests).values(testData).returning();
   return newTest;
@@ -236,7 +229,6 @@ export async function deleteTest(id: number) {
 
 export async function getTestById(id: number): Promise<TestWithUser | null> {
   const userTable = users;
-  const creatorTable = alias(users, "creator");
 
   const result = await db
     .select({
@@ -245,15 +237,12 @@ export async function getTestById(id: number): Promise<TestWithUser | null> {
       prompt: tests.prompt,
       expected_result: tests.expected_result,
       user_id: tests.user_id,
-      created_by: tests.created_by,
       created_at: tests.created_at,
       updated_at: tests.updated_at,
       username: userTable.username,
-      created_by_username: creatorTable.username,
     })
     .from(tests)
     .leftJoin(userTable, eq(tests.user_id, userTable.id))
-    .leftJoin(creatorTable, eq(tests.created_by, creatorTable.id))
     .where(eq(tests.id, id))
     .limit(1);
 
@@ -262,8 +251,7 @@ export async function getTestById(id: number): Promise<TestWithUser | null> {
   const test = result[0];
   return {
     ...test,
-    username: test.username ?? undefined,
-    created_by_username: test.created_by_username ?? undefined,
+    username: test.username ?? undefined
   };
 }
 
@@ -543,7 +531,6 @@ export async function getAllTests(): Promise<TestWithUser[]> {
       prompt: tests.prompt,
       expected_result: tests.expected_result,
       user_id: tests.user_id,
-      created_by: tests.created_by,
       created_at: tests.created_at,
       updated_at: tests.updated_at,
       username: users.username,
@@ -555,7 +542,6 @@ export async function getAllTests(): Promise<TestWithUser[]> {
   return result.map((test) => ({
     ...test,
     username: test.username ?? undefined,
-    created_by_username: undefined, // Not needed for this use case
   }));
 }
 

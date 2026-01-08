@@ -1,0 +1,3 @@
+-- Baseline snapshot.
+-- This migration file is empty because existing migrations (0000-0025) are assumed to be applied.
+-- This serves to sync the Drizzle snapshot state with the current codebase.

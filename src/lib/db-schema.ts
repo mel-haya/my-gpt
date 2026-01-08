@@ -147,15 +147,12 @@ export const tests = pgTable(
     user_id: text("user_id")
       .notNull()
       .references(() => users.id),
-    created_by: text("created_by")
-      .notNull()
-      .references(() => users.id),
+
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
-    index("tests_user_id_index").on(table.user_id),
-    index("tests_created_by_index").on(table.created_by),
+    index("tests_user_id_index").on(table.user_id)
   ]
 );
 
