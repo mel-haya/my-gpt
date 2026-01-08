@@ -201,6 +201,26 @@ export const testRunResults = pgTable(
   ]
 );
 
+export const systemPrompts = pgTable(
+  "system_prompts",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    prompt: text("prompt").notNull(),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    is_active: boolean("is_active").notNull().default(false),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("system_prompts_user_id_index").on(table.user_id),
+    index("system_prompts_is_active_index").on(table.is_active),
+    uniqueIndex("system_prompts_name_user_index").on(table.name, table.user_id),
+  ]
+);
+
 export type InsertDocument = typeof documents.$inferInsert;
 export type SelectDocument = typeof documents.$inferSelect;
 export type InsertConversation = typeof conversations.$inferInsert;
@@ -223,3 +243,5 @@ export type InsertTestRun = typeof testRuns.$inferInsert;
 export type SelectTestRun = typeof testRuns.$inferSelect;
 export type InsertTestRunResult = typeof testRunResults.$inferInsert;
 export type SelectTestRunResult = typeof testRunResults.$inferSelect;
+export type InsertSystemPrompt = typeof systemPrompts.$inferInsert;
+export type SelectSystemPrompt = typeof systemPrompts.$inferSelect;
