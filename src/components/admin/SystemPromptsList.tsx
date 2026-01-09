@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Edit2, Trash2, Check, X, Search, Eye, Star } from "lucide-react";
+import { Edit2, Trash2, Search, Eye, Star } from "lucide-react";
 import type { SelectSystemPrompt } from "@/lib/db-schema";
 
 interface SystemPromptsTableProps {
@@ -30,7 +30,7 @@ interface SystemPromptsTableProps {
   isPending: boolean;
 }
 
-export default function SystemPromptsTable({
+export default function SystemPromptsList({
   systemPrompts,
   onEdit,
   onDelete,
@@ -180,7 +180,7 @@ export default function SystemPromptsTable({
                         <p className="text-sm font-mono whitespace-pre-wrap flex-1">
                           {truncateToLines(prompt.prompt, 2)}
                         </p>
-                        <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground ml-2 mt-1 flex-shrink-0" />
+                        <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground ml-2 mt-1 shrink-0" />
                       </div>
                     </div>
                   </div>
@@ -214,7 +214,7 @@ export default function SystemPromptsTable({
           </DialogHeader>
           <div className="mt-4">
             <div className="bg-muted p-4 rounded">
-              <pre className="text-sm font-mono whitespace-pre-wrap break-words">
+              <pre className="text-sm font-mono whitespace-pre-wrap wrap-break-word">
                 {viewPromptModal.prompt?.prompt}
               </pre>
             </div>

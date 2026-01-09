@@ -21,7 +21,7 @@ import { toast } from "react-toastify";
 import { updateSystemPromptAction } from "@/app/actions/systemPrompts";
 import SystemPromptDialog from "./SystemPromptDialog";
 import DeleteSystemPromptDialog from "./DeleteSystemPromptDialog";
-import SystemPromptsTable from "./SystemPromptsTable";
+import SystemPromptsList from "./SystemPromptsList";
 import type { SelectSystemPrompt } from "@/lib/db-schema";
 
 interface SystemPromptsDashboardProps {
@@ -199,7 +199,7 @@ export default function SystemPromptsDashboard({ initialData, searchQuery }: Sys
       </div>
 
       {/* Table */}
-      <SystemPromptsTable
+      <SystemPromptsList
         systemPrompts={initialData.systemPrompts}
         onEdit={handleEditPrompt}
         onDelete={handleDeletePrompt}
@@ -294,7 +294,7 @@ export default function SystemPromptsDashboard({ initialData, searchQuery }: Sys
               Set Default System Prompt
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to set <strong>"{setDefaultDialog.promptName}"</strong> as the default system prompt for testing? This will replace the current default prompt.
+              Are you sure you want to set <strong>&quot;{setDefaultDialog.promptName}&quot;</strong> as the default system prompt for testing? This will replace the current default prompt.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -2,15 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Trash2, Edit } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Trash2, Edit, Copy } from "lucide-react";
 import type { TestWithUser } from "@/services/testsService";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -55,42 +47,30 @@ export default function QuestionsList({ tests, onEditTest, onDeleteTest, selecte
 
                 <div>
                   <h2 className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">Expected Result:</h2>
-                  <div className="text-sm text-neutral-600 dark:text-neutral-400 break-words">
+                  <div className="text-sm text-neutral-600 dark:text-neutral-400 wrap-break-word">
                     {test.expected_result.replace(/[\n\r]+/g, " ")}
                   </div>
                 </div>
               </div>
 
-              <div className="flex-shrink-0 -mt-1 -mr-1">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <span className="sr-only">Open menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem
-                      onClick={() => navigator.clipboard.writeText(test.id.toString())}
-                    >
-                      Copy ID
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onEditTest(test)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-red-600 focus:text-red-600"
-                      onClick={() => onDeleteTest(test.id, test.name)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEditTest(test)}
+                  title="Edit"
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onDeleteTest(test.id, test.name)}
+                  title="Delete"
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </CardContent>
