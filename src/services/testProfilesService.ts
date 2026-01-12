@@ -8,7 +8,7 @@ import type {
   InsertTestProfileTest,
   InsertTestProfileModel
 } from "@/lib/db-schema";
-import { eq, and, desc, ilike, count, sum, avg } from "drizzle-orm";
+import { eq, and, desc, ilike, count, sum, avg, sql } from "drizzle-orm";
 
 export interface TestProfilesResponse {
   testProfiles: SelectTestProfileWithPrompt[];
@@ -59,7 +59,17 @@ export async function getTestProfiles(
   const limit = options?.limit || 10;
   const offset = (page - 1) * limit;
 
-  // Build base query with join to get system prompt text
+  // Get latest status for each profile
+  const latestRunSubquery = db.select({
+    profile_id: testRuns.profile_id,
+    status: testRuns.status,
+    created_at: testRuns.created_at,
+  })
+    .from(testRuns)
+    .orderBy(desc(testRuns.created_at))
+    .as('latest_runs');
+
+  // Build base query with join to get system prompt text and latest status
   let baseQuery = db.select({
     id: testProfiles.id,
     name: testProfiles.name,
@@ -69,14 +79,15 @@ export async function getTestProfiles(
     username: users.username,
     created_at: testProfiles.created_at,
     updated_at: testProfiles.updated_at,
+    latest_status: testRuns.status,
   })
     .from(testProfiles)
     .leftJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id))
-    .innerJoin(users, eq(testProfiles.user_id, users.id));
+    .innerJoin(users, eq(testProfiles.user_id, users.id))
+    .leftJoin(testRuns, eq(testProfiles.id, testRuns.profile_id));
 
   let countQuery = db.select({ count: count() })
     .from(testProfiles)
-    .leftJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id))
     .innerJoin(users, eq(testProfiles.user_id, users.id));
 
   // Add search filter if provided
@@ -87,10 +98,33 @@ export async function getTestProfiles(
   }
 
   // Execute queries
-  const [profiles, totalCountResult] = await Promise.all([
-    baseQuery.orderBy(desc(testProfiles.created_at)).limit(limit).offset(offset),
-    countQuery
-  ]);
+  // Since we want the latest status, we need to handle the join carefully to avoid duplicate profiles
+  // Using a separate query to fetch latest status for the requested profiles might be cleaner or using a lateral join/distinct on
+  // For simplicity with Drizzle/Postgres, let's refine the query to use a subquery for the latest run per profile
+
+  const profilesResult = await db.execute(
+    sql`
+      SELECT 
+        tp.id, 
+        tp.name, 
+        tp.system_prompt_id, 
+        sp.prompt as system_prompt, 
+        tp.user_id, 
+        u.username, 
+        tp.created_at, 
+        tp.updated_at,
+        (SELECT status FROM test_runs WHERE profile_id = tp.id ORDER BY created_at DESC LIMIT 1) as latest_status
+      FROM test_profiles tp
+      LEFT JOIN system_prompts sp ON tp.system_prompt_id = sp.id
+      INNER JOIN users u ON tp.user_id = u.id
+      ${options?.search ? sql`WHERE tp.name ILIKE ${`%${options.search}%`}` : sql``}
+      ORDER BY tp.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `
+  );
+
+  const totalCountResult = await countQuery;
+  const profiles = profilesResult.rows as unknown as SelectTestProfileWithPrompt[];
 
   const totalCount = totalCountResult[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / limit);

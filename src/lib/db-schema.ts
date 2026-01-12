@@ -306,6 +306,7 @@ export type SelectTestProfile = typeof testProfiles.$inferSelect;
 export type SelectTestProfileWithPrompt = SelectTestProfile & {
   system_prompt: string | null;
   username: string;
+  latest_status: string | null;
 };
 export type InsertTestProfileTest = typeof testProfileTests.$inferInsert;
 export type SelectTestProfileTest = typeof testProfileTests.$inferSelect;

@@ -278,30 +278,36 @@ export default function SessionsPage() {
     setCurrentPage(1);
   };
 
-  const getStatusBadge = (profile: SelectTestProfile) => {
-    // Check if this profile is currently running
+  const getStatusBadge = (profile: SelectTestProfileWithPrompt) => {
+    // Check if this profile is currently running (in-memory state)
     if (runningSession === profile.id) {
       return <Badge variant="default" className="bg-blue-500"><Clock className="w-3 h-3 mr-1" />Running</Badge>;
     }
 
-    // Check recent runs status from sessionRuns if this is the selected profile
+    // Determine status from either the selected profile's detailed runs or the profile's cached latest status
+    let status: string | null = null;
     if (selectedProfile?.id === profile.id && sessionRuns.length > 0) {
-      const latestRun = sessionRuns[0];
-      switch (latestRun.status) {
-        case 'Running':
-          return <Badge variant="default" className="bg-blue-500"><Clock className="w-3 h-3 mr-1" />Running</Badge>;
-        case 'Done':
-          return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" />Completed</Badge>;
-        case 'Failed':
-          return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Failed</Badge>;
-        case 'Stopped':
-          return <Badge variant="secondary"><XCircle className="w-3 h-3 mr-1" />Stopped</Badge>;
-        default:
-          return <Badge variant="secondary">Idle</Badge>;
-      }
+      status = sessionRuns[0].status;
+    } else {
+      status = profile.latest_status;
     }
 
-    return <Badge variant="secondary">Idle</Badge>;
+    if (!status) {
+      return <Badge variant="secondary">Idle</Badge>;
+    }
+
+    switch (status) {
+      case 'Running':
+        return <Badge variant="default" className="bg-blue-500"><Clock className="w-3 h-3 mr-1" />Running</Badge>;
+      case 'Done':
+        return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" />Completed</Badge>;
+      case 'Failed':
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Failed</Badge>;
+      case 'Stopped':
+        return <Badge variant="secondary"><XCircle className="w-3 h-3 mr-1" />Stopped</Badge>;
+      default:
+        return <Badge variant="secondary">Idle</Badge>;
+    }
   };
 
   return (
@@ -415,14 +421,14 @@ export default function SessionsPage() {
               <div>
                 <h2 className="text-2xl font-bold">{selectedProfile.name}</h2>
                 {currentRunStatus && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 rounded-md">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Test Session Running</span>
+                      <span className="text-sm font-medium dark:text-blue-100">Test Session Running</span>
                       <Badge variant="default" className="bg-blue-500">
                         {currentRunStatus.completedTests}/{currentRunStatus.totalTests}
                       </Badge>
                     </div>
-                    <div className="mt-1 bg-gray-200 rounded-full h-2">
+                    <div className="mt-1 bg-gray-200 dark:bg-gray-800 rounded-full h-2">
                       <div
                         className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${(currentRunStatus.completedTests / currentRunStatus.totalTests) * 100}%` }}
@@ -430,9 +436,9 @@ export default function SessionsPage() {
                     </div>
                     {currentRunStatus.results && (
                       <div className="flex gap-4 mt-2 text-xs">
-                        <span className="text-green-600">✓ {currentRunStatus.results.success} Success</span>
-                        <span className="text-red-600">✗ {currentRunStatus.results.failed} Failed</span>
-                        <span className="text-gray-600">⏳ {currentRunStatus.results.pending} Pending</span>
+                        <span className="text-green-600 dark:text-green-400">✓ {currentRunStatus.results.success} Success</span>
+                        <span className="text-red-600 dark:text-red-400">✗ {currentRunStatus.results.failed} Failed</span>
+                        <span className="text-gray-600 dark:text-gray-400">⏳ {currentRunStatus.results.pending} Pending</span>
                       </div>
                     )}
                   </div>
