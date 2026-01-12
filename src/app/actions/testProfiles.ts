@@ -39,7 +39,7 @@ export async function getTestProfilesAction(
       return { success: false, error: "Admin access required" };
     }
 
-    const result = await getTestProfiles(userId, {
+    const result = await getTestProfiles({
       search: searchQuery,
       page,
       limit,
@@ -109,7 +109,7 @@ export async function updateTestProfileAction(
       model_configs: data.model_configs,
     };
 
-    const result = await updateTestProfile(id, updateData, userId);
+    const result = await updateTestProfile(id, updateData);
 
     revalidatePath("/admin/sessions");
     return { success: true, data: result };
@@ -134,7 +134,7 @@ export async function deleteTestProfileAction(id: number): Promise<ActionResult>
       return { success: false, error: "Admin access required" };
     }
 
-    await deleteTestProfile(id, userId);
+    await deleteTestProfile(id);
 
     revalidatePath("/admin/sessions");
     return { success: true };
@@ -156,7 +156,7 @@ export async function getTestsForSelectionAction(): Promise<ActionResult<SelectT
       return { success: false, error: "Admin access required" };
     }
 
-    const tests = await getTestsForSelection(userId);
+    const tests = await getTestsForSelection();
     return { success: true, data: tests };
   } catch (error) {
     console.error("Error fetching tests for selection:", error);
@@ -176,7 +176,7 @@ export async function getSystemPromptsForSelectionAction(): Promise<ActionResult
       return { success: false, error: "Admin access required" };
     }
 
-    const systemPrompts = await getSystemPromptsForSelection(userId);
+    const systemPrompts = await getSystemPromptsForSelection();
     return { success: true, data: systemPrompts };
   } catch (error) {
     console.error("Error fetching system prompts for selection:", error);

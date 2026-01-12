@@ -46,7 +46,6 @@ export interface DetailedTestProfile {
 }
 
 export async function getTestProfiles(
-  user_id: string,
   options?: {
     search?: string;
     page?: number;
@@ -77,11 +76,8 @@ export async function getTestProfiles(
   // Add search filter if provided
   if (options?.search) {
     const searchCondition = ilike(testProfiles.name, `%${options.search}%`);
-    baseQuery = baseQuery.where(and(eq(testProfiles.user_id, user_id), searchCondition)) as typeof baseQuery;
-    countQuery = countQuery.where(and(eq(testProfiles.user_id, user_id), searchCondition)) as typeof countQuery;
-  } else {
-    baseQuery = baseQuery.where(eq(testProfiles.user_id, user_id)) as typeof baseQuery;
-    countQuery = countQuery.where(eq(testProfiles.user_id, user_id)) as typeof countQuery;
+    baseQuery = baseQuery.where(searchCondition) as typeof baseQuery;
+    countQuery = countQuery.where(searchCondition) as typeof countQuery;
   }
 
   // Execute queries
@@ -166,7 +162,7 @@ export async function createTestProfile(data: CreateTestProfileData): Promise<Se
   }
 }
 
-export async function updateTestProfile(id: number, data: UpdateTestProfileData, user_id: string): Promise<SelectTestProfile> {
+export async function updateTestProfile(id: number, data: UpdateTestProfileData): Promise<SelectTestProfile> {
   try {
     // Update the test profile
     const [updatedProfile] = await db.update(testProfiles)
@@ -175,11 +171,11 @@ export async function updateTestProfile(id: number, data: UpdateTestProfileData,
         system_prompt_id: data.system_prompt_id,
         updated_at: new Date(),
       })
-      .where(and(eq(testProfiles.id, id), eq(testProfiles.user_id, user_id)))
+      .where(eq(testProfiles.id, id))
       .returning();
 
     if (!updatedProfile) {
-      throw new Error("Test profile not found or access denied");
+      throw new Error("Test profile not found");
     }
 
     // Delete existing test associations
@@ -209,27 +205,25 @@ export async function updateTestProfile(id: number, data: UpdateTestProfileData,
     return updatedProfile;
   } catch (error) {
     console.error("Error updating test profile:", error);
-    if (error instanceof Error && error.message === "Test profile not found or access denied") {
+    if (error instanceof Error && error.message === "Test profile not found") {
       throw error;
     }
     throw new Error("Failed to update test profile");
   }
 }
 
-export async function deleteTestProfile(id: number, user_id: string): Promise<void> {
+export async function deleteTestProfile(id: number): Promise<void> {
   await db.delete(testProfiles)
-    .where(and(eq(testProfiles.id, id), eq(testProfiles.user_id, user_id)));
+    .where(eq(testProfiles.id, id));
 }
 
-export async function getTestsForSelection(user_id: string): Promise<SelectTest[]> {
+export async function getTestsForSelection(): Promise<SelectTest[]> {
   return await db.select().from(tests)
-    .where(eq(tests.user_id, user_id))
     .orderBy(tests.name);
 }
 
-export async function getSystemPromptsForSelection(user_id: string): Promise<SelectSystemPrompt[]> {
+export async function getSystemPromptsForSelection(): Promise<SelectSystemPrompt[]> {
   return await db.select().from(systemPrompts)
-    .where(eq(systemPrompts.user_id, user_id))
     .orderBy(systemPrompts.name);
 }
 
