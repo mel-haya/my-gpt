@@ -1,5 +1,5 @@
 import { db } from "@/lib/db-config";
-import { testProfiles, testProfileTests, testProfileModels, tests, systemPrompts, users } from "@/lib/db-schema";
+import { testProfiles, testProfileTests, testProfileModels, tests, systemPrompts, users, testRuns, testRunResults } from "@/lib/db-schema";
 import type {
   SelectTestProfile,
   SelectTestProfileWithPrompt,
@@ -8,7 +8,7 @@ import type {
   InsertTestProfileTest,
   InsertTestProfileModel
 } from "@/lib/db-schema";
-import { eq, and, desc, ilike, count } from "drizzle-orm";
+import { eq, and, desc, ilike, count, sum, avg } from "drizzle-orm";
 
 export interface TestProfilesResponse {
   testProfiles: SelectTestProfileWithPrompt[];
@@ -44,6 +44,8 @@ export interface DetailedTestProfile {
   updated_at: Date;
   tests: { test_id: number; test_name: string; test_prompt: string; }[];
   models: any[];
+  total_tokens_cost: number | null;
+  average_score: number | null;
 }
 
 export async function getTestProfiles(
@@ -271,6 +273,17 @@ export async function getTestProfileWithDetails(id: number): Promise<DetailedTes
     .from(testProfileModels)
     .where(eq(testProfileModels.profile_id, id));
 
+  // Get aggregated metrics (total cost and average score)
+  const metricsResult = await db.select({
+    total_cost: sum(testRunResults.tokens_cost),
+    avg_score: avg(testRunResults.score),
+  })
+    .from(testRuns)
+    .innerJoin(testRunResults, eq(testRuns.id, testRunResults.test_run_id))
+    .where(eq(testRuns.profile_id, id));
+
+  const metrics = metricsResult[0];
+
   return {
     id: profile.id,
     name: profile.name,
@@ -283,5 +296,7 @@ export async function getTestProfileWithDetails(id: number): Promise<DetailedTes
     updated_at: profile.updated_at,
     tests: profileTests,
     models: profileModels,
+    total_tokens_cost: metrics?.total_cost ? Number(metrics.total_cost) : 0,
+    average_score: metrics?.avg_score ? Number(metrics.avg_score) : null,
   };
 }

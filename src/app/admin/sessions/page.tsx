@@ -18,7 +18,9 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Loader2
+  Loader2,
+  Coins,
+  Medal
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -42,8 +44,10 @@ import {
   stopTestSessionAction,
   getSessionRunStatusAction,
   getSessionRunsAction,
+  getTestInProfileDetailsAction,
   type SessionRunResult
 } from "@/app/actions/testSessions";
+import TestResultsList from "@/components/admin/TestResultsList";
 import type { SelectTestProfile, SelectTestProfileWithPrompt } from "@/lib/db-schema";
 
 interface TestProfileDetails {
@@ -58,6 +62,8 @@ interface TestProfileDetails {
   updated_at: Date;
   tests: { test_id: number; test_name: string; test_prompt: string; }[];
   models: { id: number; profile_id: number; model_name: string; created_at: Date; }[];
+  total_tokens_cost: number | null;
+  average_score: number | null;
 }
 
 export default function SessionsPage() {
@@ -75,6 +81,54 @@ export default function SessionsPage() {
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<{ id: number; name: string } | null>(null);
+
+  // State for inline test details (expanded cards)
+  const [expandedTestIds, setExpandedTestIds] = useState<Set<number>>(new Set());
+  const [loadingTestDetails, setLoadingTestDetails] = useState<Set<number>>(new Set());
+  const [testDetailsData, setTestDetailsData] = useState<Record<number, {
+    expectedResult: string;
+    results: any[];
+  }>>({});
+
+  const handleToggleTestDetails = async (testId: number) => {
+    // Toggle expanded state
+    setExpandedTestIds(prev => {
+      const next = new Set(prev);
+      if (next.has(testId)) {
+        next.delete(testId);
+      } else {
+        next.add(testId);
+      }
+      return next;
+    });
+
+    // If opening and no data, fetch it
+    if (!expandedTestIds.has(testId) && !testDetailsData[testId] && selectedProfile) {
+      setLoadingTestDetails(prev => new Set(prev).add(testId));
+      try {
+        const result = await getTestInProfileDetailsAction(selectedProfile.id, testId);
+        if (result.success && result.data) {
+          const data = result.data;
+          setTestDetailsData(prev => ({
+            ...prev,
+            [testId]: {
+              expectedResult: data.test.expected_result,
+              results: data.results
+            }
+          }));
+        }
+      } catch (error) {
+        console.error("Error loading test details:", error);
+      } finally {
+        setLoadingTestDetails(prev => {
+          const next = new Set(prev);
+          next.delete(testId);
+          return next;
+        });
+      }
+    }
+  };
+
 
   const loadTestProfiles = useCallback(async () => {
     setLoading(true);
@@ -387,8 +441,8 @@ export default function SessionsPage() {
               <div className="flex items-center gap-2">
                 {runningSession === selectedProfile.id ? (
                   <Button
-                  onClick={handleStopSession}
-                  variant="destructive"
+                    onClick={handleStopSession}
+                    variant="destructive"
                     size="sm"
                     disabled={!currentRunStatus}
                   >
@@ -423,7 +477,23 @@ export default function SessionsPage() {
                 </Button>
               </div>
             </div>
-            <p className="text-gray-600 py-2">Created on {new Date(selectedProfile.created_at).toLocaleDateString()} by {selectedProfile.username}</p>
+            <div className="flex flex-wrap items-center gap-4 py-2 text-sm text-gray-600 dark:text-gray-400">
+              <span>Created on {new Date(selectedProfile.created_at).toLocaleDateString()} by {selectedProfile.username}</span>
+              <div className="flex items-center gap-4 pl-4 border-l border-gray-300 dark:border-gray-700">
+                <div className="flex items-center gap-1.5" title="Total Token Cost (Lifetime)">
+                  <Coins className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    ${selectedProfile.total_tokens_cost ? selectedProfile.total_tokens_cost.toFixed(4) : "0.0000"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5" title="Average Score (Lifetime)">
+                  <Medal className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    {selectedProfile.average_score ? selectedProfile.average_score.toFixed(1) : "N/A"}/10
+                  </span>
+                </div>
+              </div>
+            </div>
 
             <div className="space-y-6">
               {/* System Prompt Info - Just the button now */}
@@ -473,12 +543,32 @@ export default function SessionsPage() {
                           <p className="text-sm text-gray-600 line-clamp-2 overflow-hidden">
                             {test.test_prompt}
                           </p>
-                          <div className="flex items-center justify-between mt-3">
-                            <Badge variant="secondary">Test ID: {test.test_id}</Badge>
-                            <Button variant="ghost" size="sm">
-                              <Eye className="w-4 h-4 mr-1" />
-                              View
-                            </Button>
+                          <div className="flex flex-col gap-2 w-full mt-3">
+                            <div className="flex items-center justify-between">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleTestDetails(test.test_id);
+                                }}
+                                disabled={loadingTestDetails.has(test.test_id)}
+                              >
+                                {loadingTestDetails.has(test.test_id) ? (
+                                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                ) : (
+                                  <Eye className="w-4 h-4 mr-1" />
+                                )}
+                                {expandedTestIds.has(test.test_id) ? "Hide Details" : "View Details"}
+                              </Button>
+                            </div>
+
+                            {expandedTestIds.has(test.test_id) && testDetailsData[test.test_id] && (
+                              <TestResultsList
+                                expectedResult={testDetailsData[test.test_id].expectedResult}
+                                results={testDetailsData[test.test_id].results}
+                              />
+                            )}
                           </div>
                         </CardContent>
                       </Card>

@@ -27,7 +27,7 @@ export interface TestWithUser extends SelectTest {
 }
 
 export interface TestRunWithResults extends SelectTestRun {
-  username: string|null;
+  username: string | null;
   results: TestRunResultWithTest[];
 }
 
@@ -92,9 +92,9 @@ export async function getTestsWithPagination(
   // Base query conditions
   const baseConditions = searchQuery
     ? or(
-        ilike(tests.name, `%${searchQuery}%`),
-        ilike(tests.prompt, `%${searchQuery}%`)
-      )
+      ilike(tests.name, `%${searchQuery}%`),
+      ilike(tests.prompt, `%${searchQuery}%`)
+    )
     : undefined;
 
   // Create a subquery for the latest test results using MAX aggregation
@@ -562,7 +562,7 @@ export async function createAllTestRunResults(
     .insert(testRunResults)
     .values(values)
     .returning();
-  
+
   return newResults;
 }
 
@@ -577,7 +577,8 @@ export async function updateTestRunResult(
   systemPrompt?: string,
   tokensCost?: number,
   executionTimeMs?: number,
-  score?: number
+  score?: number,
+  filterModel?: string
 ) {
   const [updatedResult] = await db
     .update(testRunResults)
@@ -596,7 +597,8 @@ export async function updateTestRunResult(
     .where(
       and(
         eq(testRunResults.test_run_id, testRunId),
-        eq(testRunResults.test_id, testId)
+        eq(testRunResults.test_id, testId),
+        filterModel ? eq(testRunResults.model_used, filterModel) : undefined
       )
     )
     .returning();
@@ -756,13 +758,12 @@ export async function runSingleTest(
     status = evaluation.status;
     explanation = evaluation.explanation;
     score = evaluation.score;
-    
+
     executionTimeMs = Date.now() - startTime;
   } catch (error) {
     executionTimeMs = Date.now() - startTime;
-    output = `Test execution failed: ${
-      error instanceof Error ? error.message : "Unknown error"
-    }`;
+    output = `Test execution failed: ${error instanceof Error ? error.message : "Unknown error"
+      }`;
     status = "Failed";
     explanation = "Test execution failed due to an error";
   }
