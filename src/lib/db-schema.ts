@@ -165,12 +165,14 @@ export const testRuns = pgTable(
     user_id: text("user_id")
       .notNull()
       .references(() => users.id),
+    profile_id: integer("profile_id").references(() => testProfiles.id, { onDelete: "set null" }),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
     index("test_runs_user_id_index").on(table.user_id),
     index("test_runs_status_index").on(table.status),
+    index("test_runs_profile_id_index").on(table.profile_id),
   ]
 );
 
@@ -220,6 +222,62 @@ export const systemPrompts = pgTable(
   ]
 );
 
+export const testProfiles = pgTable(
+  "test_profiles",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    system_prompt_id: integer("system_prompt_id")
+      .notNull()
+      .references(() => systemPrompts.id),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("test_profiles_user_id_index").on(table.user_id),
+    index("test_profiles_system_prompt_id_index").on(table.system_prompt_id),
+    uniqueIndex("test_profiles_name_user_index").on(table.name, table.user_id),
+  ]
+);
+
+export const testProfileTests = pgTable(
+  "test_profile_tests",
+  {
+    id: serial("id").primaryKey(),
+    profile_id: integer("profile_id")
+      .notNull()
+      .references(() => testProfiles.id, { onDelete: "cascade" }),
+    test_id: integer("test_id")
+      .notNull()
+      .references(() => tests.id, { onDelete: "cascade" }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("test_profile_tests_profile_id_index").on(table.profile_id),
+    index("test_profile_tests_test_id_index").on(table.test_id),
+    uniqueIndex("test_profile_tests_unique").on(table.profile_id, table.test_id),
+  ]
+);
+
+export const testProfileModels = pgTable(
+  "test_profile_models",
+  {
+    id: serial("id").primaryKey(),
+    profile_id: integer("profile_id")
+      .notNull()
+      .references(() => testProfiles.id, { onDelete: "cascade" }),
+    model_name: text("model_name").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("test_profile_models_profile_id_index").on(table.profile_id),
+    uniqueIndex("test_profile_models_unique").on(table.profile_id, table.model_name),
+  ]
+);
+
 export type InsertDocument = typeof documents.$inferInsert;
 export type SelectDocument = typeof documents.$inferSelect;
 export type InsertConversation = typeof conversations.$inferInsert;
@@ -244,3 +302,12 @@ export type InsertTestRunResult = typeof testRunResults.$inferInsert;
 export type SelectTestRunResult = typeof testRunResults.$inferSelect;
 export type InsertSystemPrompt = typeof systemPrompts.$inferInsert;
 export type SelectSystemPrompt = typeof systemPrompts.$inferSelect;
+export type InsertTestProfile = typeof testProfiles.$inferInsert;
+export type SelectTestProfile = typeof testProfiles.$inferSelect;
+export type SelectTestProfileWithPrompt = SelectTestProfile & {
+  system_prompt: string;
+};
+export type InsertTestProfileTest = typeof testProfileTests.$inferInsert;
+export type SelectTestProfileTest = typeof testProfileTests.$inferSelect;
+export type InsertTestProfileModel = typeof testProfileModels.$inferInsert;
+export type SelectTestProfileModel = typeof testProfileModels.$inferSelect;
