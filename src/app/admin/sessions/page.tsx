@@ -31,6 +31,7 @@ import {
 import CreateTestSessionModal from "@/components/CreateTestSessionModal";
 import EditTestSessionModal from "@/components/EditTestSessionModal";
 import DeleteTestSessionDialog from "@/components/DeleteTestSessionDialog";
+import ViewSystemPromptDialog from "@/components/admin/ViewSystemPromptDialog";
 import {
   getTestProfilesAction,
   deleteTestProfileAction,
@@ -353,7 +354,7 @@ export default function SessionsPage() {
             </div>
           </div>
         ) : (
-          <div className="p-6 h-full overflow-y-auto">
+          <div className="p-6 h-full">
             {/* Session Header */}
             <div className="flex items-start justify-between mb-6">
               <div>
@@ -424,53 +425,31 @@ export default function SessionsPage() {
             </div>
 
             <div className="space-y-6">
-              {/* System Prompt */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-white">System Prompt</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowSystemPrompt(!showSystemPrompt)}
-                    className="flex items-center gap-2 border-gray-600 bg-gray-800 text-white hover:bg-gray-700"
-                  >
-                    <Eye className="w-4 h-4" />
-                    {showSystemPrompt ? 'Hide' : 'Show'} Prompt
-                  </Button>
+              {/* System Prompt Info - Just the button now */}
+              <div className="flex items-center justify-between p-4 bg-neutral-900 border border-gray-700 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gray-800 rounded-md">
+                    <Eye className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">System Prompt</h3>
+                    <p className="text-xs text-gray-400">
+                      {selectedProfile.system_prompt
+                        ? (selectedProfile.system_prompt_name || `Prompt #${selectedProfile.system_prompt_id}`)
+                        : "No prompt assigned"}
+                    </p>
+                  </div>
                 </div>
-                <Card className="bg-neutral-900 border-gray-700">
-                  <CardContent className="pt-4">
-                    <div className="mb-3">
-                      <h4 className="font-medium text-sm text-gray-300 mb-1">Prompt Name</h4>
-                      <div className="flex items-center gap-2 text-sm bg-neutral-800 p-3 rounded border border-gray-600">
-                        {selectedProfile.system_prompt ? (
-                          <>
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span className="font-medium text-white">
-                              {selectedProfile.system_prompt_name || `Prompt #${selectedProfile.system_prompt_id}`}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                            <span className="text-gray-400 italic">No prompt assigned</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    {showSystemPrompt && (
-                      <div>
-                        <h4 className="font-medium text-sm text-gray-300 mb-2">Prompt Content</h4>
-                        <Textarea
-                          value={selectedProfile.system_prompt || 'No system prompt available'}
-                          readOnly
-                          className="min-h-30 resize-none bg-gray-800 border-gray-600 text-white placeholder-gray-400"
-                          placeholder="System prompt will appear here..."
-                        />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowSystemPrompt(true)}
+                  disabled={!selectedProfile.system_prompt}
+                  className="flex items-center gap-2 border-gray-600 bg-gray-800 text-white hover:bg-gray-700"
+                >
+                  <Eye className="w-4 h-4" />
+                  View Prompt
+                </Button>
               </div>
 
               {/* Associated Tests */}
@@ -599,8 +578,8 @@ export default function SessionsPage() {
                               <div className="w-16 bg-gray-200 rounded-full h-2">
                                 <div
                                   className={`h-2 rounded-full transition-all ${run.status === 'Done' ? 'bg-green-500' :
-                                      run.status === 'Failed' ? 'bg-red-500' :
-                                        'bg-blue-500'
+                                    run.status === 'Failed' ? 'bg-red-500' :
+                                      'bg-blue-500'
                                     }`}
                                   style={{ width: `${(run.completedTests / run.totalTests) * 100}%` }}
                                 />
@@ -625,6 +604,15 @@ export default function SessionsPage() {
           onOpenChange={setDeleteDialogOpen}
           sessionName={sessionToDelete.name}
           onConfirm={() => handleDeleteProfile(sessionToDelete.id)}
+        />
+      )}
+      {/* View System Prompt Dialog */}
+      {selectedProfile && (
+        <ViewSystemPromptDialog
+          open={showSystemPrompt}
+          onOpenChange={setShowSystemPrompt}
+          name={selectedProfile.system_prompt_name || `Prompt #${selectedProfile.system_prompt_id}`}
+          prompt={selectedProfile.system_prompt}
         />
       )}
     </div>
