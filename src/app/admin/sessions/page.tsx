@@ -60,7 +60,7 @@ interface TestProfileDetails {
   username: string;
   created_at: Date;
   updated_at: Date;
-  tests: { test_id: number; test_name: string; test_prompt: string; }[];
+  tests: { test_id: number; test_name: string; test_prompt: string; best_model: string | null; best_score: number | null; }[];
   models: { id: number; profile_id: number; model_name: string; created_at: Date; }[];
   total_tokens_cost: number | null;
   average_score: number | null;
@@ -547,7 +547,16 @@ export default function SessionsPage() {
                     {selectedProfile.tests.map((test) => (
                       <Card key={test.test_id} className="hover:shadow-sm transition-shadow">
                         <CardContent className="pt-4">
-                          <h4 className="font-medium mb-2">{test.test_name}</h4>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">{test.test_name}</h4>
+                            {test.best_model && test.best_score !== null && (
+                              <Badge variant="secondary" className="bg-neutral-800 text-[10px] gap-1 py-0 px-2 h-5 border-neutral-700">
+                                <Medal className="w-3 h-3 text-blue-400" />
+                                <span className="text-gray-400 font-normal">{test.best_model}:</span>
+                                <span className="font-bold text-white">{test.best_score}/10</span>
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-600 line-clamp-2 overflow-hidden">
                             {test.test_prompt}
                           </p>

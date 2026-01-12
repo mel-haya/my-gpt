@@ -42,7 +42,7 @@ export interface DetailedTestProfile {
   username: string;
   created_at: Date;
   updated_at: Date;
-  tests: { test_id: number; test_name: string; test_prompt: string; }[];
+  tests: { test_id: number; test_name: string; test_prompt: string; best_model: string | null; best_score: number | null; }[];
   models: any[];
   total_tokens_cost: number | null;
   average_score: number | null;
@@ -302,6 +302,35 @@ export async function getTestProfileWithDetails(id: number): Promise<DetailedTes
     .innerJoin(tests, eq(testProfileTests.test_id, tests.id))
     .where(eq(testProfileTests.profile_id, id));
 
+  // Get all results for all runs of this profile to find the best model for each test
+  const allResults = await db.select({
+    test_id: testRunResults.test_id,
+    model_name: testRunResults.model_used,
+    score: testRunResults.score,
+    created_at: testRunResults.created_at,
+  })
+    .from(testRuns)
+    .innerJoin(testRunResults, eq(testRuns.id, testRunResults.test_run_id))
+    .where(eq(testRuns.profile_id, id));
+
+  const bestResultsMap = new Map<number, { model: string, score: number }>();
+
+  // Group results by test and find the highest score (using the latest result if scores are tied)
+  for (const res of allResults) {
+    if (res.score === null || res.score === undefined) continue;
+
+    const existing = bestResultsMap.get(res.test_id);
+    if (!existing || res.score >= existing.score) {
+      bestResultsMap.set(res.test_id, { model: res.model_name || 'N/A', score: res.score });
+    }
+  }
+
+  const testsWithBest = profileTests.map(t => ({
+    ...t,
+    best_model: bestResultsMap.get(t.test_id)?.model || null,
+    best_score: bestResultsMap.get(t.test_id)?.score ?? null,
+  }));
+
   // Get associated model configurations
   const profileModels = await db.select()
     .from(testProfileModels)
@@ -328,7 +357,7 @@ export async function getTestProfileWithDetails(id: number): Promise<DetailedTes
     username: profile.username,
     created_at: profile.created_at,
     updated_at: profile.updated_at,
-    tests: profileTests,
+    tests: testsWithBest,
     models: profileModels,
     total_tokens_cost: (metrics?.total_cost !== null && metrics?.total_cost !== undefined) ? Number(metrics.total_cost) : 0,
     average_score: (metrics?.avg_score !== null && metrics?.avg_score !== undefined) ? Number(metrics.avg_score) : null,
