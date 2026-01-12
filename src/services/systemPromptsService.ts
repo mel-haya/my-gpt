@@ -1,10 +1,14 @@
 import { db } from "@/lib/db-config";
-import { systemPrompts } from "@/lib/db-schema";
-import { eq, and, desc, count, ilike, inArray } from "drizzle-orm";
+import { systemPrompts, users } from "@/lib/db-schema";
+import { eq, and, desc, count, ilike, inArray, sql } from "drizzle-orm";
 import type { SelectSystemPrompt, InsertSystemPrompt } from "@/lib/db-schema";
 
+export type SelectSystemPromptWithUser = SelectSystemPrompt & {
+  creator_name: string | null;
+};
+
 export interface SystemPromptsResponse {
-  systemPrompts: SelectSystemPrompt[];
+  systemPrompts: SelectSystemPromptWithUser[];
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -40,8 +44,18 @@ export async function getSystemPrompts(
   // Fetch system prompts and total count
   const [promptsData, totalCountData] = await Promise.all([
     db
-      .select()
+      .select({
+        id: systemPrompts.id,
+        name: systemPrompts.name,
+        prompt: systemPrompts.prompt,
+        user_id: systemPrompts.user_id,
+        default: systemPrompts.default,
+        created_at: systemPrompts.created_at,
+        updated_at: systemPrompts.updated_at,
+        creator_name: users.username,
+      })
       .from(systemPrompts)
+      .leftJoin(users, eq(systemPrompts.user_id, users.id))
       .where(whereClause)
       .orderBy(desc(systemPrompts.created_at))
       .limit(limit)

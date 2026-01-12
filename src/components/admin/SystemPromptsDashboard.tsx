@@ -23,10 +23,11 @@ import SystemPromptDialog from "./SystemPromptDialog";
 import DeleteSystemPromptDialog from "./DeleteSystemPromptDialog";
 import SystemPromptsList from "./SystemPromptsList";
 import type { SelectSystemPrompt } from "@/lib/db-schema";
+import type { SelectSystemPromptWithUser } from "@/services/systemPromptsService";
 
 interface SystemPromptsDashboardProps {
   initialData: {
-    systemPrompts: SelectSystemPrompt[];
+    systemPrompts: SelectSystemPromptWithUser[];
     pagination: {
       currentPage: number;
       totalPages: number;
@@ -43,7 +44,7 @@ export default function SystemPromptsDashboard({ initialData, searchQuery }: Sys
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
-  
+
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean;
     promptId: number;
@@ -64,7 +65,7 @@ export default function SystemPromptsDashboard({ initialData, searchQuery }: Sys
     promptName: "",
   });
 
-  const [editPrompt, setEditPrompt] = useState<SelectSystemPrompt | null>(null);
+  const [editPrompt, setEditPrompt] = useState<SelectSystemPromptWithUser | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
@@ -136,7 +137,7 @@ export default function SystemPromptsDashboard({ initialData, searchQuery }: Sys
     }
   };
 
-  const handleEditPrompt = (prompt: SelectSystemPrompt) => {
+  const handleEditPrompt = (prompt: SelectSystemPromptWithUser) => {
     setEditPrompt(prompt);
     setEditDialogOpen(true);
   };
@@ -283,8 +284,8 @@ export default function SystemPromptsDashboard({ initialData, searchQuery }: Sys
       />
 
       {/* Set Default Confirmation Dialog */}
-      <Dialog 
-        open={setDefaultDialog.isOpen} 
+      <Dialog
+        open={setDefaultDialog.isOpen}
         onOpenChange={(open) => !open && setSetDefaultDialog({ isOpen: false, promptId: 0, promptName: "" })}
       >
         <DialogContent>

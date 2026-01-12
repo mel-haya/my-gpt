@@ -13,12 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Edit2, Trash2, Search, Eye, Star } from "lucide-react";
+import { Edit2, Trash2, Search, Eye, Star, User } from "lucide-react";
+import type { SelectSystemPromptWithUser } from "@/services/systemPromptsService";
 import type { SelectSystemPrompt } from "@/lib/db-schema";
 
 interface SystemPromptsTableProps {
-  systemPrompts: SelectSystemPrompt[];
-  onEdit: (prompt: SelectSystemPrompt) => void;
+  systemPrompts: SelectSystemPromptWithUser[];
+  onEdit: (prompt: SelectSystemPromptWithUser) => void;
   onDelete: (promptId: number, promptName: string) => void;
   onSetDefault: (promptId: number, promptName: string) => void;
   selectedRows: Set<number>;
@@ -45,7 +46,7 @@ export default function SystemPromptsList({
 }: SystemPromptsTableProps) {
   const [viewPromptModal, setViewPromptModal] = useState<{
     isOpen: boolean;
-    prompt: SelectSystemPrompt | null;
+    prompt: SelectSystemPromptWithUser | null;
   }>({ isOpen: false, prompt: null });
 
   const formatDate = (dateString: string) => {
@@ -66,7 +67,7 @@ export default function SystemPromptsList({
     return lines.slice(0, maxLines).join('\n') + '...';
   };
 
-  const handleViewPrompt = (prompt: SelectSystemPrompt) => {
+  const handleViewPrompt = (prompt: SelectSystemPromptWithUser) => {
     setViewPromptModal({ isOpen: true, prompt });
   };
 
@@ -172,7 +173,7 @@ export default function SystemPromptsList({
                     <p className="text-sm text-muted-foreground mb-1">
                       Prompt:
                     </p>
-                    <div 
+                    <div
                       className="bg-muted p-3 rounded cursor-pointer hover:bg-muted/80 transition-colors group"
                       onClick={() => handleViewPrompt(prompt)}
                     >
@@ -187,9 +188,15 @@ export default function SystemPromptsList({
 
                   {/* Metadata */}
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      Updated: {formatDate(prompt.updated_at.toString())}
-                    </span>
+                    <div className="flex items-center space-x-4">
+                      <span>
+                        Updated: {formatDate(prompt.updated_at.toString())}
+                      </span>
+                      <span className="flex items-center">
+                        <User className="h-3 w-3 mr-1" />
+                        Created by: {prompt.creator_name || "Unknown"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -197,10 +204,10 @@ export default function SystemPromptsList({
           </div>
         )}
       </CardContent>
-      
+
       {/* View Prompt Modal */}
-      <Dialog 
-        open={viewPromptModal.isOpen} 
+      <Dialog
+        open={viewPromptModal.isOpen}
         onOpenChange={(open) => setViewPromptModal({ isOpen: open, prompt: null })}
       >
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
