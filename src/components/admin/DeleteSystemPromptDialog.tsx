@@ -57,6 +57,7 @@ export default function DeleteSystemPromptDialog({
         if (result.success) {
           toast.success("System prompt deleted successfully");
         } else {
+          console.error("Error deleting system prompt:", result.error);
           throw new Error(result.error || "Failed to delete system prompt");
         }
       }

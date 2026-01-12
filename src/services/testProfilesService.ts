@@ -1,9 +1,9 @@
 import { db } from "@/lib/db-config";
 import { testProfiles, testProfileTests, testProfileModels, tests, systemPrompts } from "@/lib/db-schema";
-import type { 
-  SelectTestProfile, 
+import type {
+  SelectTestProfile,
   SelectTestProfileWithPrompt,
-  SelectTest, 
+  SelectTest,
   SelectSystemPrompt,
   InsertTestProfileTest,
   InsertTestProfileModel
@@ -54,12 +54,12 @@ export async function getTestProfiles(
     created_at: testProfiles.created_at,
     updated_at: testProfiles.updated_at,
   })
-  .from(testProfiles)
-  .innerJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id));
+    .from(testProfiles)
+    .leftJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id));
 
   let countQuery = db.select({ count: count() })
-  .from(testProfiles)
-  .innerJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id));
+    .from(testProfiles)
+    .leftJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id));
 
   // Add search filter if provided
   if (options?.search) {
@@ -232,11 +232,11 @@ export async function getTestProfileWithDetails(id: number) {
     system_prompt: systemPrompts.prompt,
     system_prompt_name: systemPrompts.name,
   })
-  .from(testProfiles)
-  .innerJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id))
-  .where(eq(testProfiles.id, id))
-  .limit(1);
-  
+    .from(testProfiles)
+    .leftJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id))
+    .where(eq(testProfiles.id, id))
+    .limit(1);
+
   if (!profileResult[0]) {
     return null;
   }
@@ -249,9 +249,9 @@ export async function getTestProfileWithDetails(id: number) {
     test_name: tests.name,
     test_prompt: tests.prompt,
   })
-  .from(testProfileTests)
-  .innerJoin(tests, eq(testProfileTests.test_id, tests.id))
-  .where(eq(testProfileTests.profile_id, id));
+    .from(testProfileTests)
+    .innerJoin(tests, eq(testProfileTests.test_id, tests.id))
+    .where(eq(testProfileTests.profile_id, id));
 
   // Get associated model configurations
   const profileModels = await db.select()

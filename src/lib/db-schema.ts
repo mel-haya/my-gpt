@@ -228,8 +228,7 @@ export const testProfiles = pgTable(
     id: serial("id").primaryKey(),
     name: text("name").notNull(),
     system_prompt_id: integer("system_prompt_id")
-      .notNull()
-      .references(() => systemPrompts.id),
+      .references(() => systemPrompts.id, { onDelete: "set null" }),
     user_id: text("user_id")
       .notNull()
       .references(() => users.id),
@@ -305,7 +304,7 @@ export type SelectSystemPrompt = typeof systemPrompts.$inferSelect;
 export type InsertTestProfile = typeof testProfiles.$inferInsert;
 export type SelectTestProfile = typeof testProfiles.$inferSelect;
 export type SelectTestProfileWithPrompt = SelectTestProfile & {
-  system_prompt: string;
+  system_prompt: string | null;
 };
 export type InsertTestProfileTest = typeof testProfileTests.$inferInsert;
 export type SelectTestProfileTest = typeof testProfileTests.$inferSelect;

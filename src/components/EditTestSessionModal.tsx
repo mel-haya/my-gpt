@@ -72,7 +72,7 @@ export default function EditTestSessionModal({
   useEffect(() => {
     setFormData({
       name: profile.name,
-      selectedSystemPrompt: profile.system_prompt_id.toString(),
+      selectedSystemPrompt: profile.system_prompt_id?profile.system_prompt_id.toString():"",
       selectedTestIds: profile.tests.map(t => t.test_id),
       selectedModelIds: profile.models.map(m => m.model_name),
     });

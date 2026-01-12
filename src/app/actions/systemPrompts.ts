@@ -37,7 +37,7 @@ export async function getSystemPromptsAction(
       return { success: false, error: "Admin access required" };
     }
 
-    const result = await getSystemPrompts(userId, {
+    const result = await getSystemPrompts({
       search: searchQuery,
       page,
       limit,
@@ -82,7 +82,7 @@ export async function createSystemPromptAction(data: {
     return { success: true, data: newPrompt };
   } catch (error) {
     console.error("Error creating system prompt:", error);
-    
+
     // Handle potential unique constraint violations
     if (error && typeof error === 'object' && 'code' in error && error.code === "23505") {
       return { success: false, error: "A system prompt with this name already exists" };
@@ -116,12 +116,12 @@ export async function updateSystemPromptAction(
     }
 
     // Verify the prompt exists and belongs to the user
-    const existingPrompt = await getSystemPromptById(id, userId);
+    const existingPrompt = await getSystemPromptById(id);
     if (!existingPrompt) {
       return { success: false, error: "System prompt not found or access denied" };
     }
 
-    const updatedPrompt = await updateSystemPromptService(id, userId, {
+    const updatedPrompt = await updateSystemPromptService(id, {
       ...(data.name !== undefined && { name: data.name.trim() }),
       ...(data.prompt !== undefined && { prompt: data.prompt.trim() }),
       ...(data.default !== undefined && { default: data.default }),
@@ -137,7 +137,7 @@ export async function updateSystemPromptAction(
     return { success: true, data: updatedPrompt };
   } catch (error) {
     console.error("Error updating system prompt:", error);
-    
+
     // Handle potential unique constraint violations
     if (error && typeof error === 'object' && 'code' in error && error.code === "23505") {
       return { success: false, error: "A system prompt with this name already exists" };
@@ -219,7 +219,7 @@ export async function getSystemPromptByIdAction(id: number): Promise<ActionResul
       return { success: false, error: "Admin access required" };
     }
 
-    const prompt = await getSystemPromptById(id, userId);
+    const prompt = await getSystemPromptById(id);
 
     if (!prompt) {
       return { success: false, error: "System prompt not found" };

@@ -15,7 +15,6 @@ export interface SystemPromptsResponse {
 }
 
 export async function getSystemPrompts(
-  userId: string,
   options: {
     search?: string;
     page?: number;
@@ -26,16 +25,16 @@ export async function getSystemPrompts(
   const offset = (page - 1) * limit;
 
   // Build where conditions
-  const whereConditions = [eq(systemPrompts.user_id, userId)];
-  
+  const whereConditions = [];
+
   if (search.trim()) {
     whereConditions.push(
       ilike(systemPrompts.name, `%${search.trim()}%`)
     );
   }
 
-  const whereClause = whereConditions.length > 1 
-    ? and(...whereConditions) 
+  const whereClause = whereConditions.length > 1
+    ? and(...whereConditions)
     : whereConditions[0];
 
   // Fetch system prompts and total count
@@ -47,7 +46,7 @@ export async function getSystemPrompts(
       .orderBy(desc(systemPrompts.created_at))
       .limit(limit)
       .offset(offset),
-    
+
     db
       .select({ count: count() })
       .from(systemPrompts)
@@ -90,15 +89,17 @@ export async function createSystemPrompt(
 
 export async function updateSystemPrompt(
   promptId: number,
-  userId: string,
-  data: Partial<Omit<InsertSystemPrompt, "id" | "user_id" | "created_at">>
+  data: Partial<Omit<InsertSystemPrompt, "id" | "created_at">>
 ): Promise<SelectSystemPrompt | null> {
   // If this prompt is being set as default, remove default from all others for this user
+  // If this prompt is being set as default, remove default from all others for this prompt's owner
   if (data.default) {
-    await db
-      .update(systemPrompts)
-      .set({ default: false, updated_at: new Date() })
-      .where(eq(systemPrompts.user_id, userId));
+    const prompt = await getSystemPromptById(promptId);
+    if (prompt) {
+      await db
+        .update(systemPrompts)
+        .set({ default: false, updated_at: new Date() })
+    }
   }
 
   const [updatedPrompt] = await db
@@ -107,7 +108,7 @@ export async function updateSystemPrompt(
       ...data,
       updated_at: new Date(),
     })
-    .where(and(eq(systemPrompts.id, promptId), eq(systemPrompts.user_id, userId)))
+    .where(and(eq(systemPrompts.id, promptId)))
     .returning();
 
   return updatedPrompt || null;
@@ -156,12 +157,11 @@ export async function getDefaultSystemPrompt(
 
 export async function getSystemPromptById(
   promptId: number,
-  userId: string
 ): Promise<SelectSystemPrompt | null> {
   const [prompt] = await db
     .select()
     .from(systemPrompts)
-    .where(and(eq(systemPrompts.id, promptId), eq(systemPrompts.user_id, userId)))
+    .where(and(eq(systemPrompts.id, promptId)))
     .limit(1);
 
   return prompt || null;

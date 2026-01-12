@@ -48,7 +48,7 @@ export default function SystemPromptDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim() || !prompt.trim()) {
       toast.error("Please fill in all required fields");
       return;
@@ -58,11 +58,11 @@ export default function SystemPromptDialog({
 
     try {
       let result;
-      
+
       if (isEdit) {
         result = await updateSystemPromptAction(systemPrompt.id, {
           name: name.trim(),
-
+          prompt: prompt.trim(),
         });
       } else {
         result = await createSystemPromptAction({
@@ -73,11 +73,11 @@ export default function SystemPromptDialog({
 
       if (result.success) {
         toast.success(
-          isEdit 
-            ? "System prompt updated successfully" 
+          isEdit
+            ? "System prompt updated successfully"
             : "System prompt created successfully"
         );
-        
+
         onSuccess();
         onOpenChange(false);
         resetForm();
@@ -117,12 +117,12 @@ export default function SystemPromptDialog({
             {isEdit ? "Edit System Prompt" : "Create New System Prompt"}
           </DialogTitle>
           <DialogDescription>
-            {isEdit 
-              ? "Update the system prompt details below." 
+            {isEdit
+              ? "Update the system prompt details below."
               : "Create a new system prompt for chatbot testing."}
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="name">Name *</Label>
@@ -161,8 +161,8 @@ export default function SystemPromptDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading 
-                ? (isEdit ? "Updating..." : "Creating...") 
+              {isLoading
+                ? (isEdit ? "Updating..." : "Creating...")
                 : (isEdit ? "Update" : "Create")
               }
             </Button>
