@@ -35,8 +35,9 @@ import type { SelectTest, SelectSystemPrompt } from "@/lib/db-schema";
 interface TestProfileDetails {
   id: number;
   name: string;
-  system_prompt_id: number;
-  system_prompt: string;
+  system_prompt_id: number | null;
+  system_prompt: string | null;
+  system_prompt_name?: string | null;
   user_id: string;
   created_at: Date;
   updated_at: Date;
@@ -49,9 +50,9 @@ interface EditTestSessionModalProps {
   onSessionUpdated?: () => void;
 }
 
-export default function EditTestSessionModal({ 
-  profile, 
-  onSessionUpdated 
+export default function EditTestSessionModal({
+  profile,
+  onSessionUpdated
 }: EditTestSessionModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,7 +61,7 @@ export default function EditTestSessionModal({
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [isTestSectionCollapsed, setIsTestSectionCollapsed] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     name: "",
     selectedSystemPrompt: "",
@@ -72,7 +73,7 @@ export default function EditTestSessionModal({
   useEffect(() => {
     setFormData({
       name: profile.name,
-      selectedSystemPrompt: profile.system_prompt_id?profile.system_prompt_id.toString():"",
+      selectedSystemPrompt: profile.system_prompt_id ? profile.system_prompt_id.toString() : "",
       selectedTestIds: profile.tests.map(t => t.test_id),
       selectedModelIds: profile.models.map(m => m.model_name),
     });
@@ -133,7 +134,7 @@ export default function EditTestSessionModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim() || !formData.selectedSystemPrompt || formData.selectedTestIds.length === 0) {
       alert("Please fill in all required fields and select at least one test.");
       return;
@@ -191,7 +192,7 @@ export default function EditTestSessionModal({
             Update the session configuration including name, system prompt, tests, and model configurations.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
           <form id="edit-session-form" onSubmit={handleSubmit} className="space-y-6">
             {/* Session Name */}
@@ -210,8 +211,8 @@ export default function EditTestSessionModal({
             <div className="space-y-2">
               <Label htmlFor="system-prompt">System Prompt *</Label>
               <div className="flex gap-2">
-                <Select 
-                  value={formData.selectedSystemPrompt} 
+                <Select
+                  value={formData.selectedSystemPrompt}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, selectedSystemPrompt: value }))}
                 >
                   <SelectTrigger className="flex-1">
@@ -294,7 +295,7 @@ export default function EditTestSessionModal({
                         <Checkbox
                           id={`test-${test.id}`}
                           checked={formData.selectedTestIds.includes(test.id)}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked) =>
                             handleTestSelection(test.id, checked as boolean)
                           }
                         />
@@ -337,7 +338,7 @@ export default function EditTestSessionModal({
                     <DropdownMenuCheckboxItem
                       key={model.id}
                       checked={formData.selectedModelIds.includes(model.id)}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         handleModelSelection(model.id, checked as boolean)
                       }
                     >

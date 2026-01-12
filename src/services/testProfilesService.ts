@@ -32,6 +32,19 @@ export interface UpdateTestProfileData {
   model_configs: string[];
 }
 
+export interface DetailedTestProfile {
+  id: number;
+  name: string;
+  system_prompt_id: number | null;
+  system_prompt: string | null;
+  system_prompt_name: string | null;
+  user_id: string;
+  created_at: Date;
+  updated_at: Date;
+  tests: { test_id: number; test_name: string; test_prompt: string; }[];
+  models: any[];
+}
+
 export async function getTestProfiles(
   user_id: string,
   options?: {
@@ -220,7 +233,7 @@ export async function getSystemPromptsForSelection(user_id: string): Promise<Sel
     .orderBy(systemPrompts.name);
 }
 
-export async function getTestProfileWithDetails(id: number) {
+export async function getTestProfileWithDetails(id: number): Promise<DetailedTestProfile | null> {
   // Get profile with system prompt details by joining tables
   const profileResult = await db.select({
     id: testProfiles.id,

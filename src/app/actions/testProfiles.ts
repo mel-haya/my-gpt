@@ -13,6 +13,7 @@ import {
   getTestProfileWithDetails,
   TestProfilesResponse,
   UpdateTestProfileData,
+  DetailedTestProfile,
 } from "@/services/testProfilesService";
 import type { SelectTestProfile, SelectTestProfileWithPrompt, SelectTest, SelectSystemPrompt } from "@/lib/db-schema";
 
@@ -109,7 +110,7 @@ export async function updateTestProfileAction(
     };
 
     const result = await updateTestProfile(id, updateData, userId);
-    
+
     revalidatePath("/admin/sessions");
     return { success: true, data: result };
   } catch (error) {
@@ -183,18 +184,7 @@ export async function getSystemPromptsForSelectionAction(): Promise<ActionResult
   }
 }
 
-export async function getTestProfileDetailsAction(id: number): Promise<ActionResult<{ 
-  id: number; 
-  name: string; 
-  system_prompt: string;
-  system_prompt_id: number;
-  system_prompt_name: string;
-  user_id: string; 
-  created_at: Date; 
-  updated_at: Date; 
-  tests: { test_id: number; test_name: string; test_prompt: string; }[]; 
-  models: { id: number; profile_id: number; model_name: string; created_at: Date; }[]; 
-}>> {
+export async function getTestProfileDetailsAction(id: number): Promise<ActionResult<DetailedTestProfile>> {
   try {
     const { userId } = await auth();
     if (!userId) {

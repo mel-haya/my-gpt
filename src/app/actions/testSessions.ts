@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db-config";
 import { testRuns, testRunResults, tests as testsTable } from "@/lib/db-schema";
 import { eq, desc } from "drizzle-orm";
-import { 
+import {
   updateTestRunResult,
   updateTestRunStatus,
   getTestRunStatus,
@@ -87,7 +87,7 @@ export async function runTestSessionAction(profileId: number): Promise<ActionRes
       testRunId,
       profile.tests,
       profile.models,
-      profile.system_prompt
+      profile.system_prompt ?? ""
     ).catch(console.error);
 
     revalidatePath("/admin/sessions");
@@ -158,14 +158,14 @@ export async function getSessionRunStatusAction(testRunId: number): Promise<Acti
       .where(eq(testRunResults.test_run_id, testRunId));
 
     const totalTests = results.length;
-    const completedTests = results.filter(r => 
+    const completedTests = results.filter(r =>
       r.status === "Success" || r.status === "Failed"
     ).length;
 
     const resultCounts = {
       success: results.filter(r => r.status === "Success").length,
       failed: results.filter(r => r.status === "Failed").length,
-      pending: results.filter(r => 
+      pending: results.filter(r =>
         r.status === "Pending" || r.status === "Running" || r.status === "Evaluating"
       ).length,
     };
@@ -222,14 +222,14 @@ export async function getSessionRunsAction(profileId: number): Promise<ActionRes
         .where(eq(testRunResults.test_run_id, run.id));
 
       const totalTests = results.length;
-      const completedTests = results.filter(r => 
+      const completedTests = results.filter(r =>
         r.status === "Success" || r.status === "Failed"
       ).length;
 
       const resultCounts = {
         success: results.filter(r => r.status === "Success").length,
         failed: results.filter(r => r.status === "Failed").length,
-        pending: results.filter(r => 
+        pending: results.filter(r =>
           r.status === "Pending" || r.status === "Running" || r.status === "Evaluating"
         ).length,
       };

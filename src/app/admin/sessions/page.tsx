@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Trash2, 
-  Search, 
-  Play, 
-  Edit, 
-  Eye, 
+import {
+  Trash2,
+  Search,
+  Play,
+  Edit,
+  Eye,
   Square,
   MoreVertical,
   Clock,
@@ -31,8 +31,8 @@ import {
 import CreateTestSessionModal from "@/components/CreateTestSessionModal";
 import EditTestSessionModal from "@/components/EditTestSessionModal";
 import DeleteTestSessionDialog from "@/components/DeleteTestSessionDialog";
-import { 
-  getTestProfilesAction, 
+import {
+  getTestProfilesAction,
   deleteTestProfileAction,
   getTestProfileDetailsAction
 } from "@/app/actions/testProfiles";
@@ -48,9 +48,9 @@ import type { SelectTestProfile, SelectTestProfileWithPrompt } from "@/lib/db-sc
 interface TestProfileDetails {
   id: number;
   name: string;
-  system_prompt_id: number;
-  system_prompt: string;
-  system_prompt_name?: string;
+  system_prompt_id: number | null;
+  system_prompt: string | null;
+  system_prompt_name?: string | null;
   user_id: string;
   created_at: Date;
   updated_at: Date;
@@ -107,7 +107,7 @@ export default function SessionsPage() {
     setDetailsLoading(true);
     try {
       const result = await getTestProfileDetailsAction(profileId);
-        if (result.success && result.data) {
+      if (result.success && result.data) {
         // Ensure system_prompt_id is present
         setSelectedProfile({
           ...result.data,
@@ -152,12 +152,12 @@ export default function SessionsPage() {
     try {
       setRunningSession(profileId);
       const result = await runTestSessionAction(profileId);
-      
+
       if (result.success && result.data) {
         // Start polling for status updates
         const testRunId = result.data.testRunId;
         pollRunStatus(testRunId);
-        
+
         // Refresh session runs if this profile is selected
         if (selectedProfile?.id === profileId) {
           loadSessionRuns(profileId);
@@ -175,7 +175,7 @@ export default function SessionsPage() {
 
   const handleStopSession = async () => {
     if (!currentRunStatus) return;
-    
+
     try {
       const result = await stopTestSessionAction(currentRunStatus.testRunId);
       if (result.success) {
@@ -199,7 +199,7 @@ export default function SessionsPage() {
       const result = await getSessionRunStatusAction(testRunId);
       if (result.success && result.data) {
         setCurrentRunStatus(result.data);
-        
+
         // Continue polling if still running
         if (result.data.status === "Running") {
           setTimeout(() => pollRunStatus(testRunId), 2000); // Poll every 2 seconds
@@ -227,7 +227,7 @@ export default function SessionsPage() {
     if (runningSession === profile.id) {
       return <Badge variant="default" className="bg-blue-500"><Clock className="w-3 h-3 mr-1" />Running</Badge>;
     }
-    
+
     // Check recent runs status from sessionRuns if this is the selected profile
     if (selectedProfile?.id === profile.id && sessionRuns.length > 0) {
       const latestRun = sessionRuns[0];
@@ -244,7 +244,7 @@ export default function SessionsPage() {
           return <Badge variant="secondary">Idle</Badge>;
       }
     }
-    
+
     return <Badge variant="secondary">Idle</Badge>;
   };
 
@@ -285,11 +285,10 @@ export default function SessionsPage() {
             </div>
           ) : (
             testProfiles.map((profile) => (
-              <Card 
-                key={profile.id} 
-                className={`cursor-pointer transition-all hover:shadow-md ${
-                  selectedProfile?.id === profile.id ? 'ring-2 ring-neutral-500 bg-neutral-600/40 border-blue-200' : ''
-                }`}
+              <Card
+                key={profile.id}
+                className={`cursor-pointer transition-all hover:shadow-md ${selectedProfile?.id === profile.id ? 'ring-2 ring-neutral-500 bg-neutral-600/40 border-blue-200' : ''
+                  }`}
                 onClick={() => handleSelectProfile(profile)}
               >
                 <CardHeader className="">
@@ -369,7 +368,7 @@ export default function SessionsPage() {
                       </Badge>
                     </div>
                     <div className="mt-1 bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${(currentRunStatus.completedTests / currentRunStatus.totalTests) * 100}%` }}
                       />
@@ -386,18 +385,18 @@ export default function SessionsPage() {
               </div>
               <div className="flex items-center gap-2">
                 {runningSession === selectedProfile.id ? (
-                  <Button 
-                    onClick={handleStopSession} 
+                  <Button
+                    onClick={handleStopSession}
                     variant="destructive"
                     size="sm"
                     disabled={!currentRunStatus}
                   >
-                    <Square  className="w-4 h-4 mr-2" />
+                    <Square className="w-4 h-4 mr-2" />
                     Stop Session
                   </Button>
                 ) : (
-                  <Button 
-                    onClick={() => handleRunSession(selectedProfile.id)} 
+                  <Button
+                    onClick={() => handleRunSession(selectedProfile.id)}
                     className="bg-green-600 hover:bg-green-700"
                     size="sm"
                     disabled={selectedProfile.tests.length === 0 || selectedProfile.models.length === 0}
@@ -406,14 +405,14 @@ export default function SessionsPage() {
                     Run Session
                   </Button>
                 )}
-                <EditTestSessionModal 
-                  profile={selectedProfile} 
+                <EditTestSessionModal
+                  profile={selectedProfile}
                   onSessionUpdated={() => {
                     loadProfileDetails(selectedProfile.id);
                     loadTestProfiles();
                   }}
                 />
-                <Button 
+                <Button
                   onClick={() => openDeleteDialog({ id: selectedProfile.id, name: selectedProfile.name })}
                   variant="destructive"
                   size="sm"
@@ -462,8 +461,8 @@ export default function SessionsPage() {
                     {showSystemPrompt && (
                       <div>
                         <h4 className="font-medium text-sm text-gray-300 mb-2">Prompt Content</h4>
-                        <Textarea 
-                          value={selectedProfile.system_prompt || 'No system prompt available'} 
+                        <Textarea
+                          value={selectedProfile.system_prompt || 'No system prompt available'}
                           readOnly
                           className="min-h-30 resize-none bg-gray-800 border-gray-600 text-white placeholder-gray-400"
                           placeholder="System prompt will appear here..."
@@ -598,12 +597,11 @@ export default function SessionsPage() {
                                 </div>
                               </div>
                               <div className="w-16 bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className={`h-2 rounded-full transition-all ${
-                                    run.status === 'Done' ? 'bg-green-500' : 
-                                    run.status === 'Failed' ? 'bg-red-500' : 
-                                    'bg-blue-500'
-                                  }`}
+                                <div
+                                  className={`h-2 rounded-full transition-all ${run.status === 'Done' ? 'bg-green-500' :
+                                      run.status === 'Failed' ? 'bg-red-500' :
+                                        'bg-blue-500'
+                                    }`}
                                   style={{ width: `${(run.completedTests / run.totalTests) * 100}%` }}
                                 />
                               </div>
