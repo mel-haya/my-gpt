@@ -53,6 +53,7 @@ interface TestProfileDetails {
   system_prompt: string | null;
   system_prompt_name?: string | null;
   user_id: string;
+  username: string;
   created_at: Date;
   updated_at: Date;
   tests: { test_id: number; test_name: string; test_prompt: string; }[];
@@ -356,10 +357,9 @@ export default function SessionsPage() {
         ) : (
           <div className="p-6 h-full">
             {/* Session Header */}
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-2xl font-bold">{selectedProfile.name}</h2>
-                <p className="text-gray-600">Created on {new Date(selectedProfile.created_at).toLocaleDateString()}</p>
                 {currentRunStatus && (
                   <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
                     <div className="flex items-center justify-between">
@@ -387,8 +387,8 @@ export default function SessionsPage() {
               <div className="flex items-center gap-2">
                 {runningSession === selectedProfile.id ? (
                   <Button
-                    onClick={handleStopSession}
-                    variant="destructive"
+                  onClick={handleStopSession}
+                  variant="destructive"
                     size="sm"
                     disabled={!currentRunStatus}
                   >
@@ -423,6 +423,7 @@ export default function SessionsPage() {
                 </Button>
               </div>
             </div>
+            <p className="text-gray-600 py-2">Created on {new Date(selectedProfile.created_at).toLocaleDateString()} by {selectedProfile.username}</p>
 
             <div className="space-y-6">
               {/* System Prompt Info - Just the button now */}

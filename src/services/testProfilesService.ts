@@ -1,5 +1,5 @@
 import { db } from "@/lib/db-config";
-import { testProfiles, testProfileTests, testProfileModels, tests, systemPrompts } from "@/lib/db-schema";
+import { testProfiles, testProfileTests, testProfileModels, tests, systemPrompts, users } from "@/lib/db-schema";
 import type {
   SelectTestProfile,
   SelectTestProfileWithPrompt,
@@ -39,6 +39,7 @@ export interface DetailedTestProfile {
   system_prompt: string | null;
   system_prompt_name: string | null;
   user_id: string;
+  username: string;
   created_at: Date;
   updated_at: Date;
   tests: { test_id: number; test_name: string; test_prompt: string; }[];
@@ -63,15 +64,18 @@ export async function getTestProfiles(
     system_prompt_id: testProfiles.system_prompt_id,
     system_prompt: systemPrompts.prompt,
     user_id: testProfiles.user_id,
+    username: users.username,
     created_at: testProfiles.created_at,
     updated_at: testProfiles.updated_at,
   })
     .from(testProfiles)
-    .leftJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id));
+    .leftJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id))
+    .innerJoin(users, eq(testProfiles.user_id, users.id));
 
   let countQuery = db.select({ count: count() })
     .from(testProfiles)
-    .leftJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id));
+    .leftJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id))
+    .innerJoin(users, eq(testProfiles.user_id, users.id));
 
   // Add search filter if provided
   if (options?.search) {
@@ -234,6 +238,7 @@ export async function getTestProfileWithDetails(id: number): Promise<DetailedTes
     name: testProfiles.name,
     system_prompt_id: testProfiles.system_prompt_id,
     user_id: testProfiles.user_id,
+    username: users.username,
     created_at: testProfiles.created_at,
     updated_at: testProfiles.updated_at,
     system_prompt: systemPrompts.prompt,
@@ -241,6 +246,7 @@ export async function getTestProfileWithDetails(id: number): Promise<DetailedTes
   })
     .from(testProfiles)
     .leftJoin(systemPrompts, eq(testProfiles.system_prompt_id, systemPrompts.id))
+    .innerJoin(users, eq(testProfiles.user_id, users.id))
     .where(eq(testProfiles.id, id))
     .limit(1);
 
@@ -272,6 +278,7 @@ export async function getTestProfileWithDetails(id: number): Promise<DetailedTes
     system_prompt: profile.system_prompt, // Now contains the actual prompt text from the join
     system_prompt_name: profile.system_prompt_name, // Include the system prompt name
     user_id: profile.user_id,
+    username: profile.username,
     created_at: profile.created_at,
     updated_at: profile.updated_at,
     tests: profileTests,
