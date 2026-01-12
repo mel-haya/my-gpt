@@ -479,20 +479,22 @@ export default function SessionsPage() {
             </div>
             <div className="flex flex-wrap items-center gap-4 py-2 text-sm text-gray-600 dark:text-gray-400">
               <span>Created on {new Date(selectedProfile.created_at).toLocaleDateString()} by {selectedProfile.username}</span>
-              <div className="flex items-center gap-4 pl-4 border-l border-gray-300 dark:border-gray-700">
-                <div className="flex items-center gap-1.5" title="Total Token Cost (Lifetime)">
-                  <Coins className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                    ${selectedProfile.total_tokens_cost ? selectedProfile.total_tokens_cost.toFixed(4) : "0.0000"}
-                  </span>
+              {selectedProfile.average_score !== null && !isNaN(selectedProfile.average_score) && (
+                <div className="flex items-center gap-4 pl-4 border-l border-gray-300 dark:border-gray-700">
+                  <div className="flex items-center gap-1.5" title="Total Token Cost (Lifetime)">
+                    <Coins className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                      ${selectedProfile.total_tokens_cost ? selectedProfile.total_tokens_cost.toFixed(4) : "0.0000"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5" title="Average Score (Lifetime)">
+                    <Medal className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                      {selectedProfile.average_score.toFixed(1)}/10
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5" title="Average Score (Lifetime)">
-                  <Medal className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                    {selectedProfile.average_score ? selectedProfile.average_score.toFixed(1) : "N/A"}/10
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="space-y-6">

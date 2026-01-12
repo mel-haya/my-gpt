@@ -296,7 +296,7 @@ export async function getTestProfileWithDetails(id: number): Promise<DetailedTes
     updated_at: profile.updated_at,
     tests: profileTests,
     models: profileModels,
-    total_tokens_cost: metrics?.total_cost ? Number(metrics.total_cost) : 0,
-    average_score: metrics?.avg_score ? Number(metrics.avg_score) : null,
+    total_tokens_cost: (metrics?.total_cost !== null && metrics?.total_cost !== undefined) ? Number(metrics.total_cost) : 0,
+    average_score: (metrics?.avg_score !== null && metrics?.avg_score !== undefined) ? Number(metrics.avg_score) : null,
   };
 }
