@@ -1,0 +1,634 @@
+
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Trash2, 
+  Search, 
+  Play, 
+  Edit, 
+  Eye, 
+  Square,
+  MoreVertical,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Loader2
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import CreateTestSessionModal from "@/components/CreateTestSessionModal";
+import EditTestSessionModal from "@/components/EditTestSessionModal";
+import DeleteTestSessionDialog from "@/components/DeleteTestSessionDialog";
+import { 
+  getTestProfilesAction, 
+  deleteTestProfileAction,
+  getTestProfileDetailsAction
+} from "@/app/actions/testProfiles";
+import {
+  runTestSessionAction,
+  stopTestSessionAction,
+  getSessionRunStatusAction,
+  getSessionRunsAction,
+  type SessionRunResult
+} from "@/app/actions/testSessions";
+import type { SelectTestProfile, SelectTestProfileWithPrompt } from "@/lib/db-schema";
+
+interface TestProfileDetails {
+  id: number;
+  name: string;
+  system_prompt_id: number;
+  system_prompt: string;
+  system_prompt_name?: string;
+  user_id: string;
+  created_at: Date;
+  updated_at: Date;
+  tests: { test_id: number; test_name: string; test_prompt: string; }[];
+  models: { id: number; profile_id: number; model_name: string; created_at: Date; }[];
+}
+
+export default function SessionsPage() {
+  const [testProfiles, setTestProfiles] = useState<SelectTestProfileWithPrompt[]>([]);
+  const [selectedProfile, setSelectedProfile] = useState<TestProfileDetails | null>(null);
+  const [sessionRuns, setSessionRuns] = useState<SessionRunResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [runsLoading, setRunsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [runningSession, setRunningSession] = useState<number | null>(null);
+  const [currentRunStatus, setCurrentRunStatus] = useState<SessionRunResult | null>(null);
+  const [showSystemPrompt, setShowSystemPrompt] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<{ id: number; name: string } | null>(null);
+
+  const loadTestProfiles = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await getTestProfilesAction(searchQuery, 10, currentPage);
+      if (result.success && result.data) {
+        setTestProfiles(result.data.testProfiles);
+        setTotalPages(result.data.totalPages);
+      }
+    } catch (error) {
+      console.error("Error loading test profiles:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, currentPage]);
+
+  const loadSessionRuns = useCallback(async (profileId: number) => {
+    setRunsLoading(true);
+    try {
+      const result = await getSessionRunsAction(profileId);
+      if (result.success && result.data) {
+        setSessionRuns(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading session runs:", error);
+    } finally {
+      setRunsLoading(false);
+    }
+  }, []);
+
+  const loadProfileDetails = useCallback(async (profileId: number) => {
+    setDetailsLoading(true);
+    try {
+      const result = await getTestProfileDetailsAction(profileId);
+        if (result.success && result.data) {
+        // Ensure system_prompt_id is present
+        setSelectedProfile({
+          ...result.data,
+          system_prompt_id: result.data.system_prompt_id
+        });
+        // Load recent runs for this profile
+        await loadSessionRuns(profileId);
+      }
+    } catch (error) {
+      console.error("Error loading profile details:", error);
+    } finally {
+      setDetailsLoading(false);
+    }
+  }, [loadSessionRuns]);
+
+  useEffect(() => {
+    loadTestProfiles();
+  }, [loadTestProfiles]);
+
+  const handleDeleteProfile = async (id: number) => {
+    const result = await deleteTestProfileAction(id);
+    if (result.success) {
+      loadTestProfiles();
+      if (selectedProfile?.id === id) {
+        setSelectedProfile(null);
+      }
+    } else {
+      alert(result.error || "Failed to delete test session");
+    }
+  };
+
+  const openDeleteDialog = (profile: { id: number; name: string }) => {
+    setSessionToDelete(profile);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleSelectProfile = async (profile: SelectTestProfile) => {
+    await loadProfileDetails(profile.id);
+  };
+
+  const handleRunSession = async (profileId: number) => {
+    try {
+      setRunningSession(profileId);
+      const result = await runTestSessionAction(profileId);
+      
+      if (result.success && result.data) {
+        // Start polling for status updates
+        const testRunId = result.data.testRunId;
+        pollRunStatus(testRunId);
+        
+        // Refresh session runs if this profile is selected
+        if (selectedProfile?.id === profileId) {
+          loadSessionRuns(profileId);
+        }
+      } else {
+        alert(result.error || "Failed to start test session");
+        setRunningSession(null);
+      }
+    } catch (error) {
+      console.error("Error running session:", error);
+      alert("Failed to start test session");
+      setRunningSession(null);
+    }
+  };
+
+  const handleStopSession = async () => {
+    if (!currentRunStatus) return;
+    
+    try {
+      const result = await stopTestSessionAction(currentRunStatus.testRunId);
+      if (result.success) {
+        setRunningSession(null);
+        setCurrentRunStatus(null);
+        // Refresh session runs
+        if (selectedProfile) {
+          loadSessionRuns(selectedProfile.id);
+        }
+      } else {
+        alert(result.error || "Failed to stop test session");
+      }
+    } catch (error) {
+      console.error("Error stopping session:", error);
+      alert("Failed to stop test session");
+    }
+  };
+
+  const pollRunStatus = useCallback(async (testRunId: number) => {
+    try {
+      const result = await getSessionRunStatusAction(testRunId);
+      if (result.success && result.data) {
+        setCurrentRunStatus(result.data);
+        
+        // Continue polling if still running
+        if (result.data.status === "Running") {
+          setTimeout(() => pollRunStatus(testRunId), 2000); // Poll every 2 seconds
+        } else {
+          setRunningSession(null);
+          setCurrentRunStatus(null);
+          // Refresh session runs
+          if (selectedProfile) {
+            loadSessionRuns(selectedProfile.id);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error polling run status:", error);
+    }
+  }, [selectedProfile, loadSessionRuns]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const getStatusBadge = (profile: SelectTestProfile) => {
+    // Check if this profile is currently running
+    if (runningSession === profile.id) {
+      return <Badge variant="default" className="bg-blue-500"><Clock className="w-3 h-3 mr-1" />Running</Badge>;
+    }
+    
+    // Check recent runs status from sessionRuns if this is the selected profile
+    if (selectedProfile?.id === profile.id && sessionRuns.length > 0) {
+      const latestRun = sessionRuns[0];
+      switch (latestRun.status) {
+        case 'Running':
+          return <Badge variant="default" className="bg-blue-500"><Clock className="w-3 h-3 mr-1" />Running</Badge>;
+        case 'Done':
+          return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" />Completed</Badge>;
+        case 'Failed':
+          return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Failed</Badge>;
+        case 'Stopped':
+          return <Badge variant="secondary"><XCircle className="w-3 h-3 mr-1" />Stopped</Badge>;
+        default:
+          return <Badge variant="secondary">Idle</Badge>;
+      }
+    }
+    
+    return <Badge variant="secondary">Idle</Badge>;
+  };
+
+  return (
+    <div className="flex h-[calc(100vh-2rem)] gap-6 p-6">
+      {/* Left Sidebar - Sessions List */}
+      <div className="w-1/3 min-w-[320px] space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Test Sessions</h1>
+            <p className="text-sm text-gray-600">Manage session profiles</p>
+          </div>
+          <CreateTestSessionModal onSessionCreated={loadTestProfiles} />
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search sessions..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Sessions List */}
+        <div className="space-y-2 overflow-y-auto flex-1">
+          {loading ? (
+            <div className="text-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+              Loading sessions...
+            </div>
+          ) : testProfiles.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>No sessions found.</p>
+              <p className="text-sm">Create your first session to get started.</p>
+            </div>
+          ) : (
+            testProfiles.map((profile) => (
+              <Card 
+                key={profile.id} 
+                className={`cursor-pointer transition-all hover:shadow-md ${
+                  selectedProfile?.id === profile.id ? 'ring-2 ring-neutral-500 bg-neutral-600/40 border-blue-200' : ''
+                }`}
+                onClick={() => handleSelectProfile(profile)}
+              >
+                <CardHeader className="">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-sm font-medium truncate">{profile.name}</CardTitle>
+                      <div className="flex items-center gap-2 mt-1">
+                        {getStatusBadge(profile)}
+                        <span className="text-xs text-gray-500">
+                          {new Date(profile.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between text-sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <span className="text-gray-600">
+              {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Right Panel - Session Details */}
+      <div className="flex-1 border rounded-lg">
+        {!selectedProfile ? (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="text-center">
+              <Eye className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-medium mb-2">Select a Session</h3>
+              <p className="text-sm">Choose a test session from the left to view details and manage runs</p>
+            </div>
+          </div>
+        ) : detailsLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+              <p className="text-sm text-gray-600">Loading session details...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-6 h-full overflow-y-auto">
+            {/* Session Header */}
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">{selectedProfile.name}</h2>
+                <p className="text-gray-600">Created on {new Date(selectedProfile.created_at).toLocaleDateString()}</p>
+                {currentRunStatus && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Test Session Running</span>
+                      <Badge variant="default" className="bg-blue-500">
+                        {currentRunStatus.completedTests}/{currentRunStatus.totalTests}
+                      </Badge>
+                    </div>
+                    <div className="mt-1 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${(currentRunStatus.completedTests / currentRunStatus.totalTests) * 100}%` }}
+                      />
+                    </div>
+                    {currentRunStatus.results && (
+                      <div className="flex gap-4 mt-2 text-xs">
+                        <span className="text-green-600">✓ {currentRunStatus.results.success} Success</span>
+                        <span className="text-red-600">✗ {currentRunStatus.results.failed} Failed</span>
+                        <span className="text-gray-600">⏳ {currentRunStatus.results.pending} Pending</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {runningSession === selectedProfile.id ? (
+                  <Button 
+                    onClick={handleStopSession} 
+                    variant="destructive"
+                    size="sm"
+                    disabled={!currentRunStatus}
+                  >
+                    <Square  className="w-4 h-4 mr-2" />
+                    Stop Session
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={() => handleRunSession(selectedProfile.id)} 
+                    className="bg-green-600 hover:bg-green-700"
+                    size="sm"
+                    disabled={selectedProfile.tests.length === 0 || selectedProfile.models.length === 0}
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Run Session
+                  </Button>
+                )}
+                <EditTestSessionModal 
+                  profile={selectedProfile} 
+                  onSessionUpdated={() => {
+                    loadProfileDetails(selectedProfile.id);
+                    loadTestProfiles();
+                  }}
+                />
+                <Button 
+                  onClick={() => openDeleteDialog({ id: selectedProfile.id, name: selectedProfile.name })}
+                  variant="destructive"
+                  size="sm"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* System Prompt */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-white">System Prompt</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSystemPrompt(!showSystemPrompt)}
+                    className="flex items-center gap-2 border-gray-600 bg-gray-800 text-white hover:bg-gray-700"
+                  >
+                    <Eye className="w-4 h-4" />
+                    {showSystemPrompt ? 'Hide' : 'Show'} Prompt
+                  </Button>
+                </div>
+                <Card className="bg-neutral-900 border-gray-700">
+                  <CardContent className="pt-4">
+                    <div className="mb-3">
+                      <h4 className="font-medium text-sm text-gray-300 mb-1">Prompt Name</h4>
+                      <div className="flex items-center gap-2 text-sm bg-neutral-800 p-3 rounded border border-gray-600">
+                        {selectedProfile.system_prompt ? (
+                          <>
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="font-medium text-white">
+                              {selectedProfile.system_prompt_name || `Prompt #${selectedProfile.system_prompt_id}`}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <span className="text-gray-400 italic">No prompt assigned</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {showSystemPrompt && (
+                      <div>
+                        <h4 className="font-medium text-sm text-gray-300 mb-2">Prompt Content</h4>
+                        <Textarea 
+                          value={selectedProfile.system_prompt || 'No system prompt available'} 
+                          readOnly
+                          className="min-h-30 resize-none bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                          placeholder="System prompt will appear here..."
+                        />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Associated Tests */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">
+                  Associated Tests ({selectedProfile.tests.length})
+                </h3>
+                {selectedProfile.tests.length === 0 ? (
+                  <Card>
+                    <CardContent className="pt-4 text-center text-gray-500">
+                      <p>No tests associated with this session</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedProfile.tests.map((test) => (
+                      <Card key={test.test_id} className="hover:shadow-sm transition-shadow">
+                        <CardContent className="pt-4">
+                          <h4 className="font-medium mb-2">{test.test_name}</h4>
+                          <p className="text-sm text-gray-600 line-clamp-2 overflow-hidden">
+                            {test.test_prompt}
+                          </p>
+                          <div className="flex items-center justify-between mt-3">
+                            <Badge variant="secondary">Test ID: {test.test_id}</Badge>
+                            <Button variant="ghost" size="sm">
+                              <Eye className="w-4 h-4 mr-1" />
+                              View
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Model Configurations */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">
+                  Model Configurations ({selectedProfile.models.length})
+                </h3>
+                {selectedProfile.models.length === 0 ? (
+                  <Card>
+                    <CardContent className="pt-4 text-center text-gray-500">
+                      <p>No models configured for this session</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProfile.models.map((model) => (
+                      <Badge key={model.id} variant="outline">
+                        {model.model_name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Recent Runs */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Recent Runs</h3>
+                {runsLoading ? (
+                  <Card>
+                    <CardContent className="pt-4 text-center">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                      <p>Loading recent runs...</p>
+                    </CardContent>
+                  </Card>
+                ) : sessionRuns.length === 0 ? (
+                  <Card>
+                    <CardContent className="pt-4 text-center text-gray-500">
+                      <Clock className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <p>No recent runs found</p>
+                      <p className="text-sm">Run this session to see results here</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {sessionRuns.map((run) => (
+                      <Card key={run.testRunId} className="hover:shadow-sm transition-shadow">
+                        <CardContent className="pt-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-medium">Run #{run.testRunId}</h4>
+                                {run.status === 'Running' ? (
+                                  <Badge variant="default" className="bg-blue-500">
+                                    <Clock className="w-3 h-3 mr-1" />Running
+                                  </Badge>
+                                ) : run.status === 'Done' ? (
+                                  <Badge variant="default" className="bg-green-500">
+                                    <CheckCircle className="w-3 h-3 mr-1" />Completed
+                                  </Badge>
+                                ) : run.status === 'Failed' ? (
+                                  <Badge variant="destructive">
+                                    <XCircle className="w-3 h-3 mr-1" />Failed
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary">
+                                    <XCircle className="w-3 h-3 mr-1" />Stopped
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex gap-4 text-sm text-gray-600">
+                                <span>Total: {run.totalTests}</span>
+                                {run.results && (
+                                  <>
+                                    <span className="text-green-600">✓ {run.results.success}</span>
+                                    <span className="text-red-600">✗ {run.results.failed}</span>
+                                    {run.results.pending > 0 && (
+                                      <span className="text-gray-600">⏳ {run.results.pending}</span>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-right">
+                                <div className="text-sm font-medium">
+                                  {run.completedTests}/{run.totalTests}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {Math.round((run.completedTests / run.totalTests) * 100)}%
+                                </div>
+                              </div>
+                              <div className="w-16 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full transition-all ${
+                                    run.status === 'Done' ? 'bg-green-500' : 
+                                    run.status === 'Failed' ? 'bg-red-500' : 
+                                    'bg-blue-500'
+                                  }`}
+                                  style={{ width: `${(run.completedTests / run.totalTests) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      {sessionToDelete && (
+        <DeleteTestSessionDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          sessionName={sessionToDelete.name}
+          onConfirm={() => handleDeleteProfile(sessionToDelete.id)}
+        />
+      )}
+    </div>
+  );
+}

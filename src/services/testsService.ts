@@ -15,7 +15,6 @@ import {
   isNull,
   sql,
 } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
 import { generateChatCompletionWithToolCalls } from "@/services/chatService";
 import { generateObject } from "ai";
 import { z } from "zod";
@@ -28,7 +27,7 @@ export interface TestWithUser extends SelectTest {
 }
 
 export interface TestRunWithResults extends SelectTestRun {
-  username?: string;
+  username: string|null;
   results: TestRunResultWithTest[];
 }
 
@@ -269,6 +268,7 @@ export async function getTestRunsForTest(
         run_user_id: testRuns.user_id,
         run_created_at: testRuns.created_at,
         run_updated_at: testRuns.updated_at,
+        profile_id: testRuns.profile_id,
         username: users.username,
         // Test result data
         result_id: testRunResults.id,
@@ -305,12 +305,13 @@ export async function getTestRunsForTest(
       if (!runMap.has(row.run_id)) {
         runMap.set(row.run_id, {
           id: row.run_id,
+          profile_id: row.profile_id,
           status: row.run_status,
           launched_at: row.run_launched_at,
           user_id: row.run_user_id,
           created_at: row.run_created_at,
           updated_at: row.run_updated_at,
-          username: row.username ?? undefined,
+          username: row.username,
           results: [],
         });
       }
