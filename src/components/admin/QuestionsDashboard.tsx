@@ -33,6 +33,7 @@ import DeleteTestDialog from "./DeleteTestDialog";
 import QuestionsList from "./QuestionsList";
 import type { TestWithUser } from "@/services/testsService";
 import { createTestAction, getTestCategoriesAction } from "@/app/actions/tests";
+import { toast } from "react-toastify";
 
 interface QuestionsDashboardProps {
   initialData: {
@@ -200,29 +201,42 @@ export default function QuestionsDashboard({
       const text = await file.text();
 
       if (!text.trim()) {
-        console.error("CSV file appears to be empty");
+        toast.error("CSV file appears to be empty");
         return;
       }
 
-      // Parse CSV using csv-parse library with semicolon delimiter
+      const lines = text.split('\n');
+      const headerLine = lines[0].trim();
+      
+      // Determine delimiter
+      const delimiter = headerLine.includes(',') ? ',' : ';';
+
+      const headers = headerLine.split(delimiter).map(h => h.trim().toLowerCase());
+
+      if (headers.length !== 2 || headers[0] !== 'question' || headers[1] !== 'resultat') {
+        toast.error("Invalid CSV header. The header must be 'question,resultat' or 'question;resultat'.");
+        setIsImporting(false);
+        event.target.value = "";
+        return;
+      }
+
+      // Parse CSV using csv-parse library with the detected delimiter
       const records = parse(text, {
-        delimiter: ",",
+        delimiter,
         columns: true, // Use first row as headers
         skip_empty_lines: true,
         trim: true,
       }) as Record<string, string>[];
 
       if (records.length === 0) {
-        console.error("CSV file must contain at least one data row");
+        toast.error("CSV file must contain at least one data row");
         return;
       }
 
-      // Find column names (case insensitive)
-      const headers = Object.keys(records[0]);
-      const promptColumn =
-        headers.find((h) => h.toLowerCase().includes("question")) || headers[0];
-      const expectedColumn =
-        headers.find((h) => h.toLowerCase().includes("resultat")) || headers[1];
+      // Get column names from the parser which are now lowercased
+      const parsedHeaders = Object.keys(records[0]).map(h => h.trim().toLowerCase());
+      const promptColumn = parsedHeaders[0];
+      const expectedColumn = parsedHeaders[1];
 
       let successCount = 0;
       let errorCount = 0;
@@ -244,6 +258,9 @@ export default function QuestionsDashboard({
               errorCount++;
               console.error("Failed to create test:", result.error);
             }
+          } else {
+            errorCount++;
+            console.warn("Skipping row with empty prompt or expected result:", record);
           }
         } catch (error) {
           errorCount++;
@@ -252,16 +269,17 @@ export default function QuestionsDashboard({
       }
 
       if (successCount > 0) {
-        console.log(
+        toast.success(
           `Successfully imported ${successCount} tests!${
             errorCount > 0 ? ` ${errorCount} failed.` : ""
           }`
         );
         router.refresh();
       } else {
-        console.error("No tests were imported. Please check your CSV format.");
+        toast.error("No tests were imported. Please check your CSV format and content.");
       }
     } catch (error) {
+      toast.error("Error importing CSV. Please check the console for details.");
       console.error("Error importing CSV:", error);
     } finally {
       setIsImporting(false);
@@ -277,7 +295,6 @@ export default function QuestionsDashboard({
           Questions Pool
         </h1>
       </div>
-
       <Card>
         <CardContent className="p-6">
           <div className="space-y-4">
@@ -296,25 +313,8 @@ export default function QuestionsDashboard({
                 <Button onClick={handleSearch} disabled={isPending} size="sm">
                   Search
                 </Button>
-                <Select
-                  value={categoryQuery || "all"}
-                  onValueChange={handleCategoryChange}
-                  disabled={isPending}
-                >
-                  <SelectTrigger className="w-45">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
+              </div>
               <div className="flex items-center gap-2">
                 {selectedRows.size > 0 && (
                   <Button
@@ -360,7 +360,6 @@ export default function QuestionsDashboard({
                     </Button>
                   </div>
                 </div>
-
                 <TestDialog
                   mode="add"
                   onSuccess={() => router.refresh()}
@@ -373,6 +372,25 @@ export default function QuestionsDashboard({
                 />
               </div>
             </div>
+              <div className="flex justify-end">
+                                <Select
+                  value={categoryQuery || "all"}
+                  onValueChange={handleCategoryChange}
+                  disabled={isPending}
+                >
+                  <SelectTrigger className="w-45">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
             {/* Questions List */}
             <QuestionsList

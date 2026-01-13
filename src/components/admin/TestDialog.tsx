@@ -191,7 +191,7 @@ export default function TestDialog({
 
 
             <div className="grid gap-2">
-              <Label htmlFor="test-prompt">Prompt</Label>
+              <Label htmlFor="test-prompt">Question</Label>
               <Textarea
                 id="test-prompt"
                 placeholder="Enter the test prompt..."
