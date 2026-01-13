@@ -157,7 +157,7 @@ export default function TestDialog({
       ) : (
         <>
           <Plus className="size-4" />
-          Add Test
+          Add Question
         </>
       )}
     </Button>
@@ -173,12 +173,12 @@ export default function TestDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {isEditMode ? "Edit Test" : "Add New Test"}
+              {isEditMode ? "Edit Question" : "Add New Question"}
             </DialogTitle>
             <DialogDescription>
               {isEditMode
-                ? "Update the test information below."
-                : "Create a new test with a prompt and expected result."}
+                ? "Update the question information below."
+                : "Create a new question with a prompt and expected result."}
             </DialogDescription>
           </DialogHeader>
 
@@ -188,6 +188,7 @@ export default function TestDialog({
                 {error}
               </div>
             )}
+
 
             <div className="grid gap-2">
               <Label htmlFor="test-prompt">Prompt</Label>
@@ -243,7 +244,7 @@ export default function TestDialog({
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
               {isSubmitting
                 ? `${isEditMode ? "Updating" : "Creating"}...`
-                : `${isEditMode ? "Update" : "Create"} Test`}
+                : `${isEditMode ? "Update" : "Create"} Question`}
             </Button>
           </DialogFooter>
         </form>
