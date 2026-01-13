@@ -181,6 +181,7 @@ export const tests = pgTable("tests", {
 	name: text().notNull(),
 	prompt: text().notNull(),
 	expectedResult: text("expected_result").notNull(),
+	category: text(),
 	userId: text("user_id").notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),

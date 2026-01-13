@@ -7,6 +7,7 @@ import {
   deleteTest,
   getLatestTestRunStats,
   runSingleTest,
+  getTestCategories,
 } from "@/services/testsService";
 import { checkRole } from "@/lib/checkRole";
 import { currentUser } from "@clerk/nextjs/server";
@@ -14,6 +15,7 @@ import { revalidatePath } from "next/cache";
 
 export async function getTestsWithStatus(
   searchQuery?: string,
+  category?: string,
   limit: number = 10,
   page: number = 1
 ) {
@@ -24,7 +26,7 @@ export async function getTestsWithStatus(
       throw new Error("Unauthorized: Admin access required");
     }
 
-    const result = await getTestsWithPagination(searchQuery, limit, page);
+    const result = await getTestsWithPagination(searchQuery, category, limit, page);
     return result;
   } catch (error) {
     console.error("Error in getTestsWithStatus action:", error);
@@ -32,9 +34,23 @@ export async function getTestsWithStatus(
   }
 }
 
+export async function getTestCategoriesAction(): Promise<string[]> {
+  try {
+    const isAdmin = await checkRole("admin");
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Admin access required");
+    }
+    return await getTestCategories();
+  } catch (error) {
+    console.error("Error in getTestCategoriesAction:", error);
+    throw new Error("Failed to fetch test categories");
+  }
+}
+
 export async function createTestAction(testData: {
   prompt: string;
   expected_result: string;
+  category?: string;
 }) {
   try {
     // Check if user has admin role
@@ -73,6 +89,7 @@ export async function updateTestAction(
   testData: {
     prompt: string;
     expected_result: string;
+    category?: string;
   }
 ) {
   try {

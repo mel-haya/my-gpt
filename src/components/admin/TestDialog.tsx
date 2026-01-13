@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createTestAction, updateTestAction } from "@/app/actions/tests";
 import { Plus, Loader2, Edit } from "lucide-react";
@@ -40,6 +41,7 @@ export default function TestDialog({
     // name removed
     prompt: "",
     expected_result: "",
+    category: "",
   });
   const [error, setError] = useState("");
 
@@ -54,12 +56,14 @@ export default function TestDialog({
         // name removed
         prompt: test.prompt,
         expected_result: test.expected_result,
+        category: test.category || "",
       });
     } else if (!isEditMode) {
       setFormData({
         // name removed
         prompt: "",
         expected_result: "",
+        category: "",
       });
     }
   }, [isEditMode, test, open]);
@@ -91,6 +95,7 @@ export default function TestDialog({
         // name removed
         prompt: formData.prompt.trim(),
         expected_result: formData.expected_result.trim(),
+        category: formData.category.trim() || undefined,
       };
 
       let result;
@@ -106,6 +111,7 @@ export default function TestDialog({
           // name removed
           prompt: "",
           expected_result: "",
+          category: "",
         });
         setOpen(false);
         onSuccess?.();
@@ -134,6 +140,7 @@ export default function TestDialog({
       // name removed
       prompt: "",
       expected_result: "",
+      category: "",
     });
     setError("");
     setOpen(false);
@@ -182,8 +189,6 @@ export default function TestDialog({
               </div>
             )}
 
-            {/* Name input removed */}
-
             <div className="grid gap-2">
               <Label htmlFor="test-prompt">Prompt</Label>
               <Textarea
@@ -209,6 +214,18 @@ export default function TestDialog({
                 disabled={isSubmitting}
                 rows={4}
                 className="resize-none"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="test-category">Category (Optional)</Label>
+              <Input
+                id="test-category"
+                type="text"
+                placeholder="Enter a category for this test..."
+                value={formData.category}
+                onChange={(e) => handleInputChange("category", e.target.value)}
+                disabled={isSubmitting}
               />
             </div>
           </div>

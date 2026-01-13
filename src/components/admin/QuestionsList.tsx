@@ -2,6 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Trash2, Edit } from "lucide-react";
 import type { TestWithUser } from "@/services/testsService";
 
@@ -50,6 +51,11 @@ export default function QuestionsList({
               </div>
 
               <div className="space-y-2 flex-1">
+                {test.category && (
+                  <div>
+                    <Badge variant="secondary">{test.category}</Badge>
+                  </div>
+                )}
                 <div>
                   <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100 whitespace-pre-wrap leading-tight">
                     {test.prompt}

@@ -14,6 +14,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -25,7 +32,7 @@ import TestDialog from "./TestDialog";
 import DeleteTestDialog from "./DeleteTestDialog";
 import QuestionsList from "./QuestionsList";
 import type { TestWithUser } from "@/services/testsService";
-import { createTestAction } from "@/app/actions/tests";
+import { createTestAction, getTestCategoriesAction } from "@/app/actions/tests";
 
 interface QuestionsDashboardProps {
   initialData: {
@@ -39,16 +46,19 @@ interface QuestionsDashboardProps {
     };
   };
   searchQuery: string;
+  categoryQuery: string;
 }
 
 export default function QuestionsDashboard({
   initialData,
   searchQuery,
+  categoryQuery,
 }: QuestionsDashboardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+  const [categories, setCategories] = useState<string[]>([]);
   const [isImporting, setIsImporting] = useState(false);
 
   const [deleteDialog, setDeleteDialog] = useState<{
@@ -70,6 +80,18 @@ export default function QuestionsDashboard({
     testIds: number[];
   }>({ isOpen: false, testIds: [] });
 
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const fetchedCategories = await getTestCategoriesAction();
+        setCategories(fetchedCategories);
+      } catch (error) {
+        console.error("Failed to fetch categories", error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   // Keep local search query in sync with prop
   useEffect(() => {
     setLocalSearchQuery(searchQuery);
@@ -82,6 +104,19 @@ export default function QuestionsDashboard({
         params.set("search", localSearchQuery);
       } else {
         params.delete("search");
+      }
+      params.delete("page"); // Reset to first page
+      router.push(`/admin/questions?${params.toString()}`);
+    });
+  };
+
+  const handleCategoryChange = (category: string) => {
+    startTransition(() => {
+      const params = new URLSearchParams(searchParams);
+      if (category && category !== "all") {
+        params.set("category", category);
+      } else {
+        params.delete("category");
       }
       params.delete("page"); // Reset to first page
       router.push(`/admin/questions?${params.toString()}`);
@@ -261,6 +296,23 @@ export default function QuestionsDashboard({
                 <Button onClick={handleSearch} disabled={isPending} size="sm">
                   Search
                 </Button>
+                <Select
+                  value={categoryQuery || "all"}
+                  onValueChange={handleCategoryChange}
+                  disabled={isPending}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center gap-2">

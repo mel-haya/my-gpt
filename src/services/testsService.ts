@@ -5,7 +5,7 @@ import type {
   SelectTestRun,
   SelectTestRunResult,
 } from "@/lib/db-schema";
-import { eq, desc, count, ilike, and, isNull, sql } from "drizzle-orm";
+import { eq, desc, count, ilike, and, isNull, sql,isNotNull,ne } from "drizzle-orm";
 import { generateChatCompletionWithToolCalls } from "@/services/chatService";
 import { generateObject } from "ai";
 import { z } from "zod";
@@ -68,8 +68,25 @@ export interface LatestTestRunStats {
   lastRunAt?: Date;
 }
 
+export async function getTestCategories(): Promise<string[]> {
+  try {
+    const results = await db
+      .selectDistinct({ category: tests.category })
+      .from(tests)
+      .where(and(isNotNull(tests.category), ne(tests.category, "")));
+
+    return results
+      .map((r) => r.category)
+      .filter((c): c is string => c !== null);
+  } catch (error) {
+    console.error("Error fetching test categories:", error);
+    throw new Error("Failed to fetch test categories");
+  }
+}
+
 export async function getTestsWithPagination(
   searchQuery?: string,
+  category?: string,
   limit: number = 10,
   page: number = 1
 ): Promise<TestsResult> {
@@ -79,9 +96,15 @@ export async function getTestsWithPagination(
   const userTable = users;
 
   // Base query conditions
-  const baseConditions = searchQuery
+  const searchCondition = searchQuery
     ? ilike(tests.prompt, `%${searchQuery}%`)
     : undefined;
+
+  const categoryCondition = category
+    ? eq(tests.category, category)
+    : undefined;
+
+  const baseConditions = and(searchCondition, categoryCondition);
 
   // Create a subquery for the latest test results using MAX(id) aggregation
   const latestResultIds = db
@@ -110,6 +133,7 @@ export async function getTestsWithPagination(
       id: tests.id,
       prompt: tests.prompt,
       expected_result: tests.expected_result,
+      category: tests.category,
       user_id: tests.user_id,
       created_at: tests.created_at,
       updated_at: tests.updated_at,
@@ -168,6 +192,7 @@ export async function getTestsWithPagination(
 export async function createTest(testData: {
   prompt: string;
   expected_result: string;
+  category?: string;
   user_id: string;
 }) {
   const [newTest] = await db.insert(tests).values(testData).returning();
@@ -179,6 +204,7 @@ export async function updateTest(
   testData: {
     prompt?: string;
     expected_result?: string;
+    category?: string;
   }
 ) {
   const [updatedTest] = await db
@@ -209,6 +235,7 @@ export async function getTestById(id: number): Promise<TestWithUser | null> {
       id: tests.id,
       prompt: tests.prompt,
       expected_result: tests.expected_result,
+      category: tests.category,
       user_id: tests.user_id,
       created_at: tests.created_at,
       updated_at: tests.updated_at,
@@ -506,6 +533,7 @@ export async function getAllTests(): Promise<TestWithUser[]> {
       prompt: tests.prompt,
       expected_result: tests.expected_result,
       user_id: tests.user_id,
+      category: tests.category,
       created_at: tests.created_at,
       updated_at: tests.updated_at,
       username: users.username,

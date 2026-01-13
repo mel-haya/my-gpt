@@ -143,6 +143,7 @@ export const tests = pgTable(
     id: serial("id").primaryKey(),
     prompt: text("prompt").notNull(),
     expected_result: text("expected_result").notNull(),
+    category: text("category"),
     user_id: text("user_id")
       .notNull()
       .references(() => users.id),
