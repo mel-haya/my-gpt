@@ -95,7 +95,7 @@ export async function POST(req: Request) {
       model: selectedmodel,
       tools: toolsToUse,
       system: systemPrompt,
-      stopWhen: stepCountIs(2),
+      stopWhen: stepCountIs(5),
       onFinish: async ({ usage }) => {
         streamUsage = {
           inputTokens: usage.inputTokens || 0,

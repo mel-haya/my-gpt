@@ -677,7 +677,6 @@ export async function regenerateTestResultAction(
           .where(eq(testRunResults.id, existingResult[0].id));
       }
     }
-    console.log("Models for profile", profile.models);
     // 5. Run tests in background
     runSingleTestForProfileInBackground(
       testRunId,

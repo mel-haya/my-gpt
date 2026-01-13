@@ -317,11 +317,12 @@ export default function CreateTestSessionModal({
                             htmlFor={`test-${test.id}`}
                             className="text-sm font-medium cursor-pointer"
                           >
-                            Test #{test.id}
+                            {test.prompt.substring(0, 50)}
+                            {test.prompt.length > 50 && "..."}
                           </Label>
                           <p className="text-xs text-gray-600 mt-1">
-                            {test.prompt.substring(0, 100)}
-                            {test.prompt.length > 100 && "..."}
+                            {test.expected_result.substring(0, 50)}
+                            {test.expected_result.length > 50 && "..."}
                           </p>
                         </div>
                       </div>

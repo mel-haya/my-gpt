@@ -11,11 +11,16 @@ import {
   getTestsForSelection,
   getSystemPromptsForSelection,
   getTestProfileWithDetails,
+  getTestProfileByName,
   TestProfilesResponse,
   UpdateTestProfileData,
   DetailedTestProfile,
 } from "@/services/testProfilesService";
-import type { SelectTestProfile, SelectTestProfileWithPrompt, SelectTest, SelectSystemPrompt } from "@/lib/db-schema";
+import type {
+  SelectTestProfile,
+  SelectTest,
+  SelectSystemPrompt,
+} from "@/lib/db-schema";
 
 export type ActionResult<T = void> = {
   success: boolean;
@@ -69,6 +74,16 @@ export async function createTestProfileAction(data: {
       return { success: false, error: "Admin access required" };
     }
 
+    // Check if a profile with this name already exists for this user
+    const existingProfile = await getTestProfileByName(data.name, userId);
+    if (existingProfile) {
+      return {
+        success: false,
+        error:
+          "A test session with this name already exists. Please choose a different name.",
+      };
+    }
+
     const profile = await createTestProfile({
       ...data,
       user_id: userId,
@@ -102,6 +117,16 @@ export async function updateTestProfileAction(
       return { success: false, error: "Admin access required" };
     }
 
+    // Check if a profile with the same name exists and has a different ID
+    const existingProfile = await getTestProfileByName(data.name, userId);
+    if (existingProfile && existingProfile.id !== id) {
+      return {
+        success: false,
+        error:
+          "A test session with this name already exists. Please choose a different name.",
+      };
+    }
+
     const updateData: UpdateTestProfileData = {
       name: data.name,
       system_prompt_id: data.system_prompt_id,
@@ -115,14 +140,22 @@ export async function updateTestProfileAction(
     return { success: true, data: result };
   } catch (error) {
     console.error("Error updating test profile:", error);
-    if (error instanceof Error && error.message === "Test profile not found or access denied") {
-      return { success: false, error: "Test profile not found or you don't have permission to edit it" };
+    if (
+      error instanceof Error &&
+      error.message === "Test profile not found or access denied"
+    ) {
+      return {
+        success: false,
+        error: "Test profile not found or you don't have permission to edit it",
+      };
     }
     return { success: false, error: "Failed to update test profile" };
   }
 }
 
-export async function deleteTestProfileAction(id: number): Promise<ActionResult> {
+export async function deleteTestProfileAction(
+  id: number
+): Promise<ActionResult> {
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -144,7 +177,9 @@ export async function deleteTestProfileAction(id: number): Promise<ActionResult>
   }
 }
 
-export async function getTestsForSelectionAction(): Promise<ActionResult<SelectTest[]>> {
+export async function getTestsForSelectionAction(): Promise<
+  ActionResult<SelectTest[]>
+> {
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -164,7 +199,9 @@ export async function getTestsForSelectionAction(): Promise<ActionResult<SelectT
   }
 }
 
-export async function getSystemPromptsForSelectionAction(): Promise<ActionResult<SelectSystemPrompt[]>> {
+export async function getSystemPromptsForSelectionAction(): Promise<
+  ActionResult<SelectSystemPrompt[]>
+> {
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -184,7 +221,9 @@ export async function getSystemPromptsForSelectionAction(): Promise<ActionResult
   }
 }
 
-export async function getTestProfileDetailsAction(id: number): Promise<ActionResult<DetailedTestProfile>> {
+export async function getTestProfileDetailsAction(
+  id: number
+): Promise<ActionResult<DetailedTestProfile>> {
   try {
     const { userId } = await auth();
     if (!userId) {

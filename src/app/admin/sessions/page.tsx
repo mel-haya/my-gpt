@@ -634,6 +634,9 @@ export default function SessionsPage() {
                   onSessionUpdated={() => {
                     loadProfileDetails(selectedProfile.id);
                     loadTestProfiles();
+                    // Clear expanded states to force refresh of results
+                    setTestDetailsData({});
+                    setExpandedTestIds(new Set());
                   }}
                 />
                 <Button

@@ -16,8 +16,9 @@ import type {
   SelectSystemPrompt,
   InsertTestProfileTest,
   InsertTestProfileModel,
+  SelectTestProfileModel,
 } from "@/lib/db-schema";
-import { eq, and, desc, ilike, count, sum, avg, sql } from "drizzle-orm";
+import { eq, and, ilike, count, sum, avg, sql, inArray } from "drizzle-orm";
 
 export interface TestProfilesResponse {
   testProfiles: SelectTestProfileWithPrompt[];
@@ -57,7 +58,7 @@ export interface DetailedTestProfile {
     best_model: string | null;
     best_score: number | null;
   }[];
-  models: any[];
+  models: SelectTestProfileModel[];
   total_tokens_cost: number | null;
   average_score: number | null;
 }
@@ -70,17 +71,6 @@ export async function getTestProfiles(options?: {
   const page = options?.page || 1;
   const limit = options?.limit || 10;
   const offset = (page - 1) * limit;
-
-  // Get latest status for each profile
-  const latestRunSubquery = db
-    .select({
-      profile_id: testRuns.profile_id,
-      status: testRuns.status,
-      created_at: testRuns.created_at,
-    })
-    .from(testRuns)
-    .orderBy(desc(testRuns.created_at))
-    .as("latest_runs");
 
   // Build base query with join to get system prompt text and latest status
   let baseQuery = db
@@ -116,9 +106,6 @@ export async function getTestProfiles(options?: {
   }
 
   // Execute queries
-  // Since we want the latest status, we need to handle the join carefully to avoid duplicate profiles
-  // Using a separate query to fetch latest status for the requested profiles might be cleaner or using a lateral join/distinct on
-  // For simplicity with Drizzle/Postgres, let's refine the query to use a subquery for the latest run per profile
 
   const profilesResult = await db.execute(
     sql`
@@ -167,6 +154,18 @@ export async function getTestProfileById(
     .select()
     .from(testProfiles)
     .where(eq(testProfiles.id, id))
+    .limit(1);
+  return result[0] || null;
+}
+
+export async function getTestProfileByName(
+  name: string,
+  userId: string
+): Promise<SelectTestProfile | null> {
+  const result = await db
+    .select()
+    .from(testProfiles)
+    .where(and(eq(testProfiles.name, name), eq(testProfiles.user_id, userId)))
     .limit(1);
   return result[0] || null;
 }
@@ -263,7 +262,17 @@ export async function updateTestProfile(
   data: UpdateTestProfileData
 ): Promise<SelectTestProfile> {
   try {
-    // Update the test profile
+    // 1. Identify models to be removed FIRST before any deletions
+    const existingModels = await db
+      .select()
+      .from(testProfileModels)
+      .where(eq(testProfileModels.profile_id, id));
+
+    const removedModels = existingModels
+      .map((m) => m.model_name)
+      .filter((name) => !data.model_configs.includes(name));
+
+    // 2. Update the test profile
     const [updatedProfile] = await db
       .update(testProfiles)
       .set({
@@ -278,12 +287,11 @@ export async function updateTestProfile(
       throw new Error("Test profile not found");
     }
 
-    // Delete existing test associations
+    // 3. Update test associations (Delete then Insert)
     await db
       .delete(testProfileTests)
       .where(eq(testProfileTests.profile_id, id));
 
-    // Add new test associations
     if (data.test_ids.length > 0) {
       const testProfileTestData: InsertTestProfileTest[] = data.test_ids.map(
         (test_id) => ({
@@ -294,12 +302,11 @@ export async function updateTestProfile(
       await db.insert(testProfileTests).values(testProfileTestData);
     }
 
-    // Delete existing model configurations
+    // 4. Update model configurations (Delete then Insert)
     await db
       .delete(testProfileModels)
       .where(eq(testProfileModels.profile_id, id));
 
-    // Add new model configurations
     if (data.model_configs.length > 0) {
       const modelConfigData: InsertTestProfileModel[] = data.model_configs.map(
         (model_name) => ({
@@ -308,6 +315,27 @@ export async function updateTestProfile(
         })
       );
       await db.insert(testProfileModels).values(modelConfigData);
+    }
+
+    // 5. If models were removed, delete their test run results
+    if (removedModels.length > 0) {
+      const profileRuns = await db
+        .select({ id: testRuns.id })
+        .from(testRuns)
+        .where(eq(testRuns.profile_id, id));
+
+      const runIds = profileRuns.map((r) => r.id);
+
+      if (runIds.length > 0) {
+        await db
+          .delete(testRunResults)
+          .where(
+            and(
+              inArray(testRunResults.test_run_id, runIds),
+              inArray(testRunResults.model_used, removedModels)
+            )
+          );
+      }
     }
 
     return updatedProfile;
