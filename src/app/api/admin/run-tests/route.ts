@@ -124,21 +124,23 @@ async function runTestsInBackground(
           console.log(
             `🛑 Test run ${testRunId} was stopped. Skipping test ${test.id}.`
           );
-          await updateTestRunResult(
+          await updateTestRunResult({
             testRunId,
-            test.id,
-            "Failed",
-            "Test run was stopped",
-            undefined,
-            undefined,
-            selectedModel,
-            systemPrompt
-          );
+            testId: test.id,
+            status: "Failed",
+            output: "Test run was stopped",
+            modelUsed: selectedModel,
+            systemPrompt,
+          });
           return { testId: test.id, status: "Stopped" };
         }
 
         // Update test result to Running status
-        await updateTestRunResult(testRunId, test.id, "Running");
+        await updateTestRunResult({
+          testRunId,
+          testId: test.id,
+          status: "Running",
+        });
 
         console.log(`Running test ${test.id} with model: ${selectedModel}`);
 
@@ -181,16 +183,14 @@ async function runTestsInBackground(
           console.log(
             `🛑 Test run ${testRunId} was stopped during test ${test.id}. Marking as stopped.`
           );
-          await updateTestRunResult(
+          await updateTestRunResult({
             testRunId,
-            test.id,
-            "Failed",
-            "Test run was stopped during execution",
-            undefined,
-            undefined,
-            selectedModel,
-            systemPrompt
-          );
+            testId: test.id,
+            status: "Failed",
+            output: "Test run was stopped during execution",
+            modelUsed: selectedModel,
+            systemPrompt,
+          });
           return { testId: test.id, status: "Stopped" };
         }
 
@@ -211,19 +211,19 @@ async function runTestsInBackground(
 
         // Mark test based on evaluation result
         const testStatus = evaluation.status;
-        await updateTestRunResult(
+        await updateTestRunResult({
           testRunId,
-          test.id,
-          testStatus,
-          finalResult,
-          evaluation.explanation,
-          chatResponse.toolCalls,
-          selectedModel,
+          testId: test.id,
+          status: testStatus,
+          output: finalResult,
+          explanation: evaluation.explanation,
+          toolCalls: chatResponse.toolCalls,
+          modelUsed: selectedModel,
           systemPrompt,
-          costInDollars ?? 0,
-          executionTime,
-          evaluation.score
-        );
+          tokensCost: costInDollars ?? 0,
+          executionTimeMs: executionTime,
+          score: evaluation.score,
+        });
 
         const statusEmoji = evaluation.status === "Success" ? "✅" : "❌";
         console.log(
@@ -239,16 +239,14 @@ async function runTestsInBackground(
           testError instanceof Error ? testError.message : "Unknown error"
         }`;
 
-        await updateTestRunResult(
+        await updateTestRunResult({
           testRunId,
-          test.id,
-          "Failed",
-          errorMessage,
-          undefined,
-          undefined,
-          selectedModel,
-          systemPrompt
-        );
+          testId: test.id,
+          status: "Failed",
+          output: errorMessage,
+          modelUsed: selectedModel,
+          systemPrompt,
+        });
         return { testId: test.id, status: "Failed", error: errorMessage };
       }
     });

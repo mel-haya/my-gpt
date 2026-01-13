@@ -5,7 +5,7 @@ import { checkRole } from "@/lib/checkRole";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db-config";
 import { testRuns, testRunResults, tests as testsTable } from "@/lib/db-schema";
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { eq, desc, and, inArray, count } from "drizzle-orm";
 import {
   updateTestRunResult,
   updateTestRunStatus,
@@ -314,38 +314,25 @@ async function runTestsInBackground(
           // Check if the test run has been stopped before start
           const currentStatus = await getTestRunStatus(testRunId);
           if (currentStatus === "Stopped") {
-            await updateTestRunResult(
+            await updateTestRunResult({
               testRunId,
-              test.test_id,
-              "Failed",
-              "Test execution stopped by user",
-              undefined,
-              undefined,
-              selectedModel,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              selectedModel // Filter by model
-            );
+              testId: test.test_id,
+              status: "Failed",
+              output: "Test execution stopped by user",
+              modelUsed: selectedModel,
+              filterModel: selectedModel,
+            });
             return;
           }
 
           // Update status to running
-          await updateTestRunResult(
+          await updateTestRunResult({
             testRunId,
-            test.test_id,
-            "Running",
-            undefined,
-            undefined,
-            undefined,
-            selectedModel,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            selectedModel // Filter by model
-          );
+            testId: test.test_id,
+            status: "Running",
+            modelUsed: selectedModel,
+            filterModel: selectedModel,
+          });
 
           const startTime = Date.now();
 
@@ -379,20 +366,18 @@ async function runTestsInBackground(
           }
 
           // Update status to evaluating
-          await updateTestRunResult(
+          await updateTestRunResult({
             testRunId,
-            test.test_id,
-            "Evaluating",
-            chatResponse.text,
-            undefined,
-            chatResponse.toolCalls,
-            selectedModel,
+            testId: test.test_id,
+            status: "Evaluating",
+            output: chatResponse.text,
+            toolCalls: chatResponse.toolCalls,
+            modelUsed: selectedModel,
             systemPrompt,
-            chatResponse.cost,
-            executionTime,
-            undefined,
-            selectedModel // Filter by model
-          );
+            tokensCost: chatResponse.cost,
+            executionTimeMs: executionTime,
+            filterModel: selectedModel,
+          });
 
           // Get the expected result for evaluation
           const testDetails = await db
@@ -416,41 +401,35 @@ async function runTestsInBackground(
           );
 
           // Final update with evaluation results
-          await updateTestRunResult(
+          await updateTestRunResult({
             testRunId,
-            test.test_id,
-            evaluation.status,
-            chatResponse.text,
-            evaluation.explanation,
-            chatResponse.toolCalls,
-            selectedModel,
+            testId: test.test_id,
+            status: evaluation.status,
+            output: chatResponse.text,
+            explanation: evaluation.explanation,
+            toolCalls: chatResponse.toolCalls,
+            modelUsed: selectedModel,
             systemPrompt,
-            chatResponse.cost,
-            executionTime,
-            evaluation.score,
-            selectedModel // Filter by model
-          );
+            tokensCost: chatResponse.cost,
+            executionTimeMs: executionTime,
+            score: evaluation.score,
+            filterModel: selectedModel,
+          });
         } catch (error) {
           console.error(
             `Error processing test ${test.test_id} for model ${selectedModel}:`,
             error
           );
-          await updateTestRunResult(
+          await updateTestRunResult({
             testRunId,
-            test.test_id,
-            "Failed",
-            `Test execution failed: ${
+            testId: test.test_id,
+            status: "Failed",
+            output: `Test execution failed: ${
               error instanceof Error ? error.message : "Unknown error"
             }`,
-            undefined,
-            undefined,
-            selectedModel,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            selectedModel // Filter by model
-          );
+            modelUsed: selectedModel,
+            filterModel: selectedModel,
+          });
         }
       });
 
@@ -460,10 +439,22 @@ async function runTestsInBackground(
     // Wait for all models to complete
     await Promise.all(modelPromises);
 
-    // Check if any tests are still running (shouldn't happen but safety check)
-    const finalStatus = await getTestRunStatus(testRunId);
-    if (finalStatus !== "Stopped") {
-      await updateTestRunStatus(testRunId, "Done");
+    // Check if any results are still pending for this run across all models/tests
+    const pendingResults = await db
+      .select({ count: count() })
+      .from(testRunResults)
+      .where(
+        and(
+          eq(testRunResults.test_run_id, testRunId),
+          inArray(testRunResults.status, ["Pending", "Running", "Evaluating"])
+        )
+      );
+
+    if (pendingResults[0]?.count === 0) {
+      const finalStatus = await getTestRunStatus(testRunId);
+      if (finalStatus !== "Stopped") {
+        await updateTestRunStatus(testRunId, "Done");
+      }
     }
   } catch (error) {
     console.error("Error in background test execution:", error);
@@ -584,5 +575,272 @@ export async function getTestInProfileDetailsAction(
   } catch (error) {
     console.error("Error getting test details:", error);
     return { success: false, error: "Failed to get test details" };
+  }
+}
+
+export async function regenerateTestResultAction(
+  profileId: number,
+  testId: number
+): Promise<ActionResult<{ testRunId: number }>> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const isAdmin = await checkRole("admin");
+    if (!isAdmin) {
+      return { success: false, error: "Admin access required" };
+    }
+
+    // 1. Get the latest test run for this profile
+    const testRun = await db
+      .select()
+      .from(testRuns)
+      .where(eq(testRuns.profile_id, profileId))
+      .orderBy(desc(testRuns.created_at))
+      .limit(1);
+
+    let testRunId: number;
+
+    if (testRun.length === 0) {
+      // Create a new test run if none exists
+      const newRun = await db
+        .insert(testRuns)
+        .values({
+          user_id: userId,
+          profile_id: profileId,
+          status: "Running",
+        })
+        .returning();
+
+      if (!newRun[0]) {
+        return { success: false, error: "Failed to create test run" };
+      }
+      testRunId = newRun[0].id;
+    } else {
+      testRunId = testRun[0].id;
+      // Mark the run as Running again so UI polling works
+      await updateTestRunStatus(testRunId, "Running");
+    }
+
+    // 2. Get profile details (models and system prompt)
+    const profile = await getTestProfileWithDetails(profileId);
+    if (!profile) {
+      return { success: false, error: "Test profile not found" };
+    }
+
+    if (profile.models.length === 0) {
+      return { success: false, error: "No models configured for this profile" };
+    }
+
+    // 3. Get test details
+    const test = await db
+      .select({
+        id: testsTable.id,
+        prompt: testsTable.prompt,
+      })
+      .from(testsTable)
+      .where(eq(testsTable.id, testId))
+      .limit(1);
+
+    if (!test[0]) {
+      return { success: false, error: "Test not found" };
+    }
+
+    // 4. Ensure test run results exist for all models (or create them)
+    // We want to "add or replace"
+    for (const model of profile.models) {
+      const existingResult = await db
+        .select()
+        .from(testRunResults)
+        .where(
+          and(
+            eq(testRunResults.test_run_id, testRunId),
+            eq(testRunResults.test_id, testId),
+            eq(testRunResults.model_used, model.model_name)
+          )
+        )
+        .limit(1);
+
+      if (existingResult.length === 0) {
+        await db.insert(testRunResults).values({
+          test_run_id: testRunId,
+          test_id: testId,
+          model_used: model.model_name,
+          status: "Pending",
+        });
+      } else {
+        await db
+          .update(testRunResults)
+          .set({ status: "Pending", updated_at: new Date() })
+          .where(eq(testRunResults.id, existingResult[0].id));
+      }
+    }
+    console.log("Models for profile", profile.models);
+    // 5. Run tests in background
+    runSingleTestForProfileInBackground(
+      testRunId,
+      { test_id: test[0].id, test_prompt: test[0].prompt },
+      profile.models,
+      profile.system_prompt ?? ""
+    ).catch(console.error);
+
+    revalidatePath("/admin/sessions");
+    return { success: true, data: { testRunId } };
+  } catch (error) {
+    console.error("Error regenerating test result:", error);
+    return { success: false, error: "Failed to regenerate test result" };
+  }
+}
+
+async function runSingleTestForProfileInBackground(
+  testRunId: number,
+  test: { test_id: number; test_prompt: string },
+  models: { model_name: string }[],
+  systemPrompt: string
+) {
+  const evaluatorModel = "openai/gpt-4o";
+
+  const withTimeout = <T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    errorMessage: string
+  ): Promise<T> => {
+    let timeoutId: NodeJS.Timeout;
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(errorMessage));
+      }, timeoutMs);
+    });
+
+    return Promise.race([
+      promise.then((result) => {
+        clearTimeout(timeoutId);
+        return result;
+      }),
+      timeoutPromise,
+    ]);
+  };
+
+  try {
+    const modelPromises = models.map(async (model) => {
+      const selectedModel = model.model_name;
+      const baseResult = {
+        testRunId,
+        testId: test.test_id,
+        modelUsed: selectedModel,
+        filterModel: selectedModel,
+      };
+
+      try {
+        // Update status to running
+        await updateTestRunResult({ ...baseResult, status: "Running" });
+
+        const startTime = Date.now();
+        const chatResponse = await withTimeout(
+          generateChatCompletionWithToolCalls({
+            messages: [
+              {
+                id: `test-${test.test_id}-${Date.now()}`,
+                role: "user",
+                parts: [{ type: "text", text: test.test_prompt }],
+              },
+            ],
+            model: selectedModel,
+            webSearch: false,
+            systemPrompt: systemPrompt,
+          }),
+          60000,
+          "Test execution timed out after 60 seconds"
+        );
+
+        const executionTime = Date.now() - startTime;
+
+        if (!chatResponse.text.trim()) {
+          throw new Error("No response content received from chat service");
+        }
+
+        const evaluationData = {
+          ...baseResult,
+          output: chatResponse.text,
+          toolCalls: chatResponse.toolCalls,
+          systemPrompt,
+          tokensCost: chatResponse.cost,
+          executionTimeMs: executionTime,
+        };
+
+        // Update to evaluating
+        await updateTestRunResult({ ...evaluationData, status: "Evaluating" });
+
+        // Get expected result
+        const testDetails = await db
+          .select({ expected_result: testsTable.expected_result })
+          .from(testsTable)
+          .where(eq(testsTable.id, test.test_id))
+          .limit(1);
+
+        if (!testDetails[0]) {
+          throw new Error("Test details not found");
+        }
+
+        // Evaluate
+        const evaluation = await evaluateTestResponse(
+          test.test_prompt,
+          testDetails[0].expected_result,
+          chatResponse.text.trim(),
+          evaluatorModel
+        );
+
+        // Final update
+        await updateTestRunResult({
+          ...evaluationData,
+          status: evaluation.status,
+          explanation: evaluation.explanation,
+          score: evaluation.score,
+        });
+      } catch (error) {
+        console.error(
+          `Error processing test ${test.test_id} for model ${selectedModel}:`,
+          error
+        );
+        await updateTestRunResult({
+          ...baseResult,
+          status: "Failed",
+          output: `Test execution failed: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
+        });
+      }
+    });
+
+    await Promise.all(modelPromises);
+
+    // If the test run was "Done", keep it "Done". If it was "Running", maybe it's still running other tests?
+    // We don't want to accidentally mark the whole run as "Done" if other tests are still pending.
+    // However, if we just created it, we should mark it "Done" after completion.
+    const run = await db
+      .select()
+      .from(testRuns)
+      .where(eq(testRuns.id, testRunId))
+      .limit(1);
+    if (run[0]?.status === "Running") {
+      // Check if any other results are still pending
+      const pendingResults = await db
+        .select({ count: count() })
+        .from(testRunResults)
+        .where(
+          and(
+            eq(testRunResults.test_run_id, testRunId),
+            inArray(testRunResults.status, ["Pending", "Running", "Evaluating"])
+          )
+        );
+
+      if (pendingResults[0]?.count === 0) {
+        await updateTestRunStatus(testRunId, "Done");
+      }
+    }
+  } catch (error) {
+    console.error("Error in background test execution:", error);
   }
 }

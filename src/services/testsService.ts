@@ -5,10 +5,35 @@ import type {
   SelectTestRun,
   SelectTestRunResult,
 } from "@/lib/db-schema";
-import { eq, desc, count, ilike, and, isNull, sql,isNotNull,ne } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  count,
+  ilike,
+  and,
+  isNull,
+  sql,
+  isNotNull,
+  ne,
+} from "drizzle-orm";
 import { generateChatCompletionWithToolCalls } from "@/services/chatService";
 import { generateObject } from "ai";
 import { z } from "zod";
+
+export interface UpdateTestRunResultParams {
+  testRunId: number;
+  testId: number;
+  status: "Running" | "Success" | "Failed" | "Evaluating" | "Pending";
+  output?: string;
+  explanation?: string;
+  toolCalls?: unknown;
+  modelUsed?: string;
+  systemPrompt?: string;
+  tokensCost?: number;
+  executionTimeMs?: number;
+  score?: number;
+  filterModel?: string;
+}
 
 export interface TestWithUser extends SelectTest {
   username?: string;
@@ -100,9 +125,7 @@ export async function getTestsWithPagination(
     ? ilike(tests.prompt, `%${searchQuery}%`)
     : undefined;
 
-  const categoryCondition = category
-    ? eq(tests.category, category)
-    : undefined;
+  const categoryCondition = category ? eq(tests.category, category) : undefined;
 
   const baseConditions = and(searchCondition, categoryCondition);
 
@@ -565,20 +588,20 @@ export async function createAllTestRunResults(
   return newResults;
 }
 
-export async function updateTestRunResult(
-  testRunId: number,
-  testId: number,
-  status: "Running" | "Success" | "Failed" | "Evaluating" | "Pending",
-  output?: string,
-  explanation?: string,
-  toolCalls?: unknown,
-  modelUsed?: string,
-  systemPrompt?: string,
-  tokensCost?: number,
-  executionTimeMs?: number,
-  score?: number,
-  filterModel?: string
-) {
+export async function updateTestRunResult({
+  testRunId,
+  testId,
+  status,
+  output,
+  explanation,
+  toolCalls,
+  modelUsed,
+  systemPrompt,
+  tokensCost,
+  executionTimeMs,
+  score,
+  filterModel,
+}: UpdateTestRunResultParams) {
   const [updatedResult] = await db
     .update(testRunResults)
     .set({

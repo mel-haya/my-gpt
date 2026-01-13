@@ -18,6 +18,7 @@ import {
   Loader2,
   Coins,
   Medal,
+  RefreshCcw,
 } from "lucide-react";
 import CreateTestSessionModal from "@/components/CreateTestSessionModal";
 import EditTestSessionModal from "@/components/EditTestSessionModal";
@@ -34,6 +35,7 @@ import {
   getSessionRunStatusAction,
   getSessionRunsAction,
   getTestInProfileDetailsAction,
+  regenerateTestResultAction,
   type SessionRunResult,
   type TestInProfileDetail,
 } from "@/app/actions/testSessions";
@@ -99,14 +101,11 @@ export default function SessionsPage() {
   const [loadingTestDetails, setLoadingTestDetails] = useState<Set<number>>(
     new Set()
   );
+  const [regeneratingTests, setRegeneratingTests] = useState<Set<number>>(
+    new Set()
+  );
   const [testDetailsData, setTestDetailsData] = useState<
-    Record<
-      number,
-      {
-        expectedResult: string;
-        results: TestInProfileDetail[];
-      }
-    >
+    Record<number, { expectedResult: string; results: TestInProfileDetail[] }>
   >({});
 
   const handleToggleTestDetails = async (testId: number) => {
@@ -229,6 +228,9 @@ export default function SessionsPage() {
   };
 
   const handleSelectProfile = async (profile: SelectTestProfile) => {
+    // Clear previous details to avoid showing them on the new profile
+    setTestDetailsData({});
+    setExpandedTestIds(new Set());
     await loadProfileDetails(profile.id);
   };
 
@@ -278,6 +280,56 @@ export default function SessionsPage() {
     }
   };
 
+  const handleRegenerateTest = async (testId: number) => {
+    if (!selectedProfile) return;
+
+    setRegeneratingTests((prev) => new Set(prev).add(testId));
+    try {
+      const result = await regenerateTestResultAction(
+        selectedProfile.id,
+        testId
+      );
+      if (result.success && result.data) {
+        // Start polling for this run
+        const testRunId = result.data.testRunId;
+        setRunningSession(selectedProfile.id);
+        pollRunStatus(testRunId);
+
+        // Refresh session runs and test details if expanded
+        loadSessionRuns(selectedProfile.id);
+        if (expandedTestIds.has(testId)) {
+          // Re-fetch details to show "Running" status
+          const profileId = selectedProfile.id;
+          const detailResult = await getTestInProfileDetailsAction(
+            profileId,
+            testId
+          );
+          if (detailResult.success && detailResult.data) {
+            const data = detailResult.data;
+            setTestDetailsData((prev) => ({
+              ...prev,
+              [testId]: {
+                expectedResult: data.test.expected_result,
+                results: data.results,
+              },
+            }));
+          }
+        }
+      } else {
+        alert(result.error || "Failed to regenerate test");
+      }
+    } catch (error) {
+      console.error("Error regenerating test:", error);
+      alert("Failed to regenerate test");
+    } finally {
+      setRegeneratingTests((prev) => {
+        const next = new Set(prev);
+        next.delete(testId);
+        return next;
+      });
+    }
+  };
+
   const pollRunStatus = useCallback(
     async (testRunId: number) => {
       try {
@@ -294,6 +346,29 @@ export default function SessionsPage() {
             // Refresh session runs
             if (selectedProfile) {
               loadSessionRuns(selectedProfile.id);
+              // Also refresh profile details to update the "Associated Tests" best scores
+              loadProfileDetails(selectedProfile.id);
+
+              // If we are polling because of a single test regeneration,
+              // we should also refresh the expanded test details to show the final result
+              const currentExpandedIds = Array.from(expandedTestIds);
+              for (const testId of currentExpandedIds) {
+                // Fetch latest details for each expanded test
+                const detailResult = await getTestInProfileDetailsAction(
+                  selectedProfile.id,
+                  testId
+                );
+                if (detailResult.success && detailResult.data) {
+                  const data = detailResult.data;
+                  setTestDetailsData((prev) => ({
+                    ...prev,
+                    [testId]: {
+                      expectedResult: data.test.expected_result,
+                      results: data.results,
+                    },
+                  }));
+                }
+              }
             }
           }
         }
@@ -301,7 +376,7 @@ export default function SessionsPage() {
         console.error("Error polling run status:", error);
       }
     },
-    [selectedProfile, loadSessionRuns]
+    [selectedProfile, loadSessionRuns, loadProfileDetails, expandedTestIds]
   );
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -657,10 +732,10 @@ export default function SessionsPage() {
                     {selectedProfile.tests.map((test) => (
                       <Card
                         key={test.test_id}
-                        className="hover:shadow-sm transition-shadow"
+                        className="hover:shadow-sm transition-shadow py-4"
                       >
-                        <CardContent className="pt-4">
-                          <div className="flex items-start justify-between mb-2 gap-4">
+                        <CardContent>
+                          <div className="flex items-center justify-between mb-2 gap-4">
                             <div className="flex-1 min-w-0">
                               <h4
                                 className="text-base font-bold text-neutral-900 dark:text-neutral-100 line-clamp-2 leading-tight"
@@ -668,9 +743,6 @@ export default function SessionsPage() {
                               >
                                 {test.test_prompt}
                               </h4>
-                              <p className="text-xs text-neutral-500 mt-1">
-                                Test #{test.test_id}
-                              </p>
                             </div>
                             {test.best_model && test.best_score !== null && (
                               <Badge
@@ -686,6 +758,25 @@ export default function SessionsPage() {
                                 </span>
                               </Badge>
                             )}
+                            <div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRegenerateTest(test.test_id);
+                                }}
+                                disabled={regeneratingTests.has(test.test_id)}
+                              >
+                                {regeneratingTests.has(test.test_id) ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : test.best_score === null ? (
+                                  <Play className="w-4 h-4" />
+                                ) : (
+                                  <RefreshCcw className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
                           </div>
                           <div className="flex flex-col gap-2 w-full mt-3">
                             <div className="flex items-center justify-between">
