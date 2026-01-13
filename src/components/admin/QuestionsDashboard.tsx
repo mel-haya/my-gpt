@@ -301,7 +301,7 @@ export default function QuestionsDashboard({
                   onValueChange={handleCategoryChange}
                   disabled={isPending}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-45">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>

@@ -8,6 +8,7 @@ interface TestsPageProps {
   searchParams: Promise<{
     page?: string;
     search?: string;
+    category?: string;
   }>;
 }
 
@@ -15,14 +16,16 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
   const resolvedSearchParams = await searchParams;
   const currentPage = Number(resolvedSearchParams?.page) || 1;
   const searchQuery = resolvedSearchParams?.search || "";
+  const categoryQuery = resolvedSearchParams?.category || "";
   const itemsPerPage = 10;
 
   // Fetch initial data on the server for SSR
   const initialData = await getTestsWithStatus(
     searchQuery.trim() || undefined,
+    categoryQuery.trim() || undefined,
     itemsPerPage,
     currentPage
   );
 
-  return <TestsDashboard initialData={initialData} searchQuery={searchQuery} />;
+  return <TestsDashboard initialData={initialData} searchQuery={searchQuery} categoryQuery={categoryQuery} />;
 }

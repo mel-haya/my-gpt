@@ -34,9 +34,10 @@ interface TestsDashboardProps {
     };
   };
   searchQuery: string;
+  categoryQuery: string;
 }
 
-export default function TestsDashboard({ initialData, searchQuery }: TestsDashboardProps) {
+export default function TestsDashboard({ initialData, searchQuery, categoryQuery }: TestsDashboardProps) {
   const searchParams = useSearchParams();
   const [isTestsRunning, setIsTestsRunning] = useState(false);
   const [lastStatusResult, setLastStatusResult] = useState<TestStatusResult | undefined>(undefined);
@@ -54,6 +55,7 @@ export default function TestsDashboard({ initialData, searchQuery }: TestsDashbo
       const currentPage = Number(searchParams.get('page')) || 1;
       const newData = await getTestsWithStatus(
         searchQuery.trim() || undefined,
+        categoryQuery.trim() || undefined,
         10, // itemsPerPage
         currentPage // preserve current page
       );
@@ -61,7 +63,7 @@ export default function TestsDashboard({ initialData, searchQuery }: TestsDashbo
     } catch (error) {
       console.error("Error refreshing table data:", error);
     }
-  }, [searchQuery, searchParams]);
+  }, [searchQuery, searchParams, categoryQuery]);
 
   // Update table data when URL search params change (for pagination/search)
   useEffect(() => {
