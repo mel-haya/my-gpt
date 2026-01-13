@@ -1,12 +1,12 @@
 "use server";
 
-import { 
-  getTestsWithPagination, 
-  createTest, 
-  updateTest, 
-  deleteTest, 
+import {
+  getTestsWithPagination,
+  createTest,
+  updateTest,
+  deleteTest,
   getLatestTestRunStats,
-  runSingleTest
+  runSingleTest,
 } from "@/services/testsService";
 import { checkRole } from "@/lib/checkRole";
 import { currentUser } from "@clerk/nextjs/server";
@@ -19,7 +19,7 @@ export async function getTestsWithStatus(
 ) {
   try {
     // Check if user has admin role
-    const isAdmin = await checkRole('admin');
+    const isAdmin = await checkRole("admin");
     if (!isAdmin) {
       throw new Error("Unauthorized: Admin access required");
     }
@@ -32,16 +32,13 @@ export async function getTestsWithStatus(
   }
 }
 
-export async function createTestAction(
-  testData: {
-    name: string;
-    prompt: string;
-    expected_result: string;
-  }
-) {
+export async function createTestAction(testData: {
+  prompt: string;
+  expected_result: string;
+}) {
   try {
     // Check if user has admin role
-    const isAdmin = await checkRole('admin');
+    const isAdmin = await checkRole("admin");
     if (!isAdmin) {
       throw new Error("Unauthorized: Admin access required");
     }
@@ -55,7 +52,7 @@ export async function createTestAction(
     // Create the test
     const newTest = await createTest({
       ...testData,
-      user_id: user.id
+      user_id: user.id,
     });
 
     // Revalidate the tests page
@@ -64,9 +61,9 @@ export async function createTestAction(
     return { success: true, test: newTest };
   } catch (error) {
     console.error("Error in createTestAction:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create test" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create test",
     };
   }
 }
@@ -74,14 +71,13 @@ export async function createTestAction(
 export async function updateTestAction(
   testId: number,
   testData: {
-    name: string;
     prompt: string;
     expected_result: string;
   }
 ) {
   try {
     // Check if user has admin role
-    const isAdmin = await checkRole('admin');
+    const isAdmin = await checkRole("admin");
     if (!isAdmin) {
       throw new Error("Unauthorized: Admin access required");
     }
@@ -94,7 +90,7 @@ export async function updateTestAction(
 
     // Update the test
     const updatedTest = await updateTest(testId, testData);
-    
+
     if (!updatedTest) {
       throw new Error("Test not found or could not be updated");
     }
@@ -105,9 +101,9 @@ export async function updateTestAction(
     return { success: true, test: updatedTest };
   } catch (error) {
     console.error("Error in updateTestAction:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update test" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update test",
     };
   }
 }
@@ -115,7 +111,7 @@ export async function updateTestAction(
 export async function deleteTestAction(testId: number) {
   try {
     // Check if user has admin role
-    const isAdmin = await checkRole('admin');
+    const isAdmin = await checkRole("admin");
     if (!isAdmin) {
       throw new Error("Unauthorized: Admin access required");
     }
@@ -128,7 +124,7 @@ export async function deleteTestAction(testId: number) {
 
     // Delete the test
     const deletedTest = await deleteTest(testId);
-    
+
     if (!deletedTest) {
       throw new Error("Test not found or could not be deleted");
     }
@@ -139,9 +135,9 @@ export async function deleteTestAction(testId: number) {
     return { success: true, test: deletedTest };
   } catch (error) {
     console.error("Error in deleteTestAction:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete test" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete test",
     };
   }
 }
@@ -149,7 +145,7 @@ export async function deleteTestAction(testId: number) {
 export async function bulkDeleteTestsAction(testIds: number[]) {
   try {
     // Check if user has admin role
-    const isAdmin = await checkRole('admin');
+    const isAdmin = await checkRole("admin");
     if (!isAdmin) {
       throw new Error("Unauthorized: Admin access required");
     }
@@ -187,25 +183,25 @@ export async function bulkDeleteTestsAction(testIds: number[]) {
     const totalCount = testIds.length;
 
     if (successCount === totalCount) {
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: `Successfully deleted ${successCount} test(s)`,
-        deletedTests 
+        deletedTests,
       };
     } else if (successCount > 0) {
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: `Deleted ${successCount} out of ${totalCount} test(s). ${errorCount} failed.`,
-        deletedTests 
+        deletedTests,
       };
     } else {
       throw new Error("Failed to delete any tests");
     }
   } catch (error) {
     console.error("Error in bulkDeleteTestsAction:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete tests" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete tests",
     };
   }
 }
@@ -213,7 +209,7 @@ export async function bulkDeleteTestsAction(testIds: number[]) {
 export async function getLatestTestRunStatsAction() {
   try {
     // Check if user has admin role
-    const isAdmin = await checkRole('admin');
+    const isAdmin = await checkRole("admin");
     if (!isAdmin) {
       throw new Error("Unauthorized: Admin access required");
     }
@@ -229,7 +225,7 @@ export async function getLatestTestRunStatsAction() {
 export async function runSingleTestAction(testId: number) {
   try {
     // Check if user has admin role
-    const isAdmin = await checkRole('admin');
+    const isAdmin = await checkRole("admin");
     if (!isAdmin) {
       throw new Error("Unauthorized: Admin access required");
     }
@@ -241,20 +237,20 @@ export async function runSingleTestAction(testId: number) {
     }
 
     const result = await runSingleTest(testId);
-    
+
     // Revalidate the tests page to show updated results
     revalidatePath("/admin/tests");
-    
+
     return {
       success: true,
       result: result,
-      message: "Test executed successfully"
+      message: "Test executed successfully",
     };
   } catch (error) {
     console.error("Error in runSingleTestAction:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to run test"
+      error: error instanceof Error ? error.message : "Failed to run test",
     };
   }
 }

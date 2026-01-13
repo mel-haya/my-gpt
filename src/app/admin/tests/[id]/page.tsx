@@ -3,7 +3,7 @@ import { getTestDetails } from "@/services/testsService";
 import TestDetailPage from "@/components/admin/TestDetailPage";
 
 // Force dynamic rendering for admin pages
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface TestDetailParams {
   params: Promise<{
@@ -14,7 +14,7 @@ interface TestDetailParams {
 export default async function TestDetail({ params }: TestDetailParams) {
   const { id } = await params;
   const testId = parseInt(id);
-  
+
   if (isNaN(testId)) {
     notFound();
   }

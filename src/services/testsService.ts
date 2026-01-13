@@ -5,16 +5,7 @@ import type {
   SelectTestRun,
   SelectTestRunResult,
 } from "@/lib/db-schema";
-import {
-  eq,
-  desc,
-  count,
-  or,
-  ilike,
-  and,
-  isNull,
-  sql,
-} from "drizzle-orm";
+import { eq, desc, count, ilike, and, isNull, sql } from "drizzle-orm";
 import { generateChatCompletionWithToolCalls } from "@/services/chatService";
 import { generateObject } from "ai";
 import { z } from "zod";
@@ -31,9 +22,7 @@ export interface TestRunWithResults extends SelectTestRun {
   results: TestRunResultWithTest[];
 }
 
-export interface TestRunResultWithTest extends SelectTestRunResult {
-  test_name?: string;
-}
+export type TestRunResultWithTest = SelectTestRunResult;
 
 export interface IndividualTestResult {
   id: number;
@@ -91,23 +80,18 @@ export async function getTestsWithPagination(
 
   // Base query conditions
   const baseConditions = searchQuery
-    ? or(
-      ilike(tests.name, `%${searchQuery}%`),
-      ilike(tests.prompt, `%${searchQuery}%`)
-    )
+    ? ilike(tests.prompt, `%${searchQuery}%`)
     : undefined;
 
-  // Create a subquery for the latest test results using MAX aggregation
-  const latestTimestamps = db
+  // Create a subquery for the latest test results using MAX(id) aggregation
+  const latestResultIds = db
     .select({
       test_id: testRunResults.test_id,
-      max_created_at: sql<Date>`max(${testRunResults.created_at})`.as(
-        "max_created_at"
-      ),
+      max_id: sql<number>`max(${testRunResults.id})`.as("max_id"),
     })
     .from(testRunResults)
     .groupBy(testRunResults.test_id)
-    .as("latest_timestamps");
+    .as("latest_result_ids");
 
   const latestResultsSubquery = db
     .select({
@@ -117,20 +101,13 @@ export async function getTestsWithPagination(
       output: testRunResults.output,
     })
     .from(testRunResults)
-    .innerJoin(
-      latestTimestamps,
-      and(
-        eq(testRunResults.test_id, latestTimestamps.test_id),
-        eq(testRunResults.created_at, latestTimestamps.max_created_at)
-      )
-    )
+    .innerJoin(latestResultIds, eq(testRunResults.id, latestResultIds.max_id))
     .as("latest_results");
 
   // Build the optimized query with a single JOIN
   const query = db
     .select({
       id: tests.id,
-      name: tests.name,
       prompt: tests.prompt,
       expected_result: tests.expected_result,
       user_id: tests.user_id,
@@ -189,7 +166,6 @@ export async function getTestsWithPagination(
 }
 
 export async function createTest(testData: {
-  name: string;
   prompt: string;
   expected_result: string;
   user_id: string;
@@ -201,7 +177,6 @@ export async function createTest(testData: {
 export async function updateTest(
   id: number,
   testData: {
-    name?: string;
     prompt?: string;
     expected_result?: string;
   }
@@ -232,7 +207,6 @@ export async function getTestById(id: number): Promise<TestWithUser | null> {
   const result = await db
     .select({
       id: tests.id,
-      name: tests.name,
       prompt: tests.prompt,
       expected_result: tests.expected_result,
       user_id: tests.user_id,
@@ -250,7 +224,7 @@ export async function getTestById(id: number): Promise<TestWithUser | null> {
   const test = result[0];
   return {
     ...test,
-    username: test.username ?? undefined
+    username: test.username ?? undefined,
   };
 }
 
@@ -285,7 +259,7 @@ export async function getTestRunsForTest(
         result_status: testRunResults.status,
         result_created_at: testRunResults.created_at,
         result_updated_at: testRunResults.updated_at,
-        test_name: tests.name,
+        // test_name removed
       })
       .from(testRunResults)
       .innerJoin(testRuns, eq(testRunResults.test_run_id, testRuns.id))
@@ -332,7 +306,7 @@ export async function getTestRunsForTest(
         status: row.result_status,
         created_at: row.result_created_at,
         updated_at: row.result_updated_at,
-        test_name: row.test_name ?? undefined,
+        // test_name removed
       });
     }
 
@@ -499,7 +473,8 @@ export async function getLatestTestRunStats(): Promise<LatestTestRunStats> {
     });
 
     // If there are still running, evaluating, or pending tests, consider it running
-    const isStillRunning = results.running > 0 || results.evaluating > 0 || results.pending > 0;
+    const isStillRunning =
+      results.running > 0 || results.evaluating > 0 || results.pending > 0;
 
     return {
       status: isStillRunning ? "running" : "completed",
@@ -528,7 +503,6 @@ export async function getAllTests(): Promise<TestWithUser[]> {
   const result = await db
     .select({
       id: tests.id,
-      name: tests.name,
       prompt: tests.prompt,
       expected_result: tests.expected_result,
       user_id: tests.user_id,
@@ -550,7 +524,7 @@ export async function createAllTestRunResults(
   testRunId: number,
   testIds: number[]
 ) {
-  const values = testIds.map(testId => ({
+  const values = testIds.map((testId) => ({
     test_run_id: testRunId,
     test_id: testId,
     status: "Pending" as const,
@@ -558,10 +532,7 @@ export async function createAllTestRunResults(
     explanation: null,
   }));
 
-  const newResults = await db
-    .insert(testRunResults)
-    .values(values)
-    .returning();
+  const newResults = await db.insert(testRunResults).values(values).returning();
 
   return newResults;
 }
@@ -636,7 +607,11 @@ export async function evaluateTestResponse(
   expectedResult: string,
   aiResponse: string,
   evaluatorModel: string = "openai/gpt-4o"
-): Promise<{ status: "Success" | "Failed"; explanation: string; score: number }> {
+): Promise<{
+  status: "Success" | "Failed";
+  explanation: string;
+  score: number;
+}> {
   // Define evaluation schema with score from 1-10
   const evaluationSchema = z.object({
     score: z
@@ -762,8 +737,9 @@ export async function runSingleTest(
     executionTimeMs = Date.now() - startTime;
   } catch (error) {
     executionTimeMs = Date.now() - startTime;
-    output = `Test execution failed: ${error instanceof Error ? error.message : "Unknown error"
-      }`;
+    output = `Test execution failed: ${
+      error instanceof Error ? error.message : "Unknown error"
+    }`;
     status = "Failed";
     explanation = "Test execution failed due to an error";
   }

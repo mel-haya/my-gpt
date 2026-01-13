@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { parse } from "csv-parse/sync";
 import {
@@ -10,7 +10,7 @@ import {
   Upload,
   HelpCircle,
   Plus,
-  Trash2
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,10 @@ interface QuestionsDashboardProps {
   searchQuery: string;
 }
 
-export default function QuestionsDashboard({ initialData, searchQuery }: QuestionsDashboardProps) {
+export default function QuestionsDashboard({
+  initialData,
+  searchQuery,
+}: QuestionsDashboardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -138,7 +141,7 @@ export default function QuestionsDashboard({ initialData, searchQuery }: Questio
   const handleBulkDelete = () => {
     setBulkDeleteDialog({
       isOpen: true,
-      testIds: Array.from(selectedRows)
+      testIds: Array.from(selectedRows),
     });
   };
 
@@ -151,7 +154,9 @@ export default function QuestionsDashboard({ initialData, searchQuery }: Questio
     setBulkDeleteDialog({ isOpen: false, testIds: [] });
   };
 
-  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportCSV = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -160,79 +165,82 @@ export default function QuestionsDashboard({ initialData, searchQuery }: Questio
       const text = await file.text();
 
       if (!text.trim()) {
-        console.error('CSV file appears to be empty');
+        console.error("CSV file appears to be empty");
         return;
       }
 
       // Parse CSV using csv-parse library with semicolon delimiter
       const records = parse(text, {
-        delimiter: ';',
+        delimiter: ";",
         columns: true, // Use first row as headers
         skip_empty_lines: true,
-        trim: true
+        trim: true,
       }) as Record<string, string>[];
 
       if (records.length === 0) {
-        console.error('CSV file must contain at least one data row');
+        console.error("CSV file must contain at least one data row");
         return;
       }
 
       // Find column names (case insensitive)
       const headers = Object.keys(records[0]);
-      const promptColumn = headers.find(h => h.toLowerCase().includes('prompt')) || headers[0];
-      const expectedColumn = headers.find(h => h.toLowerCase().includes('expected')) || headers[1];
+      const promptColumn =
+        headers.find((h) => h.toLowerCase().includes("prompt")) || headers[0];
+      const expectedColumn =
+        headers.find((h) => h.toLowerCase().includes("expected")) || headers[1];
 
       let successCount = 0;
       let errorCount = 0;
 
       for (const record of records) {
         try {
-          const prompt = record[promptColumn]?.trim() || '';
-          const expectedResult = record[expectedColumn]?.trim() || '';
+          const prompt = record[promptColumn]?.trim() || "";
+          const expectedResult = record[expectedColumn]?.trim() || "";
 
           if (prompt && expectedResult) {
-            // Generate test name from first few words of prompt
-            const testName = prompt.split(' ').slice(0, 6).join(' ') +
-              (prompt.split(' ').length > 6 ? '...' : '');
-
             const result = await createTestAction({
-              name: testName,
               prompt: prompt,
-              expected_result: expectedResult
+              expected_result: expectedResult,
             });
 
             if (result.success) {
               successCount++;
             } else {
               errorCount++;
-              console.error('Failed to create test:', result.error);
+              console.error("Failed to create test:", result.error);
             }
           }
         } catch (error) {
           errorCount++;
-          console.error('Error processing row:', error);
+          console.error("Error processing row:", error);
         }
       }
 
       if (successCount > 0) {
-        console.log(`Successfully imported ${successCount} tests!${errorCount > 0 ? ` ${errorCount} failed.` : ''}`);
+        console.log(
+          `Successfully imported ${successCount} tests!${
+            errorCount > 0 ? ` ${errorCount} failed.` : ""
+          }`
+        );
         router.refresh();
       } else {
-        console.error('No tests were imported. Please check your CSV format.');
+        console.error("No tests were imported. Please check your CSV format.");
       }
     } catch (error) {
-      console.error('Error importing CSV:', error);
+      console.error("Error importing CSV:", error);
     } finally {
       setIsImporting(false);
       // Reset file input
-      event.target.value = '';
+      event.target.value = "";
     }
   };
 
   return (
     <div className="flex flex-col w-full max-w-7xl mx-auto my-4 gap-4 px-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Questions Pool</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          Questions Pool
+        </h1>
       </div>
 
       <Card>
@@ -250,11 +258,7 @@ export default function QuestionsDashboard({ initialData, searchQuery }: Questio
                   className="max-w-sm"
                   disabled={isPending}
                 />
-                <Button
-                  onClick={handleSearch}
-                  disabled={isPending}
-                  size="sm"
-                >
+                <Button onClick={handleSearch} disabled={isPending} size="sm">
                   Search
                 </Button>
               </div>
@@ -279,7 +283,9 @@ export default function QuestionsDashboard({ initialData, searchQuery }: Questio
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p>CSV Format:</p>
-                        <p>Headers: <code>prompt;expected_result</code></p>
+                        <p>
+                          Headers: <code>prompt;expected_result</code>
+                        </p>
                         <p>Delimiter: Semicolon (;)</p>
                       </TooltipContent>
                     </Tooltip>
@@ -299,7 +305,7 @@ export default function QuestionsDashboard({ initialData, searchQuery }: Questio
                       disabled={isImporting || isPending}
                     >
                       <Upload className="h-4 w-4 mr-2" />
-                      {isImporting ? 'Importing...' : 'Import CSV'}
+                      {isImporting ? "Importing..." : "Import CSV"}
                     </Button>
                   </div>
                 </div>
@@ -329,15 +335,21 @@ export default function QuestionsDashboard({ initialData, searchQuery }: Questio
             {/* Pagination */}
             <div className="flex items-center justify-between pt-4 border-t">
               <div className="text-sm text-neutral-600 dark:text-neutral-400">
-                Page {initialData.pagination.currentPage} of {initialData.pagination.totalPages} ({initialData.pagination.totalCount} total questions)
+                Page {initialData.pagination.currentPage} of{" "}
+                {initialData.pagination.totalPages} (
+                {initialData.pagination.totalCount} total questions)
               </div>
 
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handlePageChange(initialData.pagination.currentPage - 1)}
-                  disabled={!initialData.pagination.hasPreviousPage || isPending}
+                  onClick={() =>
+                    handlePageChange(initialData.pagination.currentPage - 1)
+                  }
+                  disabled={
+                    !initialData.pagination.hasPreviousPage || isPending
+                  }
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Previous
@@ -346,7 +358,9 @@ export default function QuestionsDashboard({ initialData, searchQuery }: Questio
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handlePageChange(initialData.pagination.currentPage + 1)}
+                  onClick={() =>
+                    handlePageChange(initialData.pagination.currentPage + 1)
+                  }
                   disabled={!initialData.pagination.hasNextPage || isPending}
                 >
                   Next

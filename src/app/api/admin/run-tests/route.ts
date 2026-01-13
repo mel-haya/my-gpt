@@ -34,7 +34,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { selectedModel, selectedEvaluatorModel, systemPrompt } = await req.json();
+    const { selectedModel, selectedEvaluatorModel, systemPrompt } =
+      await req.json();
 
     if (!selectedModel || !selectedEvaluatorModel) {
       return NextResponse.json(
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create all test run results immediately with pending status
-    const testIds = allTests.map(test => test.id);
+    const testIds = allTests.map((test) => test.id);
     await createAllTestRunResults(testRun.id, testIds);
 
     // Start running tests in the background
@@ -92,7 +93,11 @@ async function runTestsInBackground(
   systemPrompt?: string
 ) {
   // Timeout helper
-  const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+  const withTimeout = <T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    errorMessage: string
+  ): Promise<T> => {
     let timeoutId: NodeJS.Timeout;
     const timeoutPromise = new Promise<T>((_, reject) => {
       timeoutId = setTimeout(() => {
@@ -135,9 +140,7 @@ async function runTestsInBackground(
         // Update test result to Running status
         await updateTestRunResult(testRunId, test.id, "Running");
 
-        console.log(
-          `Running test ${test.id} (${test.name}) with model: ${selectedModel}`
-        );
+        console.log(`Running test ${test.id} with model: ${selectedModel}`);
 
         // Track execution time
         const startTime = Date.now();
@@ -224,7 +227,7 @@ async function runTestsInBackground(
 
         const statusEmoji = evaluation.status === "Success" ? "✅" : "❌";
         console.log(
-          `${statusEmoji} Test ${test.id} (${test.name}) completed with result: ${evaluation.status}`
+          `${statusEmoji} Test ${test.id} completed with result: ${evaluation.status}`
         );
 
         return { testId: test.id, status: testStatus };
@@ -232,8 +235,9 @@ async function runTestsInBackground(
         console.error(`❌ Error running test ${test.id}:`, testError);
 
         // Mark individual test as failed
-        const errorMessage = `Error: ${testError instanceof Error ? testError.message : "Unknown error"
-          }`;
+        const errorMessage = `Error: ${
+          testError instanceof Error ? testError.message : "Unknown error"
+        }`;
 
         await updateTestRunResult(
           testRunId,
@@ -255,7 +259,8 @@ async function runTestsInBackground(
 
     // Check final status and log results
     const successCount = results.filter(
-      (result) => result.status === "fulfilled" && result.value.status === "Success"
+      (result) =>
+        result.status === "fulfilled" && result.value.status === "Success"
     ).length;
     const failedCount = results.filter(
       (result) =>
@@ -263,7 +268,8 @@ async function runTestsInBackground(
         (result.status === "fulfilled" && result.value.status === "Failed")
     ).length;
     const stoppedCount = results.filter(
-      (result) => result.status === "fulfilled" && result.value.status === "Stopped"
+      (result) =>
+        result.status === "fulfilled" && result.value.status === "Stopped"
     ).length;
 
     console.log(

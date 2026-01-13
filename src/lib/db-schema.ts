@@ -141,7 +141,6 @@ export const tests = pgTable(
   "tests",
   {
     id: serial("id").primaryKey(),
-    name: text("name").notNull(),
     prompt: text("prompt").notNull(),
     expected_result: text("expected_result").notNull(),
     user_id: text("user_id")
@@ -151,9 +150,7 @@ export const tests = pgTable(
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [
-    index("tests_user_id_index").on(table.user_id)
-  ]
+  (table) => [index("tests_user_id_index").on(table.user_id)]
 );
 
 export const testRuns = pgTable(
@@ -165,7 +162,9 @@ export const testRuns = pgTable(
     user_id: text("user_id")
       .notNull()
       .references(() => users.id),
-    profile_id: integer("profile_id").references(() => testProfiles.id, { onDelete: "set null" }),
+    profile_id: integer("profile_id").references(() => testProfiles.id, {
+      onDelete: "set null",
+    }),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -227,8 +226,10 @@ export const testProfiles = pgTable(
   {
     id: serial("id").primaryKey(),
     name: text("name").notNull(),
-    system_prompt_id: integer("system_prompt_id")
-      .references(() => systemPrompts.id, { onDelete: "set null" }),
+    system_prompt_id: integer("system_prompt_id").references(
+      () => systemPrompts.id,
+      { onDelete: "set null" }
+    ),
     user_id: text("user_id")
       .notNull()
       .references(() => users.id),
@@ -257,7 +258,10 @@ export const testProfileTests = pgTable(
   (table) => [
     index("test_profile_tests_profile_id_index").on(table.profile_id),
     index("test_profile_tests_test_id_index").on(table.test_id),
-    uniqueIndex("test_profile_tests_unique").on(table.profile_id, table.test_id),
+    uniqueIndex("test_profile_tests_unique").on(
+      table.profile_id,
+      table.test_id
+    ),
   ]
 );
 
@@ -273,7 +277,10 @@ export const testProfileModels = pgTable(
   },
   (table) => [
     index("test_profile_models_profile_id_index").on(table.profile_id),
-    uniqueIndex("test_profile_models_unique").on(table.profile_id, table.model_name),
+    uniqueIndex("test_profile_models_unique").on(
+      table.profile_id,
+      table.model_name
+    ),
   ]
 );
 

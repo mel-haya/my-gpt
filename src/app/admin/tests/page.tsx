@@ -2,7 +2,7 @@ import TestsDashboard from "@/components/admin/testsDashboard";
 import { getTestsWithStatus } from "@/app/actions/tests";
 
 // Force dynamic rendering since this page uses authentication
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface TestsPageProps {
   searchParams: Promise<{
@@ -24,10 +24,5 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
     currentPage
   );
 
-  return (
-    <TestsDashboard 
-      initialData={initialData}
-      searchQuery={searchQuery}
-    />
-  );
+  return <TestsDashboard initialData={initialData} searchQuery={searchQuery} />;
 }

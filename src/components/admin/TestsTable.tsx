@@ -8,7 +8,16 @@ import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { MoreHorizontal, Search, ChevronLeft, ChevronRight, Upload, Trash2, Play, Loader2 } from "lucide-react";
+import {
+  MoreHorizontal,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  Trash2,
+  Play,
+  Loader2,
+} from "lucide-react";
 import TestDialog from "./TestDialog";
 import DeleteTestDialog from "./DeleteTestDialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,12 +48,12 @@ interface TestsTableProps {
 }
 
 const formatDate = (date: Date): string => {
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(date));
 };
 
@@ -65,14 +74,18 @@ const getColumns = (
     header: () => (
       <Checkbox
         checked={selectedRows.size === allTests.length && allTests.length > 0}
-        onCheckedChange={(checked: boolean | 'indeterminate') => onSelectAll(!!checked)}
+        onCheckedChange={(checked: boolean | "indeterminate") =>
+          onSelectAll(!!checked)
+        }
         aria-label="Select all"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={selectedRows.has(row.original.id)}
-        onCheckedChange={(checked: boolean | 'indeterminate') => onSelectRow(row.original.id, !!checked)}
+        onCheckedChange={(checked: boolean | "indeterminate") =>
+          onSelectRow(row.original.id, !!checked)
+        }
         aria-label="Select row"
       />
     ),
@@ -81,19 +94,22 @@ const getColumns = (
     size: 50,
   },
   {
-    accessorKey: "name",
-    header: "Test Name",
-    size: 200, // Make the Test Name column larger
+    accessorKey: "prompt", // Changed to prompt as primary identifier
+    header: "Prompt",
+    size: 300,
     cell: ({ row }) => {
       const test = row.original;
+      const prompt = row.getValue("prompt") as string;
+      const truncatedPrompt =
+        prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
       return (
         <div className="font-medium">
           <button
             onClick={() => onViewDetails(test.id)}
             className="text-left truncate hover:text-blue-600 hover:underline transition-colors"
-            title={row.getValue("name")}
+            title={prompt}
           >
-            {row.getValue("name")}
+            {truncatedPrompt}
           </button>
         </div>
       );
@@ -105,7 +121,7 @@ const getColumns = (
     size: 200,
     cell: ({ row }) => {
       const expectedResult = row.original.expected_result as string | undefined;
-      
+
       if (!expectedResult) {
         return (
           <div className="text-sm text-neutral-500 dark:text-neutral-400">
@@ -115,14 +131,15 @@ const getColumns = (
       }
 
       // Truncate to approximately 100 characters
-      const truncatedText = expectedResult.length > 100 
-        ? expectedResult.substring(0, 100) + "..."
-        : expectedResult;
+      const truncatedText =
+        expectedResult.length > 100
+          ? expectedResult.substring(0, 100) + "..."
+          : expectedResult;
 
       return (
         <div className="max-w-xs">
-          <div 
-            className="text-sm text-neutral-700 dark:text-neutral-300 truncate cursor-help" 
+          <div
+            className="text-sm text-neutral-700 dark:text-neutral-300 truncate cursor-help"
             title={expectedResult}
           >
             {truncatedText}
@@ -136,9 +153,13 @@ const getColumns = (
     header: "Latest Test Output",
     size: 200,
     cell: ({ row }) => {
-      const output = row.original.latest_test_result_output as string | undefined;
-      const status = row.original.latest_test_result_status as string | undefined;
-      
+      const output = row.original.latest_test_result_output as
+        | string
+        | undefined;
+      const status = row.original.latest_test_result_status as
+        | string
+        | undefined;
+
       if (!output && !status) {
         return (
           <div className="text-sm text-neutral-500 dark:text-neutral-400">
@@ -149,8 +170,11 @@ const getColumns = (
 
       return (
         <div className="max-w-xs">
-          <div className="text-sm text-neutral-700 dark:text-neutral-300 truncate" title={output || 'No output'}>
-            {output || 'No output'}
+          <div
+            className="text-sm text-neutral-700 dark:text-neutral-300 truncate"
+            title={output || "No output"}
+          >
+            {output || "No output"}
           </div>
         </div>
       );
@@ -165,7 +189,7 @@ const getColumns = (
     cell: ({ row }) => {
       const test = row.original;
       const isRunning = runningTests.has(test.id);
-      
+
       return (
         <Button
           variant="outline"
@@ -188,9 +212,11 @@ const getColumns = (
     header: "Latest Result",
     size: 150, // Fit content for Latest Result column
     cell: ({ row }) => {
-      const status = row.getValue("latest_test_result_status") as string | undefined;
+      const status = row.getValue("latest_test_result_status") as
+        | string
+        | undefined;
       const lastRunDate = row.original.latest_test_result_created_at;
-      
+
       if (!status) {
         return (
           <div className="text-sm text-neutral-500 dark:text-neutral-400">
@@ -253,12 +279,16 @@ const getColumns = (
               Copy test ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onViewDetails(test.id)}>View details</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onEditTest(test)}>Edit test</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onViewDetails(test.id)}>
+              View details
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEditTest(test)}>
+              Edit test
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="text-red-600"
-              onClick={() => onDeleteTest(test.id, test.name)}
+              onClick={() => onDeleteTest(test.id, `Test #${test.id}`)}
             >
               Delete test
             </DropdownMenuItem>
@@ -269,7 +299,13 @@ const getColumns = (
   },
 ];
 
-export default function TestsTable({ tests, pagination, searchQuery, onRefreshRef, onDataRefresh }: TestsTableProps) {
+export default function TestsTable({
+  tests,
+  pagination,
+  searchQuery,
+  onRefreshRef,
+  onDataRefresh,
+}: TestsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -282,7 +318,8 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
     isOpen: false,
     testId: 0,
     testName: "",
-  });  const [editTest, setEditTest] = useState<TestWithUser | null>(null);
+  });
+  const [editTest, setEditTest] = useState<TestWithUser | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
@@ -350,7 +387,7 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedRows(new Set(tests.map(test => test.id)));
+      setSelectedRows(new Set(tests.map((test) => test.id)));
     } else {
       setSelectedRows(new Set());
     }
@@ -359,7 +396,7 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
   const handleBulkDelete = () => {
     setBulkDeleteDialog({
       isOpen: true,
-      testIds: Array.from(selectedRows)
+      testIds: Array.from(selectedRows),
     });
   };
 
@@ -378,11 +415,11 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
   };
 
   const handleRunTest = async (testId: number) => {
-    setRunningTests(prev => new Set(prev).add(testId));
-    
+    setRunningTests((prev) => new Set(prev).add(testId));
+
     try {
       const result = await runSingleTestAction(testId);
-      
+
       if (result.success) {
         // Refresh the table data to show updated results
         if (onDataRefresh) {
@@ -391,12 +428,12 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
           router.refresh();
         }
       } else {
-        console.error('Failed to run test:', result.error);
+        console.error("Failed to run test:", result.error);
       }
     } catch (error) {
-      console.error('Error running test:', error);
+      console.error("Error running test:", error);
     } finally {
-      setRunningTests(prev => {
+      setRunningTests((prev) => {
         const newSet = new Set(prev);
         newSet.delete(testId);
         return newSet;
@@ -407,9 +444,9 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
   const columns = getColumns(
     () => {
       // Add refresh logic if needed
-    }, 
-    handleDeleteTest, 
-    handleEditTest, 
+    },
+    handleDeleteTest,
+    handleEditTest,
     handleViewDetails,
     selectedRows,
     handleSelectRow,
@@ -446,85 +483,88 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
     }
   };
 
-  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportCSV = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setIsImporting(true);
     try {
       const text = await file.text();
-      
+
       if (!text.trim()) {
-        console.error('CSV file appears to be empty');
+        console.error("CSV file appears to be empty");
         return;
       }
 
       // Parse CSV using csv-parse library with semicolon delimiter
       const records = parse(text, {
-        delimiter: ';',
+        delimiter: ";",
         columns: true, // Use first row as headers
         skip_empty_lines: true,
-        trim: true
+        trim: true,
       }) as Record<string, string>[];
 
       if (records.length === 0) {
-        console.error('CSV file must contain at least one data row');
+        console.error("CSV file must contain at least one data row");
         return;
       }
 
       // Find column names (case insensitive)
       const headers = Object.keys(records[0]);
-      const promptColumn = headers.find(h => h.toLowerCase().includes('prompt')) || headers[0];
-      const expectedColumn = headers.find(h => h.toLowerCase().includes('expected')) || headers[1];
+      const promptColumn =
+        headers.find((h) => h.toLowerCase().includes("prompt")) || headers[0];
+      const expectedColumn =
+        headers.find((h) => h.toLowerCase().includes("expected")) || headers[1];
 
       let successCount = 0;
       let errorCount = 0;
 
       for (const record of records) {
         try {
-          const prompt = record[promptColumn]?.trim() || '';
-          const expectedResult = record[expectedColumn]?.trim() || '';
-          
-          if (prompt && expectedResult) {
-            // Generate test name from first few words of prompt
-            const testName = prompt.split(' ').slice(0, 6).join(' ') + 
-              (prompt.split(' ').length > 6 ? '...' : '');
+          const prompt = record[promptColumn]?.trim() || "";
+          const expectedResult = record[expectedColumn]?.trim() || "";
 
+          if (prompt && expectedResult) {
             const result = await createTestAction({
-              name: testName,
               prompt: prompt,
-              expected_result: expectedResult
+              expected_result: expectedResult,
             });
 
             if (result.success) {
               successCount++;
             } else {
               errorCount++;
-              console.error('Failed to create test:', result.error);
+              console.error("Failed to create test:", result.error);
             }
           }
         } catch (error) {
           errorCount++;
-          console.error('Error processing row:', error);
+          console.error("Error processing row:", error);
         }
       }
 
       if (successCount > 0) {
-        console.log(`Successfully imported ${successCount} tests!${errorCount > 0 ? ` ${errorCount} failed.` : ''}`);
+        console.log(
+          `Successfully imported ${successCount} tests!${
+            errorCount > 0 ? ` ${errorCount} failed.` : ""
+          }`
+        );
         if (onDataRefresh) {
           onDataRefresh();
         } else {
           router.refresh();
         }
       } else {
-        console.error('No tests were imported. Please check your CSV format.');
+        console.error("No tests were imported. Please check your CSV format.");
       }
     } catch (error) {
-      console.error('Error importing CSV:', error);
+      console.error("Error importing CSV:", error);
     } finally {
       setIsImporting(false);
       // Reset file input
-      event.target.value = '';
+      event.target.value = "";
     }
   };
 
@@ -537,26 +577,22 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
             <div className="flex flex-1 items-center space-x-2">
               <Search className="h-4 w-4 text-neutral-500" />
               <Input
-                placeholder="Search tests by name or prompt..."
+                placeholder="Search tests by prompt..."
                 value={localSearchQuery}
                 onChange={(e) => setLocalSearchQuery(e.target.value)}
                 onKeyDown={handleKeyPress}
                 className="max-w-sm"
                 disabled={isPending}
               />
-              <Button 
-                onClick={handleSearch} 
-                disabled={isPending}
-                size="sm"
-              >
+              <Button onClick={handleSearch} disabled={isPending} size="sm">
                 Search
               </Button>
             </div>
-            
+
             <div className="flex items-center gap-2">
               {selectedRows.size > 0 && (
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   size="sm"
                   onClick={handleBulkDelete}
                   disabled={isPending}
@@ -573,30 +609,40 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   disabled={isImporting || isPending}
                 />
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   disabled={isImporting || isPending}
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {isImporting ? 'Importing...' : 'Import CSV'}
+                  {isImporting ? "Importing..." : "Import CSV"}
                 </Button>
               </div>
-              <TestDialog mode="add" onSuccess={() => onDataRefresh ? onDataRefresh() : router.refresh()} />
+              <TestDialog
+                mode="add"
+                onSuccess={() =>
+                  onDataRefresh ? onDataRefresh() : router.refresh()
+                }
+              />
             </div>
           </div>
 
           {/* Data Table */}
           <div className="border rounded-lg">
-            <DataTable columns={columns} data={tests} emptyMessage="No tests found." />
+            <DataTable
+              columns={columns}
+              data={tests}
+              emptyMessage="No tests found."
+            />
           </div>
 
           {/* Pagination */}
           <div className="flex items-center justify-between">
             <div className="text-sm text-neutral-600 dark:text-neutral-400">
-              Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalCount} total tests)
+              Page {pagination.currentPage} of {pagination.totalPages} (
+              {pagination.totalCount} total tests)
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
@@ -607,7 +653,7 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Previous
               </Button>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -621,7 +667,7 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
           </div>
         </div>
       </CardContent>
-      
+
       <DeleteTestDialog
         testId={deleteDialog.testId}
         testName={deleteDialog.testName}
@@ -629,7 +675,7 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
         onClose={handleCloseDeleteDialog}
         onSuccess={handleDeleteSuccess}
       />
-      
+
       {bulkDeleteDialog.testIds.length > 0 && (
         <DeleteTestDialog
           testId={bulkDeleteDialog.testIds[0]} // Pass the first ID for the dialog
@@ -641,7 +687,7 @@ export default function TestsTable({ tests, pagination, searchQuery, onRefreshRe
           bulkTestIds={bulkDeleteDialog.testIds}
         />
       )}
-      
+
       {editTest && (
         <TestDialog
           mode="edit"

@@ -43,7 +43,7 @@ const formatDate = (date: Date): string => {
 
 const formatCost = (cost: number | null): string => {
   if (cost === null) return "N/A";
-  return (cost).toLocaleString("en-US", {
+  return cost.toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 6,
@@ -264,12 +264,18 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
             <div className="flex items-center space-x-2">
               {getResultStatusBadge(testResult.status)}
               {testResult.score && (
-                <Badge variant="outline" className={`text-xs ${
-                  testResult.score >= 9 ? "bg-green-100 text-green-800" :
-                  testResult.score >= 7 ? "bg-blue-100 text-blue-800" :
-                  testResult.score >= 5 ? "bg-yellow-100 text-yellow-800" :
-                  "bg-red-100 text-red-800"
-                }`}>
+                <Badge
+                  variant="outline"
+                  className={`text-xs ${
+                    testResult.score >= 9
+                      ? "bg-green-100 text-green-800"
+                      : testResult.score >= 7
+                      ? "bg-blue-100 text-blue-800"
+                      : testResult.score >= 5
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
                   {testResult.score}/10
                 </Badge>
               )}
@@ -312,8 +318,8 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2 text-xl">
-            <span>{test.name}</span>
-            <Badge variant="outline">Test #{test.id}</Badge>
+            <span>Test #{test.id}</span>
+            <Badge variant="outline">Test Details</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -407,7 +413,9 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-medium">Cost:</span>
-                      <span className="text-sm">{formatCost(latestTestResult.result.tokens_cost)}</span>
+                      <span className="text-sm">
+                        {formatCost(latestTestResult.result.tokens_cost)}
+                      </span>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -420,7 +428,9 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
                     </div>
                     <div className="text-sm">
                       <span className="font-medium">Execution Time:</span>{" "}
-                      {formatExecutionTime(latestTestResult.result.execution_time_ms)}
+                      {formatExecutionTime(
+                        latestTestResult.result.execution_time_ms
+                      )}
                     </div>
                   </div>
                 </div>
@@ -435,12 +445,18 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
                     {latestTestResult.result.score && (
                       <div className="flex items-center space-x-2">
                         <span className="text-sm font-medium">Score:</span>
-                        <Badge variant="outline" className={`${
-                          latestTestResult.result.score >= 9 ? "bg-green-100 text-green-800" :
-                          latestTestResult.result.score >= 7 ? "bg-blue-100 text-blue-800" :
-                          latestTestResult.result.score >= 5 ? "bg-yellow-100 text-yellow-800" :
-                          "bg-red-100 text-red-800"
-                        }`}>
+                        <Badge
+                          variant="outline"
+                          className={`${
+                            latestTestResult.result.score >= 9
+                              ? "bg-green-100 text-green-800"
+                              : latestTestResult.result.score >= 7
+                              ? "bg-blue-100 text-blue-800"
+                              : latestTestResult.result.score >= 5
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
                           {latestTestResult.result.score}/10
                         </Badge>
                       </div>
@@ -515,18 +531,28 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
                         <div className="border rounded-lg p-3 space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              <span className="text-sm font-medium">Status:</span>
+                              <span className="text-sm font-medium">
+                                Status:
+                              </span>
                               {getResultStatusBadge(testResult.status)}
                             </div>
                             {testResult.score && (
                               <div className="flex items-center space-x-2">
-                                <span className="text-sm font-medium">Score:</span>
-                                <Badge variant="outline" className={`${
-                                  testResult.score >= 9 ? "bg-green-100 text-green-800" :
-                                  testResult.score >= 7 ? "bg-blue-100 text-blue-800" :
-                                  testResult.score >= 5 ? "bg-yellow-100 text-yellow-800" :
-                                  "bg-red-100 text-red-800"
-                                }`}>
+                                <span className="text-sm font-medium">
+                                  Score:
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className={`${
+                                    testResult.score >= 9
+                                      ? "bg-green-100 text-green-800"
+                                      : testResult.score >= 7
+                                      ? "bg-blue-100 text-blue-800"
+                                      : testResult.score >= 5
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
+                                  }`}
+                                >
                                   {testResult.score}/10
                                 </Badge>
                               </div>
@@ -541,8 +567,12 @@ export default function TestDetailPage({ testDetails }: TestDetailPageProps) {
                             </div>
                             <div className="space-y-1">
                               <div className="text-sm">
-                                <span className="font-medium">Execution Time:</span>{" "}
-                                {formatExecutionTime(testResult.execution_time_ms)}
+                                <span className="font-medium">
+                                  Execution Time:
+                                </span>{" "}
+                                {formatExecutionTime(
+                                  testResult.execution_time_ms
+                                )}
                               </div>
                             </div>
                           </div>

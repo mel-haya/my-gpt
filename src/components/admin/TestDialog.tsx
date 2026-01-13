@@ -11,7 +11,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createTestAction, updateTestAction } from "@/app/actions/tests";
@@ -27,11 +26,18 @@ interface TestDialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export default function TestDialog({ mode, test, onSuccess, trigger, isOpen, onOpenChange }: TestDialogProps) {
+export default function TestDialog({
+  mode,
+  test,
+  onSuccess,
+  trigger,
+  isOpen,
+  onOpenChange,
+}: TestDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
+    // name removed
     prompt: "",
     expected_result: "",
   });
@@ -45,23 +51,24 @@ export default function TestDialog({ mode, test, onSuccess, trigger, isOpen, onO
   useEffect(() => {
     if (isEditMode && test && open) {
       setFormData({
-        name: test.name,
+        // name removed
         prompt: test.prompt,
         expected_result: test.expected_result,
       });
     } else if (!isEditMode) {
       setFormData({
-        name: "",
+        // name removed
         prompt: "",
         expected_result: "",
       });
     }
   }, [isEditMode, test, open]);
 
+  // handleInputChange updated implicitly by strict string typing or just reusing same function
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -72,9 +79,7 @@ export default function TestDialog({ mode, test, onSuccess, trigger, isOpen, onO
 
     try {
       // Validate form data
-      if (!formData.name.trim()) {
-        throw new Error("Test name is required");
-      }
+      // Name validation removed
       if (!formData.prompt.trim()) {
         throw new Error("Prompt is required");
       }
@@ -83,7 +88,7 @@ export default function TestDialog({ mode, test, onSuccess, trigger, isOpen, onO
       }
 
       const testData = {
-        name: formData.name.trim(),
+        // name removed
         prompt: formData.prompt.trim(),
         expected_result: formData.expected_result.trim(),
       };
@@ -98,18 +103,27 @@ export default function TestDialog({ mode, test, onSuccess, trigger, isOpen, onO
       if (result.success) {
         // Reset form
         setFormData({
-          name: "",
+          // name removed
           prompt: "",
           expected_result: "",
         });
         setOpen(false);
         onSuccess?.();
       } else {
-        setError(result.error || `Failed to ${isEditMode ? 'update' : 'create'} test`);
+        setError(
+          result.error || `Failed to ${isEditMode ? "update" : "create"} test`
+        );
       }
     } catch (error) {
-      console.error(`Error ${isEditMode ? 'updating' : 'creating'} test:`, error);
-      setError(error instanceof Error ? error.message : `Failed to ${isEditMode ? 'update' : 'create'} test`);
+      console.error(
+        `Error ${isEditMode ? "updating" : "creating"} test:`,
+        error
+      );
+      setError(
+        error instanceof Error
+          ? error.message
+          : `Failed to ${isEditMode ? "update" : "create"} test`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -117,7 +131,7 @@ export default function TestDialog({ mode, test, onSuccess, trigger, isOpen, onO
 
   const handleCancel = () => {
     setFormData({
-      name: "",
+      // name removed
       prompt: "",
       expected_result: "",
     });
@@ -126,8 +140,19 @@ export default function TestDialog({ mode, test, onSuccess, trigger, isOpen, onO
   };
 
   const defaultTrigger = (
-    <Button size="sm" className={isEditMode ? "h-8 w-8 p-0" : "h-8"} variant={isEditMode ? "ghost" : "default"}>
-      {isEditMode ? <Edit className="size-4" /> : <><Plus className="size-4" />Add Test</>}
+    <Button
+      size="sm"
+      className={isEditMode ? "h-8 w-8 p-0" : "h-8"}
+      variant={isEditMode ? "ghost" : "default"}
+    >
+      {isEditMode ? (
+        <Edit className="size-4" />
+      ) : (
+        <>
+          <Plus className="size-4" />
+          Add Test
+        </>
+      )}
     </Button>
   );
 
@@ -135,40 +160,30 @@ export default function TestDialog({ mode, test, onSuccess, trigger, isOpen, onO
     <Dialog open={open} onOpenChange={setOpen}>
       {/* Only render trigger if not in controlled mode and trigger is needed */}
       {isOpen === undefined && (
-        <DialogTrigger asChild>
-          {trigger || defaultTrigger}
-        </DialogTrigger>
+        <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
       )}
       <DialogContent className="sm:max-w-150">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{isEditMode ? "Edit Test" : "Add New Test"}</DialogTitle>
+            <DialogTitle>
+              {isEditMode ? "Edit Test" : "Add New Test"}
+            </DialogTitle>
             <DialogDescription>
-              {isEditMode 
+              {isEditMode
                 ? "Update the test information below."
-                : "Create a new test with a name, prompt, and expected result."
-              }
+                : "Create a new test with a prompt and expected result."}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             {error && (
               <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 p-3 rounded-md">
                 {error}
               </div>
             )}
-            
-            <div className="grid gap-2">
-              <Label htmlFor="test-name">Test Name</Label>
-              <Input
-                id="test-name"
-                placeholder="Enter test name..."
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                disabled={isSubmitting}
-              />
-            </div>
-            
+
+            {/* Name input removed */}
+
             <div className="grid gap-2">
               <Label htmlFor="test-prompt">Prompt</Label>
               <Textarea
@@ -181,21 +196,23 @@ export default function TestDialog({ mode, test, onSuccess, trigger, isOpen, onO
                 className="resize-none"
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="test-expected-result">Expected Result</Label>
               <Textarea
                 id="test-expected-result"
                 placeholder="Enter the expected result..."
                 value={formData.expected_result}
-                onChange={(e) => handleInputChange("expected_result", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("expected_result", e.target.value)
+                }
                 disabled={isSubmitting}
                 rows={4}
                 className="resize-none"
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button
               type="button"
@@ -207,10 +224,9 @@ export default function TestDialog({ mode, test, onSuccess, trigger, isOpen, onO
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              {isSubmitting 
-                ? `${isEditMode ? 'Updating' : 'Creating'}...` 
-                : `${isEditMode ? 'Update' : 'Create'} Test`
-              }
+              {isSubmitting
+                ? `${isEditMode ? "Updating" : "Creating"}...`
+                : `${isEditMode ? "Update" : "Create"} Test`}
             </Button>
           </DialogFooter>
         </form>

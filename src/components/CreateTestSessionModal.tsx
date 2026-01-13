@@ -29,22 +29,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Plus, Eye, EyeOff, ChevronDown, ChevronRight } from "lucide-react";
-import { createTestProfileAction, getTestsForSelectionAction, getSystemPromptsForSelectionAction } from "@/app/actions/testProfiles";
+import {
+  createTestProfileAction,
+  getTestsForSelectionAction,
+  getSystemPromptsForSelectionAction,
+} from "@/app/actions/testProfiles";
 import { getAvailableModels, type ModelOption } from "@/app/actions/models";
 import type { SelectTest, SelectSystemPrompt } from "@/lib/db-schema";
-
 
 interface CreateTestSessionModalProps {
   onSessionCreated?: () => void;
 }
 
-export default function CreateTestSessionModal({ onSessionCreated }: CreateTestSessionModalProps) {
+export default function CreateTestSessionModal({
+  onSessionCreated,
+}: CreateTestSessionModalProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [availableTests, setAvailableTests] = useState<SelectTest[]>([]);
-  const [availableSystemPrompts, setAvailableSystemPrompts] = useState<SelectSystemPrompt[]>([]);
+  const [availableSystemPrompts, setAvailableSystemPrompts] = useState<
+    SelectSystemPrompt[]
+  >([]);
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
-  
+
   // Form state
   const [name, setName] = useState("");
   const [selectedSystemPrompt, setSelectedSystemPrompt] = useState("");
@@ -62,11 +69,12 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
 
   const loadData = async () => {
     try {
-      const [testsResult, systemPromptsResult, modelsResult] = await Promise.all([
-        getTestsForSelectionAction(),
-        getSystemPromptsForSelectionAction(),
-        getAvailableModels()
-      ]);
+      const [testsResult, systemPromptsResult, modelsResult] =
+        await Promise.all([
+          getTestsForSelectionAction(),
+          getSystemPromptsForSelectionAction(),
+          getAvailableModels(),
+        ]);
 
       if (testsResult.success && testsResult.data) {
         setAvailableTests(testsResult.data);
@@ -84,22 +92,22 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
 
   const handleTestSelection = (testId: number, checked: boolean) => {
     if (checked) {
-      setSelectedTestIds(prev => [...prev, testId]);
+      setSelectedTestIds((prev) => [...prev, testId]);
     } else {
-      setSelectedTestIds(prev => prev.filter(id => id !== testId));
+      setSelectedTestIds((prev) => prev.filter((id) => id !== testId));
     }
   };
 
   const handleModelSelection = (modelId: string, checked: boolean) => {
     if (checked) {
-      setSelectedModelIds(prev => [...prev, modelId]);
+      setSelectedModelIds((prev) => [...prev, modelId]);
     } else {
-      setSelectedModelIds(prev => prev.filter(id => id !== modelId));
+      setSelectedModelIds((prev) => prev.filter((id) => id !== modelId));
     }
   };
 
   const handleSelectAllTests = () => {
-    setSelectedTestIds(availableTests.map(test => test.id));
+    setSelectedTestIds(availableTests.map((test) => test.id));
   };
 
   const handleDeselectAllTests = () => {
@@ -115,7 +123,7 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim() || !selectedSystemPrompt || selectedTestIds.length === 0) {
       alert("Please fill in all required fields and select at least one test.");
       return;
@@ -129,7 +137,9 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
     setLoading(true);
 
     try {
-      const selectedSystemPromptObj = availableSystemPrompts.find(sp => sp.id.toString() === selectedSystemPrompt);
+      const selectedSystemPromptObj = availableSystemPrompts.find(
+        (sp) => sp.id.toString() === selectedSystemPrompt
+      );
       if (!selectedSystemPromptObj) {
         alert("Selected system prompt not found");
         return;
@@ -157,7 +167,9 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
     }
   };
 
-  const selectedSystemPromptObj = availableSystemPrompts.find(sp => sp.id.toString() === selectedSystemPrompt);
+  const selectedSystemPromptObj = availableSystemPrompts.find(
+    (sp) => sp.id.toString() === selectedSystemPrompt
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -171,12 +183,17 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
         <DialogHeader>
           <DialogTitle>Create New Test Session</DialogTitle>
           <DialogDescription>
-            Create a new test session to run multiple tests with different models and system prompts.
+            Create a new test session to run multiple tests with different
+            models and system prompts.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-          <form id="create-session-form" onSubmit={handleSubmit} className="space-y-6">
+          <form
+            id="create-session-form"
+            onSubmit={handleSubmit}
+            className="space-y-6"
+          >
             {/* Session Name */}
             <div className="space-y-2">
               <Label htmlFor="name">Session Name *</Label>
@@ -193,7 +210,10 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
             <div className="space-y-2">
               <Label htmlFor="system-prompt">System Prompt *</Label>
               <div className="flex gap-2">
-                <Select value={selectedSystemPrompt} onValueChange={setSelectedSystemPrompt}>
+                <Select
+                  value={selectedSystemPrompt}
+                  onValueChange={setSelectedSystemPrompt}
+                >
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Select a system prompt" />
                   </SelectTrigger>
@@ -213,13 +233,19 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
                     onClick={() => setShowPreview(!showPreview)}
                     className="px-3"
                   >
-                    {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPreview ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </Button>
                 )}
               </div>
               {selectedSystemPromptObj && showPreview && (
                 <div className="p-3 bg-gray-50 rounded border">
-                  <div className="text-xs text-gray-600 mb-2 font-medium">Preview:</div>
+                  <div className="text-xs text-gray-600 mb-2 font-medium">
+                    Preview:
+                  </div>
                   <pre className="text-sm text-gray-800 font-mono whitespace-pre-wrap overflow-wrap-break-word">
                     {selectedSystemPromptObj.prompt}
                   </pre>
@@ -227,12 +253,15 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
               )}
             </div>
 
-
-
             {/* Test Selection */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-2 cursor-pointer" onClick={() => setIsTestSectionCollapsed(!isTestSectionCollapsed)}>
+                <Label
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={() =>
+                    setIsTestSectionCollapsed(!isTestSectionCollapsed)
+                  }
+                >
                   {isTestSectionCollapsed ? (
                     <ChevronRight className="h-4 w-4" />
                   ) : (
@@ -240,7 +269,8 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
                   )}
                   Select Tests *
                   <span className="text-sm text-gray-500 font-normal">
-                    ({selectedTestIds.length} of {availableTests.length} selected)
+                    ({selectedTestIds.length} of {availableTests.length}{" "}
+                    selected)
                   </span>
                 </Label>
                 {!isTestSectionCollapsed && availableTests.length > 0 && (
@@ -250,7 +280,9 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
                       variant="outline"
                       size="sm"
                       onClick={handleSelectAllTests}
-                      disabled={selectedTestIds.length === availableTests.length}
+                      disabled={
+                        selectedTestIds.length === availableTests.length
+                      }
                     >
                       Select All
                     </Button>
@@ -276,7 +308,7 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
                         <Checkbox
                           id={`test-${test.id}`}
                           checked={selectedTestIds.includes(test.id)}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked) =>
                             handleTestSelection(test.id, checked as boolean)
                           }
                         />
@@ -285,7 +317,7 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
                             htmlFor={`test-${test.id}`}
                             className="text-sm font-medium cursor-pointer"
                           >
-                            {test.name}
+                            Test #{test.id}
                           </Label>
                           <p className="text-xs text-gray-600 mt-1">
                             {test.prompt.substring(0, 100)}
@@ -294,8 +326,7 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
                         </div>
                       </div>
                     ))
-                  )
-                  }
+                  )}
                 </div>
               )}
             </div>
@@ -305,13 +336,12 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
               <Label>Select Models *</Label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between"
-                  >
+                  <Button variant="outline" className="w-full justify-between">
                     {selectedModelIds.length === 0
                       ? "Select models..."
-                      : `${selectedModelIds.length} model${selectedModelIds.length !== 1 ? 's' : ''} selected`}
+                      : `${selectedModelIds.length} model${
+                          selectedModelIds.length !== 1 ? "s" : ""
+                        } selected`}
                     <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -320,7 +350,7 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
                     <DropdownMenuCheckboxItem
                       key={model.id}
                       checked={selectedModelIds.includes(model.id)}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         handleModelSelection(model.id, checked as boolean)
                       }
                     >
@@ -331,8 +361,8 @@ export default function CreateTestSessionModal({ onSessionCreated }: CreateTestS
               </DropdownMenu>
               {selectedModelIds.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {selectedModelIds.map(modelId => {
-                    const model = availableModels.find(m => m.id === modelId);
+                  {selectedModelIds.map((modelId) => {
+                    const model = availableModels.find((m) => m.id === modelId);
                     return model ? (
                       <span
                         key={modelId}

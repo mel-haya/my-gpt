@@ -10,7 +10,7 @@ import {
   updateTestRunResult,
   updateTestRunStatus,
   getTestRunStatus,
-  evaluateTestResponse
+  evaluateTestResponse,
 } from "@/services/testsService";
 import { getTestProfileWithDetails } from "@/services/testProfilesService";
 import { generateChatCompletionWithToolCalls } from "@/services/chatService";
@@ -33,7 +33,9 @@ export interface SessionRunResult {
   };
 }
 
-export async function runTestSessionAction(profileId: number): Promise<ActionResult<{ testRunId: number }>> {
+export async function runTestSessionAction(
+  profileId: number
+): Promise<ActionResult<{ testRunId: number }>> {
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -60,11 +62,14 @@ export async function runTestSessionAction(profileId: number): Promise<ActionRes
     }
 
     // Create a new test run with profile reference
-    const testRun = await db.insert(testRuns).values({
-      user_id: userId,
-      profile_id: profileId,
-      status: "Running",
-    }).returning();
+    const testRun = await db
+      .insert(testRuns)
+      .values({
+        user_id: userId,
+        profile_id: profileId,
+        status: "Running",
+      })
+      .returning();
 
     if (!testRun[0]) {
       return { success: false, error: "Failed to create test run" };
@@ -73,13 +78,13 @@ export async function runTestSessionAction(profileId: number): Promise<ActionRes
     const testRunId = testRun[0].id;
 
     // Create test run results for all tests in the profile
-    const testIds = profile.tests.map(t => t.test_id);
-    const testRunResultsData = testIds.flatMap(testId =>
-      profile.models.map(model => ({
+    const testIds = profile.tests.map((t) => t.test_id);
+    const testRunResultsData = testIds.flatMap((testId) =>
+      profile.models.map((model) => ({
         test_run_id: testRunId,
         test_id: testId,
         status: "Pending" as const,
-        model_used: model.model_name
+        model_used: model.model_name,
       }))
     );
 
@@ -95,14 +100,15 @@ export async function runTestSessionAction(profileId: number): Promise<ActionRes
 
     revalidatePath("/admin/sessions");
     return { success: true, data: { testRunId } };
-
   } catch (error) {
     console.error("Error running test session:", error);
     return { success: false, error: "Failed to start test session" };
   }
 }
 
-export async function stopTestSessionAction(testRunId: number): Promise<ActionResult> {
+export async function stopTestSessionAction(
+  testRunId: number
+): Promise<ActionResult> {
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -118,14 +124,15 @@ export async function stopTestSessionAction(testRunId: number): Promise<ActionRe
 
     revalidatePath("/admin/sessions");
     return { success: true };
-
   } catch (error) {
     console.error("Error stopping test session:", error);
     return { success: false, error: "Failed to stop test session" };
   }
 }
 
-export async function getSessionRunStatusAction(testRunId: number): Promise<ActionResult<SessionRunResult>> {
+export async function getSessionRunStatusAction(
+  testRunId: number
+): Promise<ActionResult<SessionRunResult>> {
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -161,15 +168,18 @@ export async function getSessionRunStatusAction(testRunId: number): Promise<Acti
       .where(eq(testRunResults.test_run_id, testRunId));
 
     const totalTests = results.length;
-    const completedTests = results.filter(r =>
-      r.status === "Success" || r.status === "Failed"
+    const completedTests = results.filter(
+      (r) => r.status === "Success" || r.status === "Failed"
     ).length;
 
     const resultCounts = {
-      success: results.filter(r => r.status === "Success").length,
-      failed: results.filter(r => r.status === "Failed").length,
-      pending: results.filter(r =>
-        r.status === "Pending" || r.status === "Running" || r.status === "Evaluating"
+      success: results.filter((r) => r.status === "Success").length,
+      failed: results.filter((r) => r.status === "Failed").length,
+      pending: results.filter(
+        (r) =>
+          r.status === "Pending" ||
+          r.status === "Running" ||
+          r.status === "Evaluating"
       ).length,
     };
 
@@ -181,16 +191,17 @@ export async function getSessionRunStatusAction(testRunId: number): Promise<Acti
         totalTests,
         completedTests,
         results: resultCounts,
-      }
+      },
     };
-
   } catch (error) {
     console.error("Error getting session run status:", error);
     return { success: false, error: "Failed to get session status" };
   }
 }
 
-export async function getSessionRunsAction(profileId: number): Promise<ActionResult<SessionRunResult[]>> {
+export async function getSessionRunsAction(
+  profileId: number
+): Promise<ActionResult<SessionRunResult[]>> {
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -225,15 +236,18 @@ export async function getSessionRunsAction(profileId: number): Promise<ActionRes
         .where(eq(testRunResults.test_run_id, run.id));
 
       const totalTests = results.length;
-      const completedTests = results.filter(r =>
-        r.status === "Success" || r.status === "Failed"
+      const completedTests = results.filter(
+        (r) => r.status === "Success" || r.status === "Failed"
       ).length;
 
       const resultCounts = {
-        success: results.filter(r => r.status === "Success").length,
-        failed: results.filter(r => r.status === "Failed").length,
-        pending: results.filter(r =>
-          r.status === "Pending" || r.status === "Running" || r.status === "Evaluating"
+        success: results.filter((r) => r.status === "Success").length,
+        failed: results.filter((r) => r.status === "Failed").length,
+        pending: results.filter(
+          (r) =>
+            r.status === "Pending" ||
+            r.status === "Running" ||
+            r.status === "Evaluating"
         ).length,
       };
 
@@ -247,7 +261,6 @@ export async function getSessionRunsAction(profileId: number): Promise<ActionRes
     }
 
     return { success: true, data: sessionRuns };
-
   } catch (error) {
     console.error("Error getting session runs:", error);
     return { success: false, error: "Failed to get session runs" };
@@ -257,12 +270,21 @@ export async function getSessionRunsAction(profileId: number): Promise<ActionRes
 // Background function to run tests for a profile
 async function runTestsInBackground(
   testRunId: number,
-  tests: { test_id: number; test_name: string; test_prompt: string; }[],
-  models: { id: number; profile_id: number; model_name: string; created_at: Date; }[],
+  tests: { test_id: number; test_prompt: string }[],
+  models: {
+    id: number;
+    profile_id: number;
+    model_name: string;
+    created_at: Date;
+  }[],
   systemPrompt: string
 ) {
   // Helper function with timeout
-  const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+  const withTimeout = <T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    errorMessage: string
+  ): Promise<T> => {
     let timeoutId: NodeJS.Timeout;
     const timeoutPromise = new Promise<T>((_, reject) => {
       timeoutId = setTimeout(() => {
@@ -408,14 +430,18 @@ async function runTestsInBackground(
             evaluation.score,
             selectedModel // Filter by model
           );
-
         } catch (error) {
-          console.error(`Error processing test ${test.test_id} for model ${selectedModel}:`, error);
+          console.error(
+            `Error processing test ${test.test_id} for model ${selectedModel}:`,
+            error
+          );
           await updateTestRunResult(
             testRunId,
             test.test_id,
             "Failed",
-            `Test execution failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+            `Test execution failed: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`,
             undefined,
             undefined,
             selectedModel,
@@ -439,30 +465,33 @@ async function runTestsInBackground(
     if (finalStatus !== "Stopped") {
       await updateTestRunStatus(testRunId, "Done");
     }
-
   } catch (error) {
     console.error("Error in background test execution:", error);
     await updateTestRunStatus(testRunId, "Failed");
   }
 }
 
+export interface TestInProfileDetail {
+  runId: number;
+  runDate: Date;
+  model: string;
+  status: string;
+  score: number | null;
+  explanation: string | null;
+  output: string | null;
+  tokens_cost: number | null;
+  execution_time_ms: number | null;
+}
+
+export interface TestInProfileDetailResult {
+  test: { prompt: string; expected_result: string };
+  results: TestInProfileDetail[];
+}
+
 export async function getTestInProfileDetailsAction(
   profileId: number,
   testId: number
-): Promise<ActionResult<{
-  test: { name: string; prompt: string; expected_result: string };
-  results: {
-    runId: number;
-    runDate: Date;
-    model: string;
-    status: string;
-    score: number | null;
-    explanation: string | null;
-    output: string | null;
-    tokens_cost: number | null;
-    execution_time_ms: number | null;
-  }[];
-}>> {
+): Promise<ActionResult<TestInProfileDetailResult>> {
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -477,7 +506,6 @@ export async function getTestInProfileDetailsAction(
     // 1. Get Test Details
     const test = await db
       .select({
-        name: testsTable.name,
         prompt: testsTable.prompt,
         expected_result: testsTable.expected_result,
       })
@@ -501,7 +529,7 @@ export async function getTestInProfileDetailsAction(
       return { success: true, data: { test: test[0], results: [] } };
     }
 
-    const runIds = runs.map(r => r.id);
+    const runIds = runs.map((r) => r.id);
 
     // 3. Get All Results for these runs and this test
     const allResults = await db
@@ -526,7 +554,7 @@ export async function getTestInProfileDetailsAction(
       .orderBy(desc(testRunResults.created_at));
 
     // 4. Filter to get only the latest result per model
-    const latestResultsMap = new Map<string, typeof allResults[0]>();
+    const latestResultsMap = new Map<string, (typeof allResults)[0]>();
 
     for (const result of allResults) {
       if (result.model && !latestResultsMap.has(result.model)) {
@@ -534,7 +562,7 @@ export async function getTestInProfileDetailsAction(
       }
     }
 
-    const results = Array.from(latestResultsMap.values()).map(r => ({
+    const results = Array.from(latestResultsMap.values()).map((r) => ({
       runId: r.runId!,
       runDate: r.runDate,
       model: r.model!,
@@ -550,10 +578,9 @@ export async function getTestInProfileDetailsAction(
       success: true,
       data: {
         test: test[0],
-        results
-      }
+        results,
+      },
     };
-
   } catch (error) {
     console.error("Error getting test details:", error);
     return { success: false, error: "Failed to get test details" };

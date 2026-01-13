@@ -27,8 +27,19 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Edit, Loader2, Eye, EyeOff, ChevronDown, ChevronRight } from "lucide-react";
-import { updateTestProfileAction, getTestsForSelectionAction, getSystemPromptsForSelectionAction } from "@/app/actions/testProfiles";
+import {
+  Edit,
+  Loader2,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
+import {
+  updateTestProfileAction,
+  getTestsForSelectionAction,
+  getSystemPromptsForSelectionAction,
+} from "@/app/actions/testProfiles";
 import { getAvailableModels, type ModelOption } from "@/app/actions/models";
 import type { SelectTest, SelectSystemPrompt } from "@/lib/db-schema";
 
@@ -41,8 +52,13 @@ interface TestProfileDetails {
   user_id: string;
   created_at: Date;
   updated_at: Date;
-  tests: { test_id: number; test_name: string; test_prompt: string; }[];
-  models: { id: number; profile_id: number; model_name: string; created_at: Date; }[];
+  tests: { test_id: number; test_prompt: string }[];
+  models: {
+    id: number;
+    profile_id: number;
+    model_name: string;
+    created_at: Date;
+  }[];
 }
 
 interface EditTestSessionModalProps {
@@ -52,12 +68,14 @@ interface EditTestSessionModalProps {
 
 export default function EditTestSessionModal({
   profile,
-  onSessionUpdated
+  onSessionUpdated,
 }: EditTestSessionModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [availableTests, setAvailableTests] = useState<SelectTest[]>([]);
-  const [availableSystemPrompts, setAvailableSystemPrompts] = useState<SelectSystemPrompt[]>([]);
+  const [availableSystemPrompts, setAvailableSystemPrompts] = useState<
+    SelectSystemPrompt[]
+  >([]);
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [isTestSectionCollapsed, setIsTestSectionCollapsed] = useState(false);
@@ -73,9 +91,11 @@ export default function EditTestSessionModal({
   useEffect(() => {
     setFormData({
       name: profile.name,
-      selectedSystemPrompt: profile.system_prompt_id ? profile.system_prompt_id.toString() : "",
-      selectedTestIds: profile.tests.map(t => t.test_id),
-      selectedModelIds: profile.models.map(m => m.model_name),
+      selectedSystemPrompt: profile.system_prompt_id
+        ? profile.system_prompt_id.toString()
+        : "",
+      selectedTestIds: profile.tests.map((t) => t.test_id),
+      selectedModelIds: profile.models.map((m) => m.model_name),
     });
   }, [profile]);
 
@@ -88,11 +108,12 @@ export default function EditTestSessionModal({
 
   const loadData = async () => {
     try {
-      const [testsResult, systemPromptsResult, modelsResult] = await Promise.all([
-        getTestsForSelectionAction(),
-        getSystemPromptsForSelectionAction(),
-        getAvailableModels()
-      ]);
+      const [testsResult, systemPromptsResult, modelsResult] =
+        await Promise.all([
+          getTestsForSelectionAction(),
+          getSystemPromptsForSelectionAction(),
+          getAvailableModels(),
+        ]);
 
       if (testsResult.success && testsResult.data) {
         setAvailableTests(testsResult.data);
@@ -110,32 +131,51 @@ export default function EditTestSessionModal({
 
   const handleTestSelection = (testId: number, checked: boolean) => {
     if (checked) {
-      setFormData(prev => ({ ...prev, selectedTestIds: [...prev.selectedTestIds, testId] }));
+      setFormData((prev) => ({
+        ...prev,
+        selectedTestIds: [...prev.selectedTestIds, testId],
+      }));
     } else {
-      setFormData(prev => ({ ...prev, selectedTestIds: prev.selectedTestIds.filter(id => id !== testId) }));
+      setFormData((prev) => ({
+        ...prev,
+        selectedTestIds: prev.selectedTestIds.filter((id) => id !== testId),
+      }));
     }
   };
 
   const handleModelSelection = (modelId: string, checked: boolean) => {
     if (checked) {
-      setFormData(prev => ({ ...prev, selectedModelIds: [...prev.selectedModelIds, modelId] }));
+      setFormData((prev) => ({
+        ...prev,
+        selectedModelIds: [...prev.selectedModelIds, modelId],
+      }));
     } else {
-      setFormData(prev => ({ ...prev, selectedModelIds: prev.selectedModelIds.filter(id => id !== modelId) }));
+      setFormData((prev) => ({
+        ...prev,
+        selectedModelIds: prev.selectedModelIds.filter((id) => id !== modelId),
+      }));
     }
   };
 
   const handleSelectAllTests = () => {
-    setFormData(prev => ({ ...prev, selectedTestIds: availableTests.map(test => test.id) }));
+    setFormData((prev) => ({
+      ...prev,
+      selectedTestIds: availableTests.map((test) => test.id),
+    }));
   };
 
   const handleDeselectAllTests = () => {
-    setFormData(prev => ({ ...prev, selectedTestIds: [] }));
+    setFormData((prev) => ({ ...prev, selectedTestIds: [] }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.selectedSystemPrompt || formData.selectedTestIds.length === 0) {
+    if (
+      !formData.name.trim() ||
+      !formData.selectedSystemPrompt ||
+      formData.selectedTestIds.length === 0
+    ) {
       alert("Please fill in all required fields and select at least one test.");
       return;
     }
@@ -148,7 +188,9 @@ export default function EditTestSessionModal({
     setIsLoading(true);
 
     try {
-      const selectedSystemPromptObj = availableSystemPrompts.find(sp => sp.id.toString() === formData.selectedSystemPrompt);
+      const selectedSystemPromptObj = availableSystemPrompts.find(
+        (sp) => sp.id.toString() === formData.selectedSystemPrompt
+      );
       if (!selectedSystemPromptObj) {
         alert("Selected system prompt not found");
         return;
@@ -175,7 +217,9 @@ export default function EditTestSessionModal({
     }
   };
 
-  const selectedSystemPromptObj = availableSystemPrompts.find(sp => sp.id.toString() === formData.selectedSystemPrompt);
+  const selectedSystemPromptObj = availableSystemPrompts.find(
+    (sp) => sp.id.toString() === formData.selectedSystemPrompt
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -189,19 +233,26 @@ export default function EditTestSessionModal({
         <DialogHeader>
           <DialogTitle>Edit Test Session</DialogTitle>
           <DialogDescription>
-            Update the session configuration including name, system prompt, tests, and model configurations.
+            Update the session configuration including name, system prompt,
+            tests, and model configurations.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-          <form id="edit-session-form" onSubmit={handleSubmit} className="space-y-6">
+          <form
+            id="edit-session-form"
+            onSubmit={handleSubmit}
+            className="space-y-6"
+          >
             {/* Session Name */}
             <div className="space-y-2">
               <Label htmlFor="name">Session Name *</Label>
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
                 placeholder="Enter session name"
                 required
               />
@@ -213,7 +264,12 @@ export default function EditTestSessionModal({
               <div className="flex gap-2">
                 <Select
                   value={formData.selectedSystemPrompt}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, selectedSystemPrompt: value }))}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      selectedSystemPrompt: value,
+                    }))
+                  }
                 >
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Select a system prompt" />
@@ -234,13 +290,19 @@ export default function EditTestSessionModal({
                     onClick={() => setShowPreview(!showPreview)}
                     className="px-3"
                   >
-                    {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPreview ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </Button>
                 )}
               </div>
               {selectedSystemPromptObj && showPreview && (
                 <div className="p-3 bg-gray-50 rounded border">
-                  <div className="text-xs text-gray-600 mb-2 font-medium">Preview:</div>
+                  <div className="text-xs text-gray-600 mb-2 font-medium">
+                    Preview:
+                  </div>
                   <pre className="text-sm text-gray-800 font-mono whitespace-pre-wrap overflow-wrap-break-word">
                     {selectedSystemPromptObj.prompt}
                   </pre>
@@ -251,7 +313,12 @@ export default function EditTestSessionModal({
             {/* Test Selection */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-2 cursor-pointer" onClick={() => setIsTestSectionCollapsed(!isTestSectionCollapsed)}>
+                <Label
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={() =>
+                    setIsTestSectionCollapsed(!isTestSectionCollapsed)
+                  }
+                >
                   {isTestSectionCollapsed ? (
                     <ChevronRight className="h-4 w-4" />
                   ) : (
@@ -259,7 +326,8 @@ export default function EditTestSessionModal({
                   )}
                   Select Tests *
                   <span className="text-sm text-gray-500 font-normal">
-                    ({formData.selectedTestIds.length} of {availableTests.length} selected)
+                    ({formData.selectedTestIds.length} of{" "}
+                    {availableTests.length} selected)
                   </span>
                 </Label>
                 {!isTestSectionCollapsed && availableTests.length > 0 && (
@@ -269,7 +337,10 @@ export default function EditTestSessionModal({
                       variant="outline"
                       size="sm"
                       onClick={handleSelectAllTests}
-                      disabled={formData.selectedTestIds.length === availableTests.length}
+                      disabled={
+                        formData.selectedTestIds.length ===
+                        availableTests.length
+                      }
                     >
                       Select All
                     </Button>
@@ -304,7 +375,7 @@ export default function EditTestSessionModal({
                             htmlFor={`test-${test.id}`}
                             className="text-sm font-medium cursor-pointer"
                           >
-                            {test.name}
+                            Test #{test.id}
                           </Label>
                           <p className="text-xs text-gray-600 mt-1">
                             {test.prompt.substring(0, 100)}
@@ -323,13 +394,12 @@ export default function EditTestSessionModal({
               <Label>Select Models *</Label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between"
-                  >
+                  <Button variant="outline" className="w-full justify-between">
                     {formData.selectedModelIds.length === 0
                       ? "Select models..."
-                      : `${formData.selectedModelIds.length} model${formData.selectedModelIds.length !== 1 ? 's' : ''} selected`}
+                      : `${formData.selectedModelIds.length} model${
+                          formData.selectedModelIds.length !== 1 ? "s" : ""
+                        } selected`}
                     <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -349,8 +419,8 @@ export default function EditTestSessionModal({
               </DropdownMenu>
               {formData.selectedModelIds.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {formData.selectedModelIds.map(modelId => {
-                    const model = availableModels.find(m => m.id === modelId);
+                  {formData.selectedModelIds.map((modelId) => {
+                    const model = availableModels.find((m) => m.id === modelId);
                     return model ? (
                       <span
                         key={modelId}
