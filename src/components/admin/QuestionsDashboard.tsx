@@ -206,7 +206,7 @@ export default function QuestionsDashboard({
 
       // Parse CSV using csv-parse library with semicolon delimiter
       const records = parse(text, {
-        delimiter: ";",
+        delimiter: ",",
         columns: true, // Use first row as headers
         skip_empty_lines: true,
         trim: true,
@@ -220,9 +220,9 @@ export default function QuestionsDashboard({
       // Find column names (case insensitive)
       const headers = Object.keys(records[0]);
       const promptColumn =
-        headers.find((h) => h.toLowerCase().includes("prompt")) || headers[0];
+        headers.find((h) => h.toLowerCase().includes("question")) || headers[0];
       const expectedColumn =
-        headers.find((h) => h.toLowerCase().includes("expected")) || headers[1];
+        headers.find((h) => h.toLowerCase().includes("resultat")) || headers[1];
 
       let successCount = 0;
       let errorCount = 0;
@@ -336,9 +336,8 @@ export default function QuestionsDashboard({
                       <TooltipContent className="max-w-xs">
                         <p>CSV Format:</p>
                         <p>
-                          Headers: <code>prompt;expected_result</code>
+                          <code>question,resultat</code>
                         </p>
-                        <p>Delimiter: Semicolon (;)</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
