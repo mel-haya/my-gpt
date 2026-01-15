@@ -34,15 +34,17 @@ import {
   getTestsForSelectionAction,
   getSystemPromptsForSelectionAction,
 } from "@/app/actions/testProfiles";
-import { getAvailableModels, type ModelOption } from "@/app/actions/models";
+import type { ModelOption } from "@/app/actions/models";
 import type { SelectTest, SelectSystemPrompt } from "@/lib/db-schema";
 
 interface CreateTestSessionModalProps {
   onSessionCreated?: () => void;
+  availableModels: ModelOption[];
 }
 
 export default function CreateTestSessionModal({
   onSessionCreated,
+  availableModels: propAvailableModels,
 }: CreateTestSessionModalProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -50,7 +52,9 @@ export default function CreateTestSessionModal({
   const [availableSystemPrompts, setAvailableSystemPrompts] = useState<
     SelectSystemPrompt[]
   >([]);
-  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>(
+    propAvailableModels || []
+  );
 
   // Form state
   const [name, setName] = useState("");
@@ -59,6 +63,13 @@ export default function CreateTestSessionModal({
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [isTestSectionCollapsed, setIsTestSectionCollapsed] = useState(false);
+
+  // Update internal state if prop changes
+  useEffect(() => {
+    if (propAvailableModels) {
+      setAvailableModels(propAvailableModels);
+    }
+  }, [propAvailableModels]);
 
   // Load data when modal opens
   useEffect(() => {
@@ -69,12 +80,10 @@ export default function CreateTestSessionModal({
 
   const loadData = async () => {
     try {
-      const [testsResult, systemPromptsResult, modelsResult] =
-        await Promise.all([
-          getTestsForSelectionAction(),
-          getSystemPromptsForSelectionAction(),
-          getAvailableModels(),
-        ]);
+      const [testsResult, systemPromptsResult] = await Promise.all([
+        getTestsForSelectionAction(),
+        getSystemPromptsForSelectionAction(),
+      ]);
 
       if (testsResult.success && testsResult.data) {
         setAvailableTests(testsResult.data);
@@ -83,8 +92,6 @@ export default function CreateTestSessionModal({
       if (systemPromptsResult.success && systemPromptsResult.data) {
         setAvailableSystemPrompts(systemPromptsResult.data);
       }
-
-      setAvailableModels(modelsResult);
     } catch (error) {
       console.error("Error loading data:", error);
     }

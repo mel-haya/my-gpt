@@ -34,7 +34,8 @@ export interface SessionRunResult {
 }
 
 export async function runTestSessionAction(
-  profileId: number
+  profileId: number,
+  evaluatorModel: string = "openai/gpt-4o"
 ): Promise<ActionResult<{ testRunId: number }>> {
   try {
     const { userId } = await auth();
@@ -85,6 +86,7 @@ export async function runTestSessionAction(
         test_id: testId,
         status: "Pending" as const,
         model_used: model.model_name,
+        evaluator_model: evaluatorModel,
       }))
     );
 
@@ -95,7 +97,8 @@ export async function runTestSessionAction(
       testRunId,
       profile.tests,
       profile.models,
-      profile.system_prompt ?? ""
+      profile.system_prompt ?? "",
+      evaluatorModel
     ).catch(console.error);
 
     revalidatePath("/admin/sessions");
@@ -277,7 +280,8 @@ async function runTestsInBackground(
     model_name: string;
     created_at: Date;
   }[],
-  systemPrompt: string
+  systemPrompt: string,
+  evaluatorModel = "openai/gpt-4o"
 ) {
   // Helper function with timeout
   const withTimeout = <T>(
@@ -302,8 +306,6 @@ async function runTestsInBackground(
   };
 
   try {
-    const evaluatorModel = "openai/gpt-4o"; // Fixed evaluator model
-
     // Run tests for all models concurrently
     const modelPromises = models.map(async (model) => {
       const selectedModel = model.model_name;

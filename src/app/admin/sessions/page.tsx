@@ -39,7 +39,15 @@ import {
   type SessionRunResult,
   type TestInProfileDetail,
 } from "@/app/actions/testSessions";
+import { getAvailableModels, type ModelOption } from "@/app/actions/models";
 import TestResultsList from "@/components/admin/TestResultsList";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   SelectTestProfile,
   SelectTestProfileWithPrompt,
@@ -88,6 +96,8 @@ export default function SessionsPage() {
   const [currentRunStatus, setCurrentRunStatus] =
     useState<SessionRunResult | null>(null);
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
+  const [evaluatorModel, setEvaluatorModel] = useState("openai/gpt-4o");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<{
     id: number;
@@ -169,6 +179,15 @@ export default function SessionsPage() {
     }
   }, [searchQuery, currentPage]);
 
+  const loadModels = useCallback(async () => {
+    try {
+      const models = await getAvailableModels();
+      setAvailableModels(models);
+    } catch (error) {
+      console.error("Error loading models:", error);
+    }
+  }, []);
+
   const loadSessionRuns = useCallback(async (profileId: number) => {
     setRunsLoading(true);
     try {
@@ -208,7 +227,8 @@ export default function SessionsPage() {
 
   useEffect(() => {
     loadTestProfiles();
-  }, [loadTestProfiles]);
+    loadModels();
+  }, [loadTestProfiles, loadModels]);
 
   const handleDeleteProfile = async (id: number) => {
     const result = await deleteTestProfileAction(id);
@@ -237,7 +257,7 @@ export default function SessionsPage() {
   const handleRunSession = async (profileId: number) => {
     try {
       setRunningSession(profileId);
-      const result = await runTestSessionAction(profileId);
+      const result = await runTestSessionAction(profileId, evaluatorModel);
 
       if (result.success && result.data) {
         // Start polling for status updates
@@ -450,7 +470,12 @@ export default function SessionsPage() {
             <h1 className="text-2xl font-bold">Test Sessions</h1>
             <p className="text-sm text-gray-600">Manage session profiles</p>
           </div>
-          <CreateTestSessionModal onSessionCreated={loadTestProfiles} />
+          <div className="flex items-center gap-2">
+            <CreateTestSessionModal
+              onSessionCreated={loadTestProfiles}
+              availableModels={availableModels}
+            />
+          </div>
         </div>
 
         {/* Search */}
@@ -605,6 +630,26 @@ export default function SessionsPage() {
                 )}
               </div>
               <div className="flex items-center gap-2">
+                <div className="flex gap-1 items-center">
+                  <span className="text-xs text-muted-foreground font-medium ml-1">
+                    Evaluator Model
+                  </span>
+                  <Select
+                    value={evaluatorModel}
+                    onValueChange={setEvaluatorModel}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select Evaluator" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableModels.map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          {model.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 {runningSession === selectedProfile.id ? (
                   <Button
                     onClick={handleStopSession}
