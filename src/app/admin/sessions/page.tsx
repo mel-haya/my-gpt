@@ -217,8 +217,8 @@ export default function SessionsPage() {
   }, []);
 
   const loadProfileDetails = useCallback(
-    async (profileId: number) => {
-      setDetailsLoading(true);
+    async (profileId: number, silent: boolean = false) => {
+      if (!silent) setDetailsLoading(true);
       try {
         const result = await getTestProfileDetailsAction(profileId);
         if (result.success && result.data) {
@@ -233,7 +233,7 @@ export default function SessionsPage() {
       } catch (error) {
         console.error("Error loading profile details:", error);
       } finally {
-        setDetailsLoading(false);
+        if (!silent) setDetailsLoading(false);
       }
     },
     [loadSessionRuns]
@@ -328,7 +328,7 @@ export default function SessionsPage() {
         // Start polling for this run
         const testRunId = result.data.testRunId;
         setRunningSession(selectedProfile.id);
-        pollRunStatus(testRunId);
+        pollRunStatus(testRunId, testId);
 
         // Refresh session runs and test details if expanded
         loadSessionRuns(selectedProfile.id);
@@ -379,8 +379,8 @@ export default function SessionsPage() {
         // Refresh session runs and test details if expanded
         loadSessionRuns(selectedProfile.id);
 
-        // Also refresh profile details to update the "Associated Tests" best scores
-        await loadProfileDetails(selectedProfile.id);
+        // Also refresh profile details to update the "Associated Tests" best scores - SILENTLY
+        await loadProfileDetails(selectedProfile.id, true);
 
         if (expandedTestIds.has(testId)) {
           // Re-fetch details to show updated scores
@@ -416,7 +416,7 @@ export default function SessionsPage() {
   };
 
   const pollRunStatus = useCallback(
-    async (testRunId: number) => {
+    async (testRunId: number, testId?: number) => {
       try {
         const result = await getSessionRunStatusAction(testRunId);
         if (result.success && result.data) {
@@ -424,30 +424,32 @@ export default function SessionsPage() {
 
           // Continue polling if still running
           if (result.data.status === "Running") {
-            setTimeout(() => pollRunStatus(testRunId), 2000); // Poll every 2 seconds
+            setTimeout(() => pollRunStatus(testRunId, testId), 2000); // Poll every 2 seconds
           } else {
             setRunningSession(null);
             setCurrentRunStatus(null);
             // Refresh session runs
             if (selectedProfile) {
               loadSessionRuns(selectedProfile.id);
-              // Also refresh profile details to update the "Associated Tests" best scores
-              loadProfileDetails(selectedProfile.id);
+              // Also refresh profile details to update the "Associated Tests" best scores - SILENTLY
+              loadProfileDetails(selectedProfile.id, true);
 
               // If we are polling because of a single test regeneration,
               // we should also refresh the expanded test details to show the final result
-              const currentExpandedIds = Array.from(expandedTestIds);
-              for (const testId of currentExpandedIds) {
-                // Fetch latest details for each expanded test
+              const idsToRefresh = testId
+                ? [testId]
+                : Array.from(expandedTestIds);
+              for (const id of idsToRefresh) {
+                // Fetch latest details for each test
                 const detailResult = await getTestInProfileDetailsAction(
                   selectedProfile.id,
-                  testId
+                  id
                 );
                 if (detailResult.success && detailResult.data) {
                   const data = detailResult.data;
                   setTestDetailsData((prev) => ({
                     ...prev,
-                    [testId]: {
+                    [id]: {
                       expectedResult: data.test.expected_result,
                       results: data.results,
                     },
