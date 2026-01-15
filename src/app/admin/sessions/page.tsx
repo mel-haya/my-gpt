@@ -314,14 +314,15 @@ export default function SessionsPage() {
     }
   };
 
-  const handleRegenerateTest = async (testId: number) => {
+  const handleRegenerateTest = async (testId: number, model?: string) => {
     if (!selectedProfile) return;
 
     setRegeneratingTests((prev) => new Set(prev).add(testId));
     try {
       const result = await regenerateTestResultAction(
         selectedProfile.id,
-        testId
+        testId,
+        model
       );
       if (result.success && result.data) {
         // Start polling for this run
@@ -943,6 +944,9 @@ export default function SessionsPage() {
                                   }
                                   results={
                                     testDetailsData[test.test_id].results
+                                  }
+                                  onRegenerateModel={(model) =>
+                                    handleRegenerateTest(test.test_id, model)
                                   }
                                 />
                               )}

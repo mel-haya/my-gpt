@@ -703,7 +703,8 @@ export async function getTestInProfileDetailsAction(
 
 export async function regenerateTestResultAction(
   profileId: number,
-  testId: number
+  testId: number,
+  modelUsed?: string
 ): Promise<ActionResult<{ testRunId: number }>> {
   try {
     const { userId } = await auth();
@@ -753,7 +754,18 @@ export async function regenerateTestResultAction(
       return { success: false, error: "Test profile not found" };
     }
 
-    if (profile.models.length === 0) {
+    let modelsToRun = profile.models;
+    if (modelUsed) {
+      modelsToRun = profile.models.filter((m) => m.model_name === modelUsed);
+      if (modelsToRun.length === 0) {
+        return {
+          success: false,
+          error: `Model ${modelUsed} not found in profile`,
+        };
+      }
+    }
+
+    if (modelsToRun.length === 0) {
       return { success: false, error: "No models configured for this profile" };
     }
 
@@ -773,7 +785,7 @@ export async function regenerateTestResultAction(
 
     // 4. Ensure test run results exist for all models (or create them)
     // We want to "add or replace"
-    for (const model of profile.models) {
+    for (const model of modelsToRun) {
       const existingResult = await db
         .select()
         .from(testRunResults)
@@ -804,7 +816,7 @@ export async function regenerateTestResultAction(
     runSingleTestForProfileInBackground(
       testRunId,
       { test_id: test[0].id, test_prompt: test[0].prompt },
-      profile.models,
+      modelsToRun,
       profile.system_prompt ?? ""
     ).catch(console.error);
 

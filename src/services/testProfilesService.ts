@@ -18,7 +18,7 @@ import type {
   InsertTestProfileModel,
   SelectTestProfileModel,
 } from "@/lib/db-schema";
-import { eq, and, ilike, count, sum, avg, sql, inArray } from "drizzle-orm";
+import { eq, and, ilike, count, sql, inArray } from "drizzle-orm";
 
 export interface TestProfilesResponse {
   testProfiles: SelectTestProfileWithPrompt[];
@@ -405,27 +405,55 @@ export async function getTestProfileWithDetails(
     .where(eq(testProfileTests.profile_id, id));
 
   // Get all results for all runs of this profile to find the best model for each test
+  // Sort by created_at DESC to easily pick the latest result for each model
   const allResults = await db
     .select({
       test_id: testRunResults.test_id,
       model_name: testRunResults.model_used,
       score: testRunResults.score,
       created_at: testRunResults.created_at,
+      tokens_cost: testRunResults.tokens_cost,
     })
     .from(testRuns)
     .innerJoin(testRunResults, eq(testRuns.id, testRunResults.test_run_id))
-    .where(eq(testRuns.profile_id, id));
+    .where(eq(testRuns.profile_id, id))
+    .orderBy(sql`${testRunResults.created_at} DESC`);
+
+  // Map to store latest result for each (test_id, model_name)
+  const latestResultsMap = new Map<
+    string,
+    {
+      test_id: number;
+      model: string;
+      score: number | null;
+      cost: number | null;
+    }
+  >();
+
+  for (const res of allResults) {
+    const key = `${res.test_id}-${res.model_name}`;
+    if (!latestResultsMap.has(key)) {
+      latestResultsMap.set(key, {
+        test_id: res.test_id,
+        model: res.model_name || "N/A",
+        score: res.score,
+        cost: res.tokens_cost,
+      });
+    }
+  }
+
+  const latestResults = Array.from(latestResultsMap.values());
 
   const bestResultsMap = new Map<number, { model: string; score: number }>();
 
-  // Group results by test and find the highest score (using the latest result if scores are tied)
-  for (const res of allResults) {
+  // Group latest results by test and find the highest score
+  for (const res of latestResults) {
     if (res.score === null || res.score === undefined) continue;
 
     const existing = bestResultsMap.get(res.test_id);
     if (!existing || res.score >= existing.score) {
       bestResultsMap.set(res.test_id, {
-        model: res.model_name || "N/A",
+        model: res.model,
         score: res.score,
       });
     }
@@ -443,17 +471,15 @@ export async function getTestProfileWithDetails(
     .from(testProfileModels)
     .where(eq(testProfileModels.profile_id, id));
 
-  // Get aggregated metrics (total cost and average score)
-  const metricsResult = await db
-    .select({
-      total_cost: sum(testRunResults.tokens_cost),
-      avg_score: avg(testRunResults.score),
-    })
-    .from(testRuns)
-    .innerJoin(testRunResults, eq(testRuns.id, testRunResults.test_run_id))
-    .where(eq(testRuns.profile_id, id));
-
-  const metrics = metricsResult[0];
+  // Get aggregated metrics using ONLY the latest results
+  const validScores = latestResults.filter(
+    (r) => r.score !== null && r.score !== undefined
+  ) as { score: number }[];
+  const totalCost = latestResults.reduce((sum, r) => sum + (r.cost || 0), 0);
+  const avgScore =
+    validScores.length > 0
+      ? validScores.reduce((sum, r) => sum + r.score, 0) / validScores.length
+      : null;
 
   return {
     id: profile.id,
@@ -467,13 +493,7 @@ export async function getTestProfileWithDetails(
     updated_at: profile.updated_at,
     tests: testsWithBest,
     models: profileModels,
-    total_tokens_cost:
-      metrics?.total_cost !== null && metrics?.total_cost !== undefined
-        ? Number(metrics.total_cost)
-        : 0,
-    average_score:
-      metrics?.avg_score !== null && metrics?.avg_score !== undefined
-        ? Number(metrics.avg_score)
-        : null,
+    total_tokens_cost: totalCost,
+    average_score: avgScore,
   };
 }
