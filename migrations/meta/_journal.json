@@ -246,6 +246,13 @@
       "when": 1768490934827,
       "tag": "0034_open_shape",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1768508135442,
+      "tag": "0035_cooing_black_tom",
+      "breakpoints": true
     }
   ]
 }

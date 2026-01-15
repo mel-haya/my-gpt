@@ -27,12 +27,18 @@ export interface TestProfilesResponse {
   currentPage: number;
 }
 
+export interface ManualTest {
+  prompt: string;
+  expected_result: string;
+}
+
 export interface CreateTestProfileData {
   name: string;
   system_prompt_id: number;
   user_id: string;
   test_ids: number[];
   model_configs: string[];
+  manual_tests?: ManualTest[];
 }
 
 export interface UpdateTestProfileData {
@@ -40,6 +46,7 @@ export interface UpdateTestProfileData {
   system_prompt_id: number;
   test_ids: number[];
   model_configs: string[];
+  manual_tests?: ManualTest[];
 }
 
 export interface DetailedTestProfile {
@@ -53,14 +60,17 @@ export interface DetailedTestProfile {
   created_at: Date;
   updated_at: Date;
   tests: {
-    test_id: number;
+    test_id: number | string;
     test_prompt: string;
+    expected_result: string;
     best_model: string | null;
     best_score: number | null;
+    is_manual?: boolean;
   }[];
   models: SelectTestProfileModel[];
   total_tokens_cost: number | null;
   average_score: number | null;
+  manual_tests: ManualTest[] | null;
 }
 
 export async function getTestProfiles(options?: {
@@ -73,25 +83,26 @@ export async function getTestProfiles(options?: {
   const offset = (page - 1) * limit;
 
   // Build base query with join to get system prompt text and latest status
-  let baseQuery = db
-    .select({
-      id: testProfiles.id,
-      name: testProfiles.name,
-      system_prompt_id: testProfiles.system_prompt_id,
-      system_prompt: systemPrompts.prompt,
-      user_id: testProfiles.user_id,
-      username: users.username,
-      created_at: testProfiles.created_at,
-      updated_at: testProfiles.updated_at,
-      latest_status: testRuns.status,
-    })
-    .from(testProfiles)
-    .leftJoin(
-      systemPrompts,
-      eq(testProfiles.system_prompt_id, systemPrompts.id)
-    )
-    .innerJoin(users, eq(testProfiles.user_id, users.id))
-    .leftJoin(testRuns, eq(testProfiles.id, testRuns.profile_id));
+  // The actual query is executed using sql`...` below, so this Drizzle query is unused.
+  // let baseQuery = db
+  //   .select({
+  //     id: testProfiles.id,
+  //     name: testProfiles.name,
+  //     system_prompt_id: testProfiles.system_prompt_id,
+  //     system_prompt: systemPrompts.prompt,
+  //     user_id: testProfiles.user_id,
+  //     username: users.username,
+  //     created_at: testProfiles.created_at,
+  //     updated_at: testProfiles.updated_at,
+  //     latest_status: testRuns.status,
+  //   })
+  //   .from(testProfiles)
+  //   .leftJoin(
+  //     systemPrompts,
+  //     eq(testProfiles.system_prompt_id, systemPrompts.id)
+  //   )
+  //   .innerJoin(users, eq(testProfiles.user_id, users.id))
+  //   .leftJoin(testRuns, eq(testProfiles.id, testRuns.profile_id));
 
   let countQuery = db
     .select({ count: count() })
@@ -101,7 +112,7 @@ export async function getTestProfiles(options?: {
   // Add search filter if provided
   if (options?.search) {
     const searchCondition = ilike(testProfiles.name, `%${options.search}%`);
-    baseQuery = baseQuery.where(searchCondition) as typeof baseQuery;
+    // baseQuery = baseQuery.where(searchCondition) as typeof baseQuery; // This line used the unused baseQuery
     countQuery = countQuery.where(searchCondition) as typeof countQuery;
   }
 
@@ -181,6 +192,7 @@ export async function createTestProfile(
         name: data.name,
         system_prompt_id: data.system_prompt_id,
         user_id: data.user_id,
+        manual_tests: data.manual_tests,
       })
       .returning();
 
@@ -278,6 +290,7 @@ export async function updateTestProfile(
       .set({
         name: data.name,
         system_prompt_id: data.system_prompt_id,
+        manual_tests: data.manual_tests,
         updated_at: new Date(),
       })
       .where(eq(testProfiles.id, id))
@@ -377,6 +390,7 @@ export async function getTestProfileWithDetails(
       updated_at: testProfiles.updated_at,
       system_prompt: systemPrompts.prompt,
       system_prompt_name: systemPrompts.name,
+      manual_tests: testProfiles.manual_tests,
     })
     .from(testProfiles)
     .leftJoin(
@@ -399,6 +413,7 @@ export async function getTestProfileWithDetails(
       test_id: testProfileTests.test_id,
       // test_name removed
       test_prompt: tests.prompt,
+      expected_result: tests.expected_result,
     })
     .from(testProfileTests)
     .innerJoin(tests, eq(testProfileTests.test_id, tests.id))
@@ -413,17 +428,19 @@ export async function getTestProfileWithDetails(
       score: testRunResults.score,
       created_at: testRunResults.created_at,
       tokens_cost: testRunResults.tokens_cost,
+      manual_prompt: testRunResults.manual_prompt, // Include manual_prompt
     })
     .from(testRuns)
     .innerJoin(testRunResults, eq(testRuns.id, testRunResults.test_run_id))
     .where(eq(testRuns.profile_id, id))
     .orderBy(sql`${testRunResults.created_at} DESC`);
 
-  // Map to store latest result for each (test_id, model_name)
+  // Map to store latest result for each (test_id, model_name) OR (manual_prompt, model_name)
   const latestResultsMap = new Map<
     string,
     {
-      test_id: number;
+      test_id: number | null;
+      manual_prompt: string | null;
       model: string;
       score: number | null;
       cost: number | null;
@@ -431,10 +448,13 @@ export async function getTestProfileWithDetails(
   >();
 
   for (const res of allResults) {
-    const key = `${res.test_id}-${res.model_name}`;
+    const key = res.test_id
+      ? `id-${res.test_id}-${res.model_name}`
+      : `manual-${res.manual_prompt}-${res.model_name}`; // Use res.manual_prompt
     if (!latestResultsMap.has(key)) {
       latestResultsMap.set(key, {
         test_id: res.test_id,
+        manual_prompt: res.manual_prompt, // Store manual_prompt
         model: res.model_name || "N/A",
         score: res.score,
         cost: res.tokens_cost,
@@ -444,15 +464,20 @@ export async function getTestProfileWithDetails(
 
   const latestResults = Array.from(latestResultsMap.values());
 
-  const bestResultsMap = new Map<number, { model: string; score: number }>();
+  const bestResultsMap = new Map<string, { model: string; score: number }>();
 
   // Group latest results by test and find the highest score
-  for (const res of latestResults) {
+  for (const [key, res] of latestResultsMap.entries()) {
     if (res.score === null || res.score === undefined) continue;
 
-    const existing = bestResultsMap.get(res.test_id);
+    // key is either `id-{testId}-{model}` or `manual-{prompt}-{model}`
+    // We want a testKey that is either `id-{testId}` or `manual-{prompt}`
+    const parts = key.split("-");
+    const testKey = parts.slice(0, 2).join("-");
+
+    const existing = bestResultsMap.get(testKey);
     if (!existing || res.score >= existing.score) {
-      bestResultsMap.set(res.test_id, {
+      bestResultsMap.set(testKey, {
         model: res.model,
         score: res.score,
       });
@@ -461,9 +486,25 @@ export async function getTestProfileWithDetails(
 
   const testsWithBest = profileTests.map((t) => ({
     ...t,
-    best_model: bestResultsMap.get(t.test_id)?.model || null,
-    best_score: bestResultsMap.get(t.test_id)?.score ?? null,
+    best_model: bestResultsMap.get(`id-${t.test_id}`)?.model || null,
+    best_score: bestResultsMap.get(`id-${t.test_id}`)?.score ?? null,
   }));
+
+  // Merge manual tests
+  const manualTests =
+    (profile.manual_tests as { prompt: string; expected_result: string }[]) ||
+    [];
+  const manualTestsMapped = manualTests.map((t) => {
+    const testKey = `manual-${t.prompt}`;
+    return {
+      test_id: testKey,
+      test_prompt: t.prompt,
+      expected_result: t.expected_result,
+      best_model: bestResultsMap.get(testKey)?.model || null,
+      best_score: bestResultsMap.get(testKey)?.score ?? null,
+      is_manual: true,
+    };
+  });
 
   // Get associated model configurations
   const profileModels = await db
@@ -491,9 +532,10 @@ export async function getTestProfileWithDetails(
     username: profile.username,
     created_at: profile.created_at,
     updated_at: profile.updated_at,
-    tests: testsWithBest,
+    tests: [...testsWithBest, ...manualTestsMapped],
     models: profileModels,
     total_tokens_cost: totalCost,
     average_score: avgScore,
+    manual_tests: profile.manual_tests as ManualTest[] | null,
   };
 }

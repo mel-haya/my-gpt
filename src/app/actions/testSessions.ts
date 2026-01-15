@@ -12,7 +12,10 @@ import {
   getTestRunStatus,
   evaluateTestResponse,
 } from "@/services/testsService";
-import { getTestProfileWithDetails } from "@/services/testProfilesService";
+import {
+  getTestProfileWithDetails,
+  type ManualTest,
+} from "@/services/testProfilesService";
 import { generateChatCompletionWithToolCalls } from "@/services/chatService";
 
 export type ActionResult<T = void> = {
@@ -79,23 +82,43 @@ export async function runTestSessionAction(
     const testRunId = testRun[0].id;
 
     // Create test run results for all tests in the profile
-    const testIds = profile.tests.map((t) => t.test_id);
-    const testRunResultsData = testIds.flatMap((testId) =>
-      profile.models.map((model) => ({
-        test_run_id: testRunId,
-        test_id: testId,
-        status: "Pending" as const,
-        model_used: model.model_name,
-        evaluator_model: evaluatorModel,
-      }))
-    );
+    const testRunResultsData: (typeof testRunResults.$inferInsert)[] = [];
+
+    for (const test of profile.tests) {
+      for (const model of profile.models) {
+        if (typeof test.test_id === "number") {
+          testRunResultsData.push({
+            test_run_id: testRunId,
+            test_id: test.test_id,
+            status: "Pending" as const,
+            model_used: model.model_name,
+            evaluator_model: evaluatorModel,
+          });
+        } else if (typeof test.test_id === "string" && test.is_manual) {
+          testRunResultsData.push({
+            test_run_id: testRunId,
+            test_id: null,
+            manual_prompt: test.test_prompt,
+            manual_expected_result: test.expected_result,
+            status: "Pending" as const,
+            model_used: model.model_name,
+            evaluator_model: evaluatorModel,
+          });
+        }
+      }
+    }
 
     await db.insert(testRunResults).values(testRunResultsData);
 
     // Start running tests in the background
     runTestsInBackground(
       testRunId,
-      profile.tests,
+      profile.tests.map((t) => ({
+        test_id: typeof t.test_id === "number" ? t.test_id : null,
+        test_prompt: t.test_prompt,
+        expected_result: t.expected_result,
+        is_manual: t.is_manual,
+      })),
       profile.models,
       profile.system_prompt ?? "",
       evaluatorModel
@@ -273,7 +296,12 @@ export async function getSessionRunsAction(
 // Background function to run tests for a profile
 async function runTestsInBackground(
   testRunId: number,
-  tests: { test_id: number; test_prompt: string }[],
+  tests: {
+    test_id: number | null;
+    test_prompt: string;
+    expected_result: string;
+    is_manual?: boolean;
+  }[],
   models: {
     id: number;
     profile_id: number;
@@ -319,6 +347,7 @@ async function runTestsInBackground(
             await updateTestRunResult({
               testRunId,
               testId: test.test_id,
+              manualPrompt: test.is_manual ? test.test_prompt : undefined,
               status: "Failed",
               output: "Test execution stopped by user",
               modelUsed: selectedModel,
@@ -331,6 +360,7 @@ async function runTestsInBackground(
           await updateTestRunResult({
             testRunId,
             testId: test.test_id,
+            manualPrompt: test.is_manual ? test.test_prompt : undefined,
             status: "Running",
             modelUsed: selectedModel,
             filterModel: selectedModel,
@@ -371,6 +401,7 @@ async function runTestsInBackground(
           await updateTestRunResult({
             testRunId,
             testId: test.test_id,
+            manualPrompt: test.is_manual ? test.test_prompt : undefined,
             status: "Evaluating",
             output: chatResponse.text,
             toolCalls: chatResponse.toolCalls,
@@ -382,22 +413,25 @@ async function runTestsInBackground(
           });
 
           // Get the expected result for evaluation
-          const testDetails = await db
-            .select({
-              expected_result: testsTable.expected_result,
-            })
-            .from(testsTable)
-            .where(eq(testsTable.id, test.test_id))
-            .limit(1);
+          const testDetails = test.is_manual
+            ? { expected_result: test.expected_result }
+            : await db
+                .select({
+                  expected_result: testsTable.expected_result,
+                })
+                .from(testsTable)
+                .where(eq(testsTable.id, test.test_id as number))
+                .limit(1)
+                .then((res) => res[0]);
 
-          if (!testDetails[0]) {
+          if (!testDetails) {
             throw new Error("Test details not found");
           }
 
           // Evaluate the response
           const evaluation = await evaluateTestResponse(
             test.test_prompt,
-            testDetails[0].expected_result,
+            testDetails.expected_result,
             chatResponse.text.trim(),
             evaluatorModel
           );
@@ -406,6 +440,7 @@ async function runTestsInBackground(
           await updateTestRunResult({
             testRunId,
             testId: test.test_id,
+            manualPrompt: test.is_manual ? test.test_prompt : undefined,
             status: evaluation.status,
             output: chatResponse.text,
             explanation: evaluation.explanation,
@@ -419,12 +454,15 @@ async function runTestsInBackground(
           });
         } catch (error) {
           console.error(
-            `Error processing test ${test.test_id} for model ${selectedModel}:`,
+            `Error processing test ${
+              test.test_id || test.test_prompt
+            } for model ${selectedModel}:`,
             error
           );
           await updateTestRunResult({
             testRunId,
             testId: test.test_id,
+            manualPrompt: test.is_manual ? test.test_prompt : undefined,
             status: "Failed",
             output: `Test execution failed: ${
               error instanceof Error ? error.message : "Unknown error"
@@ -466,7 +504,7 @@ async function runTestsInBackground(
 
 export async function reEvaluateTestResultAction(
   profileId: number,
-  testId: number,
+  testId: number | string,
   evaluatorModel: string
 ): Promise<ActionResult> {
   try {
@@ -481,17 +519,44 @@ export async function reEvaluateTestResultAction(
     }
 
     // 1. Get test details
-    const test = await db
-      .select({
-        prompt: testsTable.prompt,
-        expected_result: testsTable.expected_result,
-      })
-      .from(testsTable)
-      .where(eq(testsTable.id, testId))
-      .limit(1);
+    let testInfo: {
+      prompt: string;
+      expected_result: string;
+      is_manual: boolean;
+    };
+    if (typeof testId === "number") {
+      const test = await db
+        .select({
+          prompt: testsTable.prompt,
+          expected_result: testsTable.expected_result,
+        })
+        .from(testsTable)
+        .where(eq(testsTable.id, testId))
+        .limit(1);
 
-    if (!test[0]) {
-      return { success: false, error: "Test not found" };
+      if (!test[0]) {
+        return { success: false, error: "Test not found" };
+      }
+      testInfo = { ...test[0], is_manual: false };
+    } else {
+      // Manual test: testId is `manual-{prompt}`
+      const prompt = testId.startsWith("manual-")
+        ? testId.substring(7)
+        : testId;
+
+      const profile = await getTestProfileWithDetails(profileId);
+      const manualTest = (
+        profile?.manual_tests as { prompt: string; expected_result: string }[]
+      )?.find((t) => t.prompt === prompt);
+
+      if (!manualTest) {
+        return { success: false, error: "Manual test not found" };
+      }
+      testInfo = {
+        prompt: manualTest.prompt,
+        expected_result: manualTest.expected_result,
+        is_manual: true,
+      };
     }
 
     // 2. Get the latest results for this test in this profile (per model)
@@ -508,15 +573,14 @@ export async function reEvaluateTestResultAction(
     const runIds = runs.map((r) => r.id);
 
     // Get all results for this test in these runs
+    const whereCondition = testInfo.is_manual
+      ? eq(testRunResults.manual_prompt, testInfo.prompt)
+      : eq(testRunResults.test_id, testId as number);
+
     const allResults = await db
       .select()
       .from(testRunResults)
-      .where(
-        and(
-          eq(testRunResults.test_id, testId),
-          inArray(testRunResults.test_run_id, runIds)
-        )
-      )
+      .where(and(whereCondition, inArray(testRunResults.test_run_id, runIds)))
       .orderBy(desc(testRunResults.created_at));
 
     // Filter to get latest per model
@@ -542,13 +606,15 @@ export async function reEvaluateTestResultAction(
         await updateTestRunResult({
           testRunId: result.test_run_id!,
           testId: result.test_id,
+          manualPrompt: result.manual_prompt || undefined,
           status: "Evaluating",
           filterModel: result.model_used!,
+          evaluatorModel,
         });
 
         const evaluation = await evaluateTestResponse(
-          test[0].prompt,
-          test[0].expected_result,
+          testInfo.prompt,
+          testInfo.expected_result,
           result.output,
           evaluatorModel
         );
@@ -556,10 +622,12 @@ export async function reEvaluateTestResultAction(
         await updateTestRunResult({
           testRunId: result.test_run_id!,
           testId: result.test_id,
+          manualPrompt: result.manual_prompt || undefined,
           status: evaluation.status,
           explanation: evaluation.explanation,
           score: evaluation.score,
           filterModel: result.model_used!,
+          evaluatorModel,
         });
       } catch (error) {
         console.error(`Error re-evaluating result ${result.id}:`, error);
@@ -568,9 +636,11 @@ export async function reEvaluateTestResultAction(
         await updateTestRunResult({
           testRunId: result.test_run_id!,
           testId: result.test_id,
+          manualPrompt: result.manual_prompt || undefined,
           status: "Failed",
           explanation: "Re-evaluation failed",
           filterModel: result.model_used!,
+          evaluatorModel,
         });
       }
     });
@@ -595,6 +665,7 @@ export interface TestInProfileDetail {
   output: string | null;
   tokens_cost: number | null;
   execution_time_ms: number | null;
+  evaluator_model: string | null; // Added evaluator_model
 }
 
 export interface TestInProfileDetailResult {
@@ -604,7 +675,7 @@ export interface TestInProfileDetailResult {
 
 export async function getTestInProfileDetailsAction(
   profileId: number,
-  testId: number
+  testId: number | string
 ): Promise<ActionResult<TestInProfileDetailResult>> {
   try {
     const { userId } = await auth();
@@ -618,17 +689,45 @@ export async function getTestInProfileDetailsAction(
     }
 
     // 1. Get Test Details
-    const test = await db
-      .select({
-        prompt: testsTable.prompt,
-        expected_result: testsTable.expected_result,
-      })
-      .from(testsTable)
-      .where(eq(testsTable.id, testId))
-      .limit(1);
+    let testInfo: {
+      prompt: string;
+      expected_result: string;
+      is_manual: boolean;
+    };
 
-    if (!test[0]) {
-      return { success: false, error: "Test not found" };
+    if (typeof testId === "number") {
+      const test = await db
+        .select({
+          prompt: testsTable.prompt,
+          expected_result: testsTable.expected_result,
+        })
+        .from(testsTable)
+        .where(eq(testsTable.id, testId))
+        .limit(1);
+
+      if (!test[0]) {
+        return { success: false, error: "Test not found" };
+      }
+      testInfo = { ...test[0], is_manual: false };
+    } else {
+      // Manual test: testId is `manual-{prompt}`
+      const prompt = testId.startsWith("manual-")
+        ? testId.substring(7)
+        : testId;
+
+      const profile = await getTestProfileWithDetails(profileId);
+      const manualTest = (
+        profile?.manual_tests as { prompt: string; expected_result: string }[]
+      )?.find((t) => t.prompt === prompt);
+
+      if (!manualTest) {
+        return { success: false, error: "Manual test not found" };
+      }
+      testInfo = {
+        prompt: manualTest.prompt,
+        expected_result: manualTest.expected_result,
+        is_manual: true,
+      };
     }
 
     // 2. Get All Runs for this Profile
@@ -640,12 +739,16 @@ export async function getTestInProfileDetailsAction(
       .where(eq(testRuns.profile_id, profileId));
 
     if (runs.length === 0) {
-      return { success: true, data: { test: test[0], results: [] } };
+      return { success: true, data: { test: testInfo, results: [] } };
     }
 
     const runIds = runs.map((r) => r.id);
 
     // 3. Get All Results for these runs and this test
+    const whereCondition = testInfo.is_manual
+      ? eq(testRunResults.manual_prompt, testInfo.prompt)
+      : eq(testRunResults.test_id, testId as number);
+
     const allResults = await db
       .select({
         runId: testRunResults.test_run_id,
@@ -657,14 +760,10 @@ export async function getTestInProfileDetailsAction(
         output: testRunResults.output,
         tokens_cost: testRunResults.tokens_cost,
         execution_time_ms: testRunResults.execution_time_ms,
+        evaluator_model: testRunResults.evaluator_model, // Add evaluator_model here
       })
       .from(testRunResults)
-      .where(
-        and(
-          eq(testRunResults.test_id, testId),
-          inArray(testRunResults.test_run_id, runIds)
-        )
-      )
+      .where(and(whereCondition, inArray(testRunResults.test_run_id, runIds)))
       .orderBy(desc(testRunResults.created_at));
 
     // 4. Filter to get only the latest result per model
@@ -676,22 +775,23 @@ export async function getTestInProfileDetailsAction(
       }
     }
 
-    const results = Array.from(latestResultsMap.values()).map((r) => ({
-      runId: r.runId!,
-      runDate: r.runDate,
-      model: r.model!,
-      status: r.status,
-      score: r.score,
-      explanation: r.explanation,
-      output: r.output,
-      tokens_cost: r.tokens_cost,
-      execution_time_ms: r.execution_time_ms,
+    const results = Array.from(latestResultsMap.values()).map((res) => ({
+      runId: res.runId!,
+      runDate: res.runDate,
+      model: res.model!,
+      status: res.status,
+      score: res.score,
+      explanation: res.explanation,
+      output: res.output,
+      tokens_cost: res.tokens_cost,
+      execution_time_ms: res.execution_time_ms,
+      evaluator_model: res.evaluator_model,
     }));
 
     return {
       success: true,
       data: {
-        test: test[0],
+        test: testInfo,
         results,
       },
     };
@@ -703,7 +803,7 @@ export async function getTestInProfileDetailsAction(
 
 export async function regenerateTestResultAction(
   profileId: number,
-  testId: number,
+  testId: number | string,
   modelUsed?: string
 ): Promise<ActionResult<{ testRunId: number }>> {
   try {
@@ -717,7 +817,52 @@ export async function regenerateTestResultAction(
       return { success: false, error: "Admin access required" };
     }
 
-    // 1. Get the latest test run for this profile
+    // 1. Get profile and test info
+    const profile = await getTestProfileWithDetails(profileId);
+    if (!profile) return { success: false, error: "Profile not found" };
+
+    let testInfo: {
+      test_id: number | null;
+      test_prompt: string;
+      expected_result: string;
+      is_manual: boolean;
+    };
+
+    if (typeof testId === "number") {
+      const test = await db
+        .select({
+          prompt: testsTable.prompt,
+          expected_result: testsTable.expected_result,
+        })
+        .from(testsTable)
+        .where(eq(testsTable.id, testId))
+        .limit(1);
+
+      if (!test[0]) return { success: false, error: "Test not found" };
+      testInfo = {
+        test_id: testId,
+        test_prompt: test[0].prompt,
+        expected_result: test[0].expected_result,
+        is_manual: false,
+      };
+    } else {
+      const prompt = testId.startsWith("manual-")
+        ? testId.substring(7)
+        : testId;
+      const manualTest = (profile.manual_tests as ManualTest[])?.find(
+        (t) => t.prompt === prompt
+      );
+      if (!manualTest)
+        return { success: false, error: "Manual test not found" };
+      testInfo = {
+        test_id: null,
+        test_prompt: manualTest.prompt,
+        expected_result: manualTest.expected_result,
+        is_manual: true,
+      };
+    }
+
+    // 2. Get the latest test run for this profile
     const testRun = await db
       .select()
       .from(testRuns)
@@ -748,60 +893,44 @@ export async function regenerateTestResultAction(
       await updateTestRunStatus(testRunId, "Running");
     }
 
-    // 2. Get profile details (models and system prompt)
-    const profile = await getTestProfileWithDetails(profileId);
-    if (!profile) {
-      return { success: false, error: "Test profile not found" };
-    }
-
-    let modelsToRun = profile.models;
-    if (modelUsed) {
-      modelsToRun = profile.models.filter((m) => m.model_name === modelUsed);
-      if (modelsToRun.length === 0) {
-        return {
-          success: false,
-          error: `Model ${modelUsed} not found in profile`,
-        };
-      }
-    }
+    // 3. Determine models to run
+    const modelsToRun = modelUsed
+      ? profile.models.filter((m) => m.model_name === modelUsed)
+      : profile.models;
 
     if (modelsToRun.length === 0) {
       return { success: false, error: "No models configured for this profile" };
     }
 
-    // 3. Get test details
-    const test = await db
-      .select({
-        id: testsTable.id,
-        prompt: testsTable.prompt,
-      })
-      .from(testsTable)
-      .where(eq(testsTable.id, testId))
-      .limit(1);
-
-    if (!test[0]) {
-      return { success: false, error: "Test not found" };
-    }
-
-    // 4. Ensure test run results exist for all models (or create them)
+    // 4. Ensure test run results exist for all models (or create/update them)
     // We want to "add or replace"
     for (const model of modelsToRun) {
+      const whereConditions = testInfo.is_manual
+        ? and(
+            eq(testRunResults.test_run_id, testRunId),
+            eq(testRunResults.manual_prompt, testInfo.test_prompt),
+            eq(testRunResults.model_used, model.model_name)
+          )
+        : and(
+            eq(testRunResults.test_run_id, testRunId),
+            eq(testRunResults.test_id, testInfo.test_id as number),
+            eq(testRunResults.model_used, model.model_name)
+          );
+
       const existingResult = await db
         .select()
         .from(testRunResults)
-        .where(
-          and(
-            eq(testRunResults.test_run_id, testRunId),
-            eq(testRunResults.test_id, testId),
-            eq(testRunResults.model_used, model.model_name)
-          )
-        )
+        .where(whereConditions)
         .limit(1);
 
       if (existingResult.length === 0) {
         await db.insert(testRunResults).values({
           test_run_id: testRunId,
-          test_id: testId,
+          test_id: testInfo.test_id,
+          manual_prompt: testInfo.is_manual ? testInfo.test_prompt : null,
+          manual_expected_result: testInfo.is_manual
+            ? testInfo.expected_result
+            : null,
           model_used: model.model_name,
           status: "Pending",
         });
@@ -815,9 +944,9 @@ export async function regenerateTestResultAction(
     // 5. Run tests in background
     runSingleTestForProfileInBackground(
       testRunId,
-      { test_id: test[0].id, test_prompt: test[0].prompt },
+      testId,
       modelsToRun,
-      profile.system_prompt ?? ""
+      profile.system_prompt || ""
     ).catch(console.error);
 
     revalidatePath("/admin/sessions");
@@ -830,7 +959,7 @@ export async function regenerateTestResultAction(
 
 async function runSingleTestForProfileInBackground(
   testRunId: number,
-  test: { test_id: number; test_prompt: string },
+  testId: number | string, // Changed from `test` object to `testId`
   models: { model_name: string }[],
   systemPrompt: string
 ) {
@@ -858,11 +987,60 @@ async function runSingleTestForProfileInBackground(
   };
 
   try {
+    // Get test info (expected result, is_manual)
+    let testInfo:
+      | { is_manual: boolean; expected_result: string | null; prompt: string }
+      | undefined;
+
+    if (typeof testId === "string" && testId.startsWith("manual-")) {
+      // For manual tests, we need to find it in the profile's manual_tests
+      const testRun = await db
+        .select()
+        .from(testRuns)
+        .where(eq(testRuns.id, testRunId))
+        .limit(1);
+      if (!testRun[0] || !testRun[0].profile_id) return; // Should not happen if testRunId is valid
+
+      const profile = await getTestProfileWithDetails(testRun[0].profile_id);
+      if (!profile) return; // Should not happen
+
+      const manualTest = profile.manual_tests?.find(
+        (t) => `manual-${t.prompt}` === testId
+      );
+      if (!manualTest) return; // Manual test not found
+
+      testInfo = {
+        is_manual: true,
+        expected_result: manualTest.expected_result,
+        prompt: manualTest.prompt,
+      };
+    } else {
+      const tests = await db
+        .select()
+        .from(testsTable)
+        .where(eq(testsTable.id, Number(testId)))
+        .limit(1);
+
+      if (tests[0]) {
+        testInfo = {
+          is_manual: false,
+          expected_result: tests[0].expected_result,
+          prompt: tests[0].prompt,
+        };
+      }
+    }
+
+    if (!testInfo) {
+      console.error("Test details not found for testId:", testId);
+      return;
+    }
+
     const modelPromises = models.map(async (model) => {
       const selectedModel = model.model_name;
       const baseResult = {
         testRunId,
-        testId: test.test_id,
+        testId: testInfo.is_manual ? null : Number(testId), // Use null for manual test_id
+        manualPrompt: testInfo.is_manual ? testInfo.prompt : undefined,
         modelUsed: selectedModel,
         filterModel: selectedModel,
       };
@@ -876,9 +1054,9 @@ async function runSingleTestForProfileInBackground(
           generateChatCompletionWithToolCalls({
             messages: [
               {
-                id: `test-${test.test_id}-${Date.now()}`,
+                id: `test-${testId}-${Date.now()}`,
                 role: "user",
-                parts: [{ type: "text", text: test.test_prompt }],
+                parts: [{ type: "text", text: testInfo.prompt }],
               },
             ],
             model: selectedModel,
@@ -908,20 +1086,17 @@ async function runSingleTestForProfileInBackground(
         await updateTestRunResult({ ...evaluationData, status: "Evaluating" });
 
         // Get expected result
-        const testDetails = await db
-          .select({ expected_result: testsTable.expected_result })
-          .from(testsTable)
-          .where(eq(testsTable.id, test.test_id))
-          .limit(1);
+        // The testInfo already contains the expected_result, no need to re-fetch
+        const expectedResult = testInfo.expected_result;
 
-        if (!testDetails[0]) {
-          throw new Error("Test details not found");
+        if (expectedResult === undefined || expectedResult === null) {
+          throw new Error("Expected result not found");
         }
 
         // Evaluate
         const evaluation = await evaluateTestResponse(
-          test.test_prompt,
-          testDetails[0].expected_result,
+          testInfo.prompt,
+          expectedResult,
           chatResponse.text.trim(),
           evaluatorModel
         );
@@ -935,7 +1110,7 @@ async function runSingleTestForProfileInBackground(
         });
       } catch (error) {
         console.error(
-          `Error processing test ${test.test_id} for model ${selectedModel}:`,
+          `Error processing test ${testId} for model ${selectedModel}:`,
           error
         );
         await updateTestRunResult({
@@ -953,12 +1128,12 @@ async function runSingleTestForProfileInBackground(
     // If the test run was "Done", keep it "Done". If it was "Running", maybe it's still running other tests?
     // We don't want to accidentally mark the whole run as "Done" if other tests are still pending.
     // However, if we just created it, we should mark it "Done" after completion.
-    const run = await db
+    const testRun = await db
       .select()
       .from(testRuns)
       .where(eq(testRuns.id, testRunId))
       .limit(1);
-    if (run[0]?.status === "Running") {
+    if (testRun[0]?.status === "Running") {
       // Check if any other results are still pending
       const pendingResults = await db
         .select({ count: count() })

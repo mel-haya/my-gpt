@@ -34,6 +34,7 @@ import {
   EyeOff,
   ChevronDown,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 import {
   updateTestProfileAction,
@@ -52,10 +53,16 @@ interface TestProfileDetails {
   user_id: string;
   created_at: Date;
   updated_at: Date;
-  tests: { test_id: number; test_prompt: string }[];
+  tests: {
+    test_id: number | string;
+    test_prompt: string;
+    expected_result: string;
+    is_manual?: boolean;
+  }[];
+  manual_tests: { prompt: string; expected_result: string }[] | null;
   models: {
     id: number;
-    profile_id: number;
+    profile_id: number | null;
     model_name: string;
     created_at: Date;
   }[];
@@ -80,23 +87,28 @@ export default function EditTestSessionModal({
   const [showPreview, setShowPreview] = useState(false);
   const [isTestSectionCollapsed, setIsTestSectionCollapsed] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    selectedSystemPrompt: "",
-    selectedTestIds: [] as number[],
-    selectedModelIds: [] as string[],
-  });
+  const [sessionName, setSessionName] = useState("");
+  const [selectedPromptId, setSelectedPromptId] = useState("");
+  const [selectedTestIds, setSelectedTestIds] = useState<number[]>([]);
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [manualTests, setManualTests] = useState<
+    { prompt: string; expected_result: string }[]
+  >([]);
+  const [newManualPrompt, setNewManualPrompt] = useState("");
+  const [newManualExpected, setNewManualExpected] = useState("");
 
   // Reset form data when profile changes
   useEffect(() => {
-    setFormData({
-      name: profile.name,
-      selectedSystemPrompt: profile.system_prompt_id
-        ? profile.system_prompt_id.toString()
-        : "",
-      selectedTestIds: profile.tests.map((t) => t.test_id),
-      selectedModelIds: profile.models.map((m) => m.model_name),
-    });
+    if (profile) {
+      setSessionName(profile.name);
+      setSelectedPromptId(
+        profile.system_prompt_id ? profile.system_prompt_id.toString() : ""
+      );
+      setSelectedTestIds(profile.tests.map((t) => Number(t.test_id)));
+      setSelectedModels(profile.models.map((m) => m.model_name));
+      setManualTests(profile.manual_tests || []);
+    }
+    loadData();
   }, [profile]);
 
   // Load data when modal opens
@@ -131,56 +143,59 @@ export default function EditTestSessionModal({
 
   const handleTestSelection = (testId: number, checked: boolean) => {
     if (checked) {
-      setFormData((prev) => ({
-        ...prev,
-        selectedTestIds: [...prev.selectedTestIds, testId],
-      }));
+      setSelectedTestIds((prev) => [...prev, testId]);
     } else {
-      setFormData((prev) => ({
-        ...prev,
-        selectedTestIds: prev.selectedTestIds.filter((id) => id !== testId),
-      }));
+      setSelectedTestIds((prev) => prev.filter((id) => id !== testId));
     }
   };
 
   const handleModelSelection = (modelId: string, checked: boolean) => {
     if (checked) {
-      setFormData((prev) => ({
-        ...prev,
-        selectedModelIds: [...prev.selectedModelIds, modelId],
-      }));
+      setSelectedModels((prev) => [...prev, modelId]);
     } else {
-      setFormData((prev) => ({
-        ...prev,
-        selectedModelIds: prev.selectedModelIds.filter((id) => id !== modelId),
-      }));
+      setSelectedModels((prev) => prev.filter((id) => id !== modelId));
     }
   };
 
   const handleSelectAllTests = () => {
-    setFormData((prev) => ({
-      ...prev,
-      selectedTestIds: availableTests.map((test) => test.id),
-    }));
+    setSelectedTestIds(availableTests.map((test) => test.id));
   };
 
   const handleDeselectAllTests = () => {
-    setFormData((prev) => ({ ...prev, selectedTestIds: [] }));
+    setSelectedTestIds([]);
+  };
+
+  const handleAddManualTest = () => {
+    if (newManualPrompt.trim() && newManualExpected.trim()) {
+      setManualTests((prev) => [
+        ...prev,
+        {
+          prompt: newManualPrompt.trim(),
+          expected_result: newManualExpected.trim(),
+        },
+      ]);
+      setNewManualPrompt("");
+      setNewManualExpected("");
+    }
+  };
+
+  const handleRemoveManualTest = (index: number) => {
+    setManualTests((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (
-      !formData.name.trim() ||
-      !formData.selectedSystemPrompt ||
-      formData.selectedTestIds.length === 0
+      !sessionName.trim() ||
+      !selectedPromptId ||
+      selectedTestIds.length === 0
     ) {
       alert("Please fill in all required fields and select at least one test.");
       return;
     }
 
-    if (formData.selectedModelIds.length === 0) {
+    if (selectedModels.length === 0) {
       alert("Please select at least one model.");
       return;
     }
@@ -189,7 +204,7 @@ export default function EditTestSessionModal({
 
     try {
       const selectedSystemPromptObj = availableSystemPrompts.find(
-        (sp) => sp.id.toString() === formData.selectedSystemPrompt
+        (sp) => sp.id.toString() === selectedPromptId
       );
       if (!selectedSystemPromptObj) {
         alert("Selected system prompt not found");
@@ -197,10 +212,11 @@ export default function EditTestSessionModal({
       }
 
       const result = await updateTestProfileAction(profile.id, {
-        name: formData.name.trim(),
-        system_prompt_id: selectedSystemPromptObj.id,
-        test_ids: formData.selectedTestIds,
-        model_configs: formData.selectedModelIds,
+        name: sessionName,
+        system_prompt_id: Number(selectedPromptId),
+        test_ids: selectedTestIds,
+        model_configs: selectedModels,
+        manual_tests: manualTests,
       });
 
       if (result.success) {
@@ -216,9 +232,8 @@ export default function EditTestSessionModal({
       setIsLoading(false);
     }
   };
-
   const selectedSystemPromptObj = availableSystemPrompts.find(
-    (sp) => sp.id.toString() === formData.selectedSystemPrompt
+    (sp) => sp.id.toString() === selectedPromptId
   );
 
   return (
@@ -249,10 +264,8 @@ export default function EditTestSessionModal({
               <Label htmlFor="name">Session Name *</Label>
               <Input
                 id="name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
+                value={sessionName}
+                onChange={(e) => setSessionName(e.target.value)}
                 placeholder="Enter session name"
                 required
               />
@@ -263,13 +276,8 @@ export default function EditTestSessionModal({
               <Label htmlFor="system-prompt">System Prompt *</Label>
               <div className="flex gap-2">
                 <Select
-                  value={formData.selectedSystemPrompt}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      selectedSystemPrompt: value,
-                    }))
-                  }
+                  value={selectedPromptId}
+                  onValueChange={setSelectedPromptId}
                 >
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Select a system prompt" />
@@ -326,8 +334,8 @@ export default function EditTestSessionModal({
                   )}
                   Select Tests *
                   <span className="text-sm text-gray-500 font-normal">
-                    ({formData.selectedTestIds.length} of{" "}
-                    {availableTests.length} selected)
+                    ({selectedTestIds.length} of {availableTests.length}{" "}
+                    selected)
                   </span>
                 </Label>
                 {!isTestSectionCollapsed && availableTests.length > 0 && (
@@ -338,8 +346,7 @@ export default function EditTestSessionModal({
                       size="sm"
                       onClick={handleSelectAllTests}
                       disabled={
-                        formData.selectedTestIds.length ===
-                        availableTests.length
+                        selectedTestIds.length === availableTests.length
                       }
                     >
                       Select All
@@ -349,7 +356,7 @@ export default function EditTestSessionModal({
                       variant="outline"
                       size="sm"
                       onClick={handleDeselectAllTests}
-                      disabled={formData.selectedTestIds.length === 0}
+                      disabled={selectedTestIds.length === 0}
                     >
                       Deselect All
                     </Button>
@@ -365,7 +372,7 @@ export default function EditTestSessionModal({
                       <div key={test.id} className="flex items-start space-x-2">
                         <Checkbox
                           id={`test-${test.id}`}
-                          checked={formData.selectedTestIds.includes(test.id)}
+                          checked={selectedTestIds.includes(test.id)}
                           onCheckedChange={(checked) =>
                             handleTestSelection(test.id, checked as boolean)
                           }
@@ -396,10 +403,10 @@ export default function EditTestSessionModal({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-full justify-between">
-                    {formData.selectedModelIds.length === 0
+                    {selectedModels.length === 0
                       ? "Select models..."
-                      : `${formData.selectedModelIds.length} model${
-                          formData.selectedModelIds.length !== 1 ? "s" : ""
+                      : `${selectedModels.length} model${
+                          selectedModels.length !== 1 ? "s" : ""
                         } selected`}
                     <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
@@ -408,7 +415,7 @@ export default function EditTestSessionModal({
                   {availableModels.map((model) => (
                     <DropdownMenuCheckboxItem
                       key={model.id}
-                      checked={formData.selectedModelIds.includes(model.id)}
+                      checked={selectedModels.includes(model.id)}
                       onCheckedChange={(checked) =>
                         handleModelSelection(model.id, checked as boolean)
                       }
@@ -418,9 +425,9 @@ export default function EditTestSessionModal({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              {formData.selectedModelIds.length > 0 && (
+              {selectedModels.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {formData.selectedModelIds.map((modelId) => {
+                  {selectedModels.map((modelId) => {
                     const model = availableModels.find((m) => m.id === modelId);
                     return model ? (
                       <span
@@ -440,6 +447,72 @@ export default function EditTestSessionModal({
                   })}
                 </div>
               )}
+            </div>
+
+            {/* Manual Tests Section */}
+            <div className="space-y-4 pt-4 border-t border-gray-800">
+              <Label className="text-sm font-medium text-gray-300">
+                Manual Tests
+              </Label>
+              <div className="space-y-3">
+                <div className="grid gap-2">
+                  <Input
+                    placeholder="New Test Prompt"
+                    value={newManualPrompt}
+                    onChange={(e) => setNewManualPrompt(e.target.value)}
+                    className="bg-neutral-900 border-gray-700 text-white"
+                  />
+                  <Input
+                    placeholder="Expected Result"
+                    value={newManualExpected}
+                    onChange={(e) => setNewManualExpected(e.target.value)}
+                    className="bg-neutral-900 border-gray-700 text-white"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAddManualTest}
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-gray-600 bg-gray-800 text-white hover:bg-gray-700"
+                  >
+                    Add Manual Test
+                  </Button>
+                </div>
+
+                {manualTests.length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Added Manual Tests ({manualTests.length})
+                    </p>
+                    <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
+                      {manualTests.map((test, index) => (
+                        <div
+                          key={index}
+                          className="flex items-start justify-between p-2 bg-neutral-900 border border-gray-800 rounded group"
+                        >
+                          <div className="flex-1 min-w-0 mr-2">
+                            <p className="text-xs font-medium text-white truncate">
+                              {test.prompt}
+                            </p>
+                            <p className="text-[10px] text-gray-500 truncate">
+                              Exp: {test.expected_result}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={() => handleRemoveManualTest(index)}
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </form>
         </div>

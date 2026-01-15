@@ -15,6 +15,7 @@ import {
   sql,
   isNotNull,
   ne,
+  SQL,
 } from "drizzle-orm";
 import { generateChatCompletionWithToolCalls } from "@/services/chatService";
 import { generateObject } from "ai";
@@ -22,7 +23,8 @@ import { z } from "zod";
 
 export interface UpdateTestRunResultParams {
   testRunId: number;
-  testId: number;
+  testId?: number | null;
+  manualPrompt?: string;
   status: "Running" | "Success" | "Failed" | "Evaluating" | "Pending";
   output?: string;
   explanation?: string;
@@ -33,6 +35,7 @@ export interface UpdateTestRunResultParams {
   executionTimeMs?: number;
   score?: number;
   filterModel?: string;
+  evaluatorModel?: string;
 }
 
 export interface TestWithUser extends SelectTest {
@@ -51,14 +54,20 @@ export type TestRunResultWithTest = SelectTestRunResult;
 
 export interface IndividualTestResult {
   id: number;
-  test_id: number;
+  test_run_id?: number | null;
+  test_id: number | null;
+  manual_prompt: string | null;
+  manual_expected_result: string | null;
   output: string | null;
   explanation: string | null;
   score: number | null;
   tool_calls: unknown;
-  status: string;
+  model_used?: string | null;
+  evaluator_model?: string | null;
+  system_prompt?: string | null;
   tokens_cost: number | null;
   execution_time_ms: number | null;
+  status: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -304,12 +313,14 @@ export async function getTestRunsForTest(
         result_tool_calls: testRunResults.tool_calls,
         result_model_used: testRunResults.model_used,
         result_system_prompt: testRunResults.system_prompt,
+        result_manual_prompt: testRunResults.manual_prompt,
+        result_manual_expected_result: testRunResults.manual_expected_result,
         result_tokens_cost: testRunResults.tokens_cost,
         result_execution_time_ms: testRunResults.execution_time_ms,
         result_status: testRunResults.status,
         result_created_at: testRunResults.created_at,
         result_updated_at: testRunResults.updated_at,
-        // test_name removed
+        result_evaluator_model: testRunResults.evaluator_model,
       })
       .from(testRunResults)
       .innerJoin(testRuns, eq(testRunResults.test_run_id, testRuns.id))
@@ -356,7 +367,9 @@ export async function getTestRunsForTest(
         status: row.result_status,
         created_at: row.result_created_at,
         updated_at: row.result_updated_at,
-        // test_name removed
+        manual_prompt: row.result_manual_prompt,
+        manual_expected_result: row.result_manual_expected_result,
+        evaluator_model: row.result_evaluator_model,
       });
     }
 
@@ -374,11 +387,16 @@ async function getLatestIndividualTestResult(
     const result = await db
       .select({
         id: testRunResults.id,
+        test_run_id: testRunResults.test_run_id,
         test_id: testRunResults.test_id,
+        manual_prompt: testRunResults.manual_prompt,
+        manual_expected_result: testRunResults.manual_expected_result,
         output: testRunResults.output,
         explanation: testRunResults.explanation,
         score: testRunResults.score,
         tool_calls: testRunResults.tool_calls,
+        model_used: testRunResults.model_used,
+        evaluator_model: testRunResults.evaluator_model,
         tokens_cost: testRunResults.tokens_cost,
         execution_time_ms: testRunResults.execution_time_ms,
         status: testRunResults.status,
@@ -591,6 +609,7 @@ export async function createAllTestRunResults(
 export async function updateTestRunResult({
   testRunId,
   testId,
+  manualPrompt,
   status,
   output,
   explanation,
@@ -601,28 +620,35 @@ export async function updateTestRunResult({
   executionTimeMs,
   score,
   filterModel,
+  evaluatorModel,
 }: UpdateTestRunResultParams) {
+  const whereConditions = [
+    eq(testRunResults.test_run_id, testRunId),
+    filterModel ? eq(testRunResults.model_used, filterModel) : undefined,
+  ];
+
+  if (testId !== undefined && testId !== null) {
+    whereConditions.push(eq(testRunResults.test_id, testId as number));
+  } else if (manualPrompt) {
+    whereConditions.push(eq(testRunResults.manual_prompt, manualPrompt));
+  }
+
   const [updatedResult] = await db
     .update(testRunResults)
     .set({
-      status,
-      output,
-      explanation,
-      score,
+      status: status,
+      output: output,
+      explanation: explanation,
+      score: score,
       tool_calls: toolCalls,
       model_used: modelUsed,
       system_prompt: systemPrompt,
       tokens_cost: tokensCost,
       execution_time_ms: executionTimeMs,
+      evaluator_model: evaluatorModel,
       updated_at: new Date(),
     })
-    .where(
-      and(
-        eq(testRunResults.test_run_id, testRunId),
-        eq(testRunResults.test_id, testId),
-        filterModel ? eq(testRunResults.model_used, filterModel) : undefined
-      )
-    )
+    .where(and(...whereConditions.filter((c): c is SQL => c !== undefined)))
     .returning();
   return updatedResult;
 }

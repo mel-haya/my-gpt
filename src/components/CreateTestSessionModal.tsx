@@ -28,7 +28,14 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Eye, EyeOff, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronRight,
+  Trash2,
+} from "lucide-react";
 import {
   createTestProfileAction,
   getTestsForSelectionAction,
@@ -61,6 +68,11 @@ export default function CreateTestSessionModal({
   const [selectedSystemPrompt, setSelectedSystemPrompt] = useState("");
   const [selectedTestIds, setSelectedTestIds] = useState<number[]>([]);
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+  const [manualTests, setManualTests] = useState<
+    { prompt: string; expected_result: string }[]
+  >([]);
+  const [newManualPrompt, setNewManualPrompt] = useState("");
+  const [newManualExpected, setNewManualExpected] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [isTestSectionCollapsed, setIsTestSectionCollapsed] = useState(false);
 
@@ -126,6 +138,27 @@ export default function CreateTestSessionModal({
     setSelectedSystemPrompt("");
     setSelectedTestIds([]);
     setSelectedModelIds([]);
+    setManualTests([]);
+    setNewManualPrompt("");
+    setNewManualExpected("");
+  };
+
+  const handleAddManualTest = () => {
+    if (newManualPrompt.trim() && newManualExpected.trim()) {
+      setManualTests((prev) => [
+        ...prev,
+        {
+          prompt: newManualPrompt.trim(),
+          expected_result: newManualExpected.trim(),
+        },
+      ]);
+      setNewManualPrompt("");
+      setNewManualExpected("");
+    }
+  };
+
+  const handleRemoveManualTest = (index: number) => {
+    setManualTests((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -154,9 +187,10 @@ export default function CreateTestSessionModal({
 
       const result = await createTestProfileAction({
         name: name.trim(),
-        system_prompt_id: selectedSystemPromptObj.id,
+        system_prompt_id: Number(selectedSystemPrompt),
         test_ids: selectedTestIds,
         model_configs: selectedModelIds,
+        manual_tests: manualTests,
       });
 
       if (result.success) {
@@ -389,6 +423,72 @@ export default function CreateTestSessionModal({
                   })}
                 </div>
               )}
+            </div>
+
+            {/* Manual Tests Section */}
+            <div className="space-y-4 pt-4 border-t border-gray-800">
+              <Label className="text-sm font-medium text-gray-300">
+                Manual Tests
+              </Label>
+              <div className="space-y-3">
+                <div className="grid gap-2">
+                  <Input
+                    placeholder="New Question eg: What is the capital of France?  "
+                    value={newManualPrompt}
+                    onChange={(e) => setNewManualPrompt(e.target.value)}
+                    className="bg-neutral-900 border-gray-700 text-white"
+                  />
+                  <Input
+                    placeholder="Expected Result eg: Paris"
+                    value={newManualExpected}
+                    onChange={(e) => setNewManualExpected(e.target.value)}
+                    className="bg-neutral-900 border-gray-700 text-white"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAddManualTest}
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-gray-600 bg-gray-800 text-white hover:bg-gray-700"
+                  >
+                    Add Manual Test
+                  </Button>
+                </div>
+
+                {manualTests.length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Added Manual Tests ({manualTests.length})
+                    </p>
+                    <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
+                      {manualTests.map((test, index) => (
+                        <div
+                          key={index}
+                          className="flex items-start justify-between p-2 bg-neutral-900 border border-gray-800 rounded group"
+                        >
+                          <div className="flex-1 min-w-0 mr-2">
+                            <p className="text-xs font-medium text-white truncate">
+                              {test.prompt}
+                            </p>
+                            <p className="text-[10px] text-gray-500 truncate">
+                              Exp: {test.expected_result}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={() => handleRemoveManualTest(index)}
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </form>
         </div>

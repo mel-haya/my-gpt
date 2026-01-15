@@ -26,6 +26,7 @@ interface TestResult {
   output: string | null;
   tokens_cost: number | null;
   execution_time_ms: number | null;
+  evaluator_model: string | null;
 }
 
 interface TestResultsListProps {
@@ -200,7 +201,7 @@ export default function TestResultsList({
                   )}
 
                   {/* Metrics */}
-                  <div className="flex items-center gap-3 text-xs text-gray-500 border-l pl-3 ml-1 hidden md:flex">
+                  <div className="flex items-center gap-3 text-xs text-gray-500 border-l pl-3 ml-1 md:flex">
                     <span
                       className="flex items-center gap-1"
                       title="Token Cost"
@@ -216,6 +217,13 @@ export default function TestResultsList({
                       {formatTime(result.execution_time_ms)}
                     </span>
                   </div>
+
+                  {/* Evaluator Model */}
+                  {result.evaluator_model && (
+                    <span className="text-[10px] text-gray-400 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded sm:block hidden">
+                      Eva: {result.evaluator_model.split("/").pop()}
+                    </span>
+                  )}
 
                   {/* Date */}
                   <span className="text-xs text-gray-400 hidden sm:block">

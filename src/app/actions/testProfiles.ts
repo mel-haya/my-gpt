@@ -15,6 +15,7 @@ import {
   TestProfilesResponse,
   UpdateTestProfileData,
   DetailedTestProfile,
+  ManualTest,
 } from "@/services/testProfilesService";
 import type {
   SelectTestProfile,
@@ -62,6 +63,7 @@ export async function createTestProfileAction(data: {
   system_prompt_id: number;
   test_ids: number[];
   model_configs: string[];
+  manual_tests?: ManualTest[];
 }): Promise<ActionResult<SelectTestProfile>> {
   try {
     const { userId } = await auth();
@@ -104,6 +106,7 @@ export async function updateTestProfileAction(
     system_prompt_id: number;
     test_ids: number[];
     model_configs: string[];
+    manual_tests?: ManualTest[];
   }
 ): Promise<ActionResult<SelectTestProfile>> {
   try {

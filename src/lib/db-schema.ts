@@ -182,18 +182,19 @@ export const testRunResults = pgTable(
   {
     id: serial("id").primaryKey(),
     test_run_id: integer("test_run_id").references(() => testRuns.id),
-    test_id: integer("test_id")
-      .notNull()
-      .references(() => tests.id),
+    test_id: integer("test_id").references(() => tests.id),
     output: text("output"),
     explanation: text("explanation"),
     score: integer("score"), // Added score field for evaluation scores (1-10)
     tool_calls: jsonb("tool_calls"),
     model_used: text("model_used"),
     system_prompt: text("system_prompt"),
+    manual_prompt: text("manual_prompt"),
+    manual_expected_result: text("manual_expected_result"),
     tokens_cost: real("tokens_cost"), // Changed from integer to real to store dollar amounts
     execution_time_ms: integer("execution_time_ms"),
     status: testResultStatusEnum("status").notNull().default("Running"),
+    evaluator_model: text("evaluator_model"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -232,6 +233,7 @@ export const testProfiles = pgTable(
       () => systemPrompts.id,
       { onDelete: "set null" }
     ),
+    manual_tests: jsonb("manual_tests"),
     user_id: text("user_id")
       .notNull()
       .references(() => users.id),

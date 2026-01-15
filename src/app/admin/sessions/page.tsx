@@ -39,7 +39,7 @@ import {
   regenerateTestResultAction,
   reEvaluateTestResultAction,
   type SessionRunResult,
-  type TestInProfileDetail,
+  type TestInProfileDetailResult,
 } from "@/app/actions/testSessions";
 import { getAvailableModels, type ModelOption } from "@/app/actions/models";
 import TestResultsList from "@/components/admin/TestResultsList";
@@ -50,43 +50,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type {
-  SelectTestProfile,
-  SelectTestProfileWithPrompt,
-} from "@/lib/db-schema";
-
-interface TestProfileDetails {
-  id: number;
-  name: string;
-  system_prompt_id: number | null;
-  system_prompt: string | null;
-  system_prompt_name?: string | null;
-  user_id: string;
-  username: string;
-  created_at: Date;
-  updated_at: Date;
-  tests: {
-    test_id: number;
-    test_prompt: string;
-    best_model: string | null;
-    best_score: number | null;
-  }[];
-  models: {
-    id: number;
-    profile_id: number;
-    model_name: string;
-    created_at: Date;
-  }[];
-  total_tokens_cost: number | null;
-  average_score: number | null;
-}
+import type { SelectTestProfileWithPrompt } from "@/lib/db-schema";
+import type { DetailedTestProfile } from "@/services/testProfilesService";
 
 export default function SessionsPage() {
   const [testProfiles, setTestProfiles] = useState<
     SelectTestProfileWithPrompt[]
   >([]);
   const [selectedProfile, setSelectedProfile] =
-    useState<TestProfileDetails | null>(null);
+    useState<DetailedTestProfile | null>(null);
+  const [selectedTestId, setSelectedTestId] = useState<number | string | null>(
+    null
+  );
   const [sessionRuns, setSessionRuns] = useState<SessionRunResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -107,21 +82,15 @@ export default function SessionsPage() {
   } | null>(null);
 
   // State for inline test details (expanded cards)
-  const [expandedTestIds, setExpandedTestIds] = useState<Set<number>>(
-    new Set()
-  );
-  const [loadingTestDetails, setLoadingTestDetails] = useState<Set<number>>(
-    new Set()
-  );
-  const [regeneratingTests, setRegeneratingTests] = useState<Set<number>>(
-    new Set()
-  );
-  const [reEvaluatingTests, setReEvaluatingTests] = useState<Set<number>>(
-    new Set()
-  );
-  const [testDetailsData, setTestDetailsData] = useState<
-    Record<number, { expectedResult: string; results: TestInProfileDetail[] }>
-  >({});
+  const [testDetailsData, setTestDetailsData] =
+    useState<TestInProfileDetailResult | null>(null);
+  const [testDetailsLoading, setTestDetailsLoading] = useState(false);
+  const [regeneratingTests, setRegeneratingTests] = useState<
+    Set<number | string>
+  >(new Set());
+  const [reEvaluatingTests, setReEvaluatingTests] = useState<
+    Set<number | string>
+  >(new Set());
 
   const sortedTests = useMemo(() => {
     if (!selectedProfile?.tests) return [];
@@ -132,51 +101,39 @@ export default function SessionsPage() {
     });
   }, [selectedProfile?.tests]);
 
-  const handleToggleTestDetails = async (testId: number) => {
-    // Toggle expanded state
-    setExpandedTestIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(testId)) {
-        next.delete(testId);
-      } else {
-        next.add(testId);
-      }
-      return next;
-    });
-
-    // If opening and no data, fetch it
-    if (
-      !expandedTestIds.has(testId) &&
-      !testDetailsData[testId] &&
-      selectedProfile
-    ) {
-      setLoadingTestDetails((prev) => new Set(prev).add(testId));
+  const loadTestDetails = useCallback(
+    async (testId: number | string) => {
+      if (!selectedProfile) return;
+      setTestDetailsLoading(true);
       try {
         const result = await getTestInProfileDetailsAction(
           selectedProfile.id,
           testId
         );
         if (result.success && result.data) {
-          const data = result.data;
-          setTestDetailsData((prev) => ({
-            ...prev,
-            [testId]: {
-              expectedResult: data.test.expected_result,
-              results: data.results,
-            },
-          }));
+          setTestDetailsData(result.data);
         }
       } catch (error) {
         console.error("Error loading test details:", error);
       } finally {
-        setLoadingTestDetails((prev) => {
-          const next = new Set(prev);
-          next.delete(testId);
-          return next;
-        });
+        setTestDetailsLoading(false);
       }
-    }
-  };
+    },
+    [selectedProfile]
+  );
+
+  const handleToggleTestDetails = useCallback(
+    (testId: number | string) => {
+      if (selectedTestId === testId) {
+        setSelectedTestId(null);
+        setTestDetailsData(null); // Clear data when collapsing
+      } else {
+        setSelectedTestId(testId);
+        loadTestDetails(testId);
+      }
+    },
+    [selectedTestId, loadTestDetails]
+  );
 
   const loadTestProfiles = useCallback(async () => {
     setLoading(true);
@@ -261,10 +218,10 @@ export default function SessionsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const handleSelectProfile = async (profile: SelectTestProfile) => {
+  const handleSelectProfile = async (profile: SelectTestProfileWithPrompt) => {
     // Clear previous details to avoid showing them on the new profile
-    setTestDetailsData({});
-    setExpandedTestIds(new Set());
+    setTestDetailsData(null);
+    setSelectedTestId(null);
     await loadProfileDetails(profile.id);
   };
 
@@ -314,48 +271,34 @@ export default function SessionsPage() {
     }
   };
 
-  const handleRegenerateTest = async (testId: number, model?: string) => {
+  const handleRegenerateTest = async (
+    testId: number | string,
+    modelUsed?: string
+  ) => {
     if (!selectedProfile) return;
-
     setRegeneratingTests((prev) => new Set(prev).add(testId));
+    setRunningSession(selectedProfile.id);
     try {
       const result = await regenerateTestResultAction(
         selectedProfile.id,
         testId,
-        model
+        modelUsed
       );
       if (result.success && result.data) {
-        // Start polling for this run
-        const testRunId = result.data.testRunId;
-        setRunningSession(selectedProfile.id);
-        pollRunStatus(testRunId, testId);
+        // Start polling for status updates
+        pollRunStatus(result.data.testRunId, testId);
 
-        // Refresh session runs and test details if expanded
-        loadSessionRuns(selectedProfile.id);
-        if (expandedTestIds.has(testId)) {
-          // Re-fetch details to show "Running" status
-          const profileId = selectedProfile.id;
-          const detailResult = await getTestInProfileDetailsAction(
-            profileId,
-            testId
-          );
-          if (detailResult.success && detailResult.data) {
-            const data = detailResult.data;
-            setTestDetailsData((prev) => ({
-              ...prev,
-              [testId]: {
-                expectedResult: data.test.expected_result,
-                results: data.results,
-              },
-            }));
-          }
+        // Reload details if this is the currently expanded test
+        if (selectedTestId === testId) {
+          loadTestDetails(testId);
         }
+        loadProfileDetails(selectedProfile.id);
       } else {
-        alert(result.error || "Failed to regenerate test");
+        setRunningSession(null);
       }
     } catch (error) {
       console.error("Error regenerating test:", error);
-      alert("Failed to regenerate test");
+      setRunningSession(null);
     } finally {
       setRegeneratingTests((prev) => {
         const next = new Set(prev);
@@ -365,47 +308,23 @@ export default function SessionsPage() {
     }
   };
 
-  const handleReEvaluateTest = async (testId: number) => {
+  const handleReEvaluateTest = async (testId: number | string) => {
     if (!selectedProfile) return;
-
     setReEvaluatingTests((prev) => new Set(prev).add(testId));
     try {
       const result = await reEvaluateTestResultAction(
         selectedProfile.id,
         testId,
-        evaluatorModel
+        "openai/gpt-4o"
       );
       if (result.success) {
-        // Refresh session runs and test details if expanded
-        loadSessionRuns(selectedProfile.id);
-
-        // Also refresh profile details to update the "Associated Tests" best scores - SILENTLY
-        await loadProfileDetails(selectedProfile.id, true);
-
-        if (expandedTestIds.has(testId)) {
-          // Re-fetch details to show updated scores
-          const profileId = selectedProfile.id;
-          const detailResult = await getTestInProfileDetailsAction(
-            profileId,
-            testId
-          );
-          if (detailResult.success && detailResult.data) {
-            const data = detailResult.data;
-            setTestDetailsData((prev) => ({
-              ...prev,
-              [testId]: {
-                expectedResult: data.test.expected_result,
-                results: data.results,
-              },
-            }));
-          }
+        if (selectedTestId === testId) {
+          loadTestDetails(testId);
         }
-      } else {
-        alert(result.error || "Failed to re-evaluate test");
+        loadProfileDetails(selectedProfile.id);
       }
     } catch (error) {
       console.error("Error re-evaluating test:", error);
-      alert("Failed to re-evaluate test");
     } finally {
       setReEvaluatingTests((prev) => {
         const next = new Set(prev);
@@ -416,7 +335,7 @@ export default function SessionsPage() {
   };
 
   const pollRunStatus = useCallback(
-    async (testRunId: number, testId?: number) => {
+    async (testRunId: number, testId?: number | string) => {
       try {
         const result = await getSessionRunStatusAction(testRunId);
         if (result.success && result.data) {
@@ -431,30 +350,14 @@ export default function SessionsPage() {
             // Refresh session runs
             if (selectedProfile) {
               loadSessionRuns(selectedProfile.id);
-              // Also refresh profile details to update the "Associated Tests" best scores - SILENTLY
+              // Also refresh profile details
               loadProfileDetails(selectedProfile.id, true);
 
-              // If we are polling because of a single test regeneration,
-              // we should also refresh the expanded test details to show the final result
-              const idsToRefresh = testId
-                ? [testId]
-                : Array.from(expandedTestIds);
-              for (const id of idsToRefresh) {
-                // Fetch latest details for each test
-                const detailResult = await getTestInProfileDetailsAction(
-                  selectedProfile.id,
-                  id
-                );
-                if (detailResult.success && detailResult.data) {
-                  const data = detailResult.data;
-                  setTestDetailsData((prev) => ({
-                    ...prev,
-                    [id]: {
-                      expectedResult: data.test.expected_result,
-                      results: data.results,
-                    },
-                  }));
-                }
+              // If we are polling because of a single test regeneration, refresh its details
+              if (testId && selectedTestId === testId) {
+                loadTestDetails(testId);
+              } else if (selectedTestId) {
+                loadTestDetails(selectedTestId);
               }
             }
           }
@@ -463,7 +366,13 @@ export default function SessionsPage() {
         console.error("Error polling run status:", error);
       }
     },
-    [selectedProfile, loadSessionRuns, loadProfileDetails, expandedTestIds]
+    [
+      selectedProfile,
+      loadSessionRuns,
+      loadProfileDetails,
+      selectedTestId,
+      loadTestDetails,
+    ]
   );
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -747,8 +656,8 @@ export default function SessionsPage() {
                     loadProfileDetails(selectedProfile.id);
                     loadTestProfiles();
                     // Clear expanded states to force refresh of results
-                    setTestDetailsData({});
-                    setExpandedTestIds(new Set());
+                    setTestDetailsData(null);
+                    setSelectedTestId(null);
                   }}
                 />
                 <Button
@@ -925,29 +834,28 @@ export default function SessionsPage() {
                                   e.stopPropagation();
                                   handleToggleTestDetails(test.test_id);
                                 }}
-                                disabled={loadingTestDetails.has(test.test_id)}
+                                disabled={testDetailsLoading}
                               >
-                                {loadingTestDetails.has(test.test_id) ? (
+                                {testDetailsLoading &&
+                                selectedTestId === test.test_id ? (
                                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                                 ) : (
                                   <Eye className="w-4 h-4 mr-1" />
                                 )}
-                                {expandedTestIds.has(test.test_id)
+                                {selectedTestId === test.test_id
                                   ? "Hide Details"
                                   : "View Details"}
                               </Button>
                             </div>
 
-                            {expandedTestIds.has(test.test_id) &&
-                              testDetailsData[test.test_id] && (
+                            {selectedTestId === test.test_id &&
+                              testDetailsData && (
                                 <TestResultsList
                                   expectedResult={
-                                    testDetailsData[test.test_id].expectedResult
+                                    testDetailsData.test.expected_result
                                   }
-                                  results={
-                                    testDetailsData[test.test_id].results
-                                  }
-                                  onRegenerateModel={(model) =>
+                                  results={testDetailsData.results}
+                                  onRegenerateModel={(model: string) =>
                                     handleRegenerateTest(test.test_id, model)
                                   }
                                 />
