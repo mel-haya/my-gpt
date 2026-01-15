@@ -1,4 +1,9 @@
-import { SelectUploadedFile, uploadedFiles, users, documents } from "@/lib/db-schema";
+import {
+  SelectUploadedFile,
+  uploadedFiles,
+  users,
+  documents,
+} from "@/lib/db-schema";
 import { db } from "@/lib/db-config";
 import { eq, and, desc, ilike, or, count } from "drizzle-orm";
 
@@ -50,8 +55,12 @@ export async function getUploadedFiles(
         status: uploadedFiles.status,
         user_id: uploadedFiles.user_id,
         active: uploadedFiles.active,
+        downloadUrl: uploadedFiles.downloadUrl,
         username: users.username,
-        documentCount: db.$count(documents, eq(documents.uploaded_file_id, uploadedFiles.id)),
+        documentCount: db.$count(
+          documents,
+          eq(documents.uploaded_file_id, uploadedFiles.id)
+        ),
       })
       .from(uploadedFiles)
       .leftJoin(users, eq(uploadedFiles.user_id, users.id))
@@ -103,8 +112,12 @@ export async function getUploadedFiles(
       status: uploadedFiles.status,
       user_id: uploadedFiles.user_id,
       active: uploadedFiles.active,
+      downloadUrl: uploadedFiles.downloadUrl,
       username: users.username,
-      documentCount: db.$count(documents, eq(documents.uploaded_file_id, uploadedFiles.id)),
+      documentCount: db.$count(
+        documents,
+        eq(documents.uploaded_file_id, uploadedFiles.id)
+      ),
     })
     .from(uploadedFiles)
     .leftJoin(users, eq(uploadedFiles.user_id, users.id))
@@ -148,8 +161,12 @@ export async function deleteFile(fileId: number): Promise<void> {
   await db.delete(uploadedFiles).where(eq(uploadedFiles.id, fileId));
 }
 
-export async function toggleFileActive(fileId: number, active: boolean): Promise<void> {
-  await db.update(uploadedFiles)
+export async function toggleFileActive(
+  fileId: number,
+  active: boolean
+): Promise<void> {
+  await db
+    .update(uploadedFiles)
     .set({ active })
     .where(eq(uploadedFiles.id, fileId));
 }

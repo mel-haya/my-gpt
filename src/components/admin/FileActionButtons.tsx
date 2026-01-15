@@ -1,22 +1,32 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Trash2, Eye, EyeOff } from "lucide-react";
+import { Trash2, Eye, EyeOff, MoreHorizontal, Download } from "lucide-react";
 import { deleteFileAction, toggleFileActiveAction } from "@/app/actions/files";
 import DeleteDialog from "@/components/ui/DeleteDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 interface FileActionButtonsProps {
   fileId: number;
   fileName: string;
   active: boolean;
+  downloadUrl: string | null;
   onUpdate: () => void;
 }
 
-export default function FileActionButtons({ 
-  fileId, 
-  fileName, 
-  active, 
-  onUpdate 
+export default function FileActionButtons({
+  fileId,
+  fileName,
+  active,
+  downloadUrl,
+  onUpdate,
 }: FileActionButtonsProps) {
   const [isPending, startTransition] = useTransition();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -33,36 +43,63 @@ export default function FileActionButtons({
         onUpdate();
       } catch (error) {
         console.error("Error updating file status:", error);
-        // You might want to add toast notification here
       }
     });
   };
 
+  const handleDownload = () => {
+    if (downloadUrl) {
+      window.open(downloadUrl, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
     <>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={handleToggleActive}
-          disabled={isPending}
-          className={`p-1 rounded-md transition-colors disabled:opacity-50 ${
-            active 
-              ? 'bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-400'
-              : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-400'
-          }`}
-          title={active ? 'Disable file' : 'Enable file'}
-        >
-          {active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-        </button>
-        
-        <button
-          onClick={() => setShowDeleteDialog(true)}
-          disabled={isPending}
-          className="p-1 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-400 rounded-md transition-colors disabled:opacity-50"
-          title="Delete file"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            disabled={isPending}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuItem onClick={handleToggleActive}>
+            {active ? (
+              <>
+                <EyeOff className="mr-2 h-4 w-4" />
+                <span>Disable</span>
+              </>
+            ) : (
+              <>
+                <Eye className="mr-2 h-4 w-4" />
+                <span>Enable</span>
+              </>
+            )}
+          </DropdownMenuItem>
+
+          {downloadUrl && (
+            <DropdownMenuItem onClick={handleDownload}>
+              <Download className="mr-2 h-4 w-4" />
+              <span>Download</span>
+            </DropdownMenuItem>
+          )}
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            onClick={() => setShowDeleteDialog(true)}
+            className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            <span>Delete</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <DeleteDialog
         isOpen={showDeleteDialog}

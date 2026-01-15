@@ -22,15 +22,22 @@ interface FilesTableProps {
   searchQuery: string;
 }
 
-function FileStatusBadge({ status }: { status: UploadedFileWithUser["status"] }) {
+function FileStatusBadge({
+  status,
+}: {
+  status: UploadedFileWithUser["status"];
+}) {
   const statusStyles = {
-    processing: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-700",
-    completed: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700",
-    failed: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700"
+    processing:
+      "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-700",
+    completed:
+      "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700",
+    failed:
+      "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700",
   };
 
   return (
-    <span 
+    <span
       className={`px-2 py-1 rounded-md text-xs font-medium border ${statusStyles[status]}`}
     >
       {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -38,19 +45,16 @@ function FileStatusBadge({ status }: { status: UploadedFileWithUser["status"] })
   );
 }
 
-const getColumns = (handleRefresh: () => void): ColumnDef<UploadedFileWithUser>[] => [
-  {
-    accessorKey: "id",
-    header: "ID",
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("id")}</div>
-    ),
-  },
+const getColumns = (
+  handleRefresh: () => void
+): ColumnDef<UploadedFileWithUser>[] => [
   {
     accessorKey: "fileName",
     header: "File Name",
     cell: ({ row }) => (
-      <div>{row.getValue("fileName")}</div>
+      <div className="max-w-[200px] truncate" title={row.getValue("fileName")}>
+        {row.getValue("fileName")}
+      </div>
     ),
   },
   {
@@ -65,10 +69,11 @@ const getColumns = (handleRefresh: () => void): ColumnDef<UploadedFileWithUser>[
   {
     accessorKey: "documentCount",
     header: "Documents",
+    size: 70,
     cell: ({ row }) => {
       const count = row.getValue("documentCount") as number;
       return (
-        <div className="font-medium text-center">
+        <div className="font-medium">
           <span className="inline-flex items-center justify-center w-8 h-8 text-xs font-bold bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900/20 dark:text-blue-300">
             {count}
           </span>
@@ -79,21 +84,21 @@ const getColumns = (handleRefresh: () => void): ColumnDef<UploadedFileWithUser>[
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => (
-      <FileStatusBadge status={row.getValue("status")} />
-    ),
+    size: 70,
+    cell: ({ row }) => <FileStatusBadge status={row.getValue("status")} />,
   },
   {
     accessorKey: "active",
     header: "Active",
+    size: 50,
     cell: ({ row }) => {
       const isActive = row.getValue("active") as boolean;
       return (
-        <span 
+        <span
           className={`px-2 py-1 rounded-md text-xs font-medium border ${
-            isActive 
-              ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700'
-              : 'bg-neutral-100 text-neutral-800 border-neutral-200 dark:bg-neutral-900/20 dark:text-neutral-300 dark:border-neutral-700'
+            isActive
+              ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700"
+              : "bg-neutral-100 text-neutral-800 border-neutral-200 dark:bg-neutral-900/20 dark:text-neutral-300 dark:border-neutral-700"
           }`}
         >
           {isActive ? "Yes" : "No"}
@@ -104,25 +109,28 @@ const getColumns = (handleRefresh: () => void): ColumnDef<UploadedFileWithUser>[
   {
     accessorKey: "actions",
     header: "Actions",
+    size: 50,
     cell: ({ row }) => {
       const file = row.original;
       return (
-        <FileActionButtons
-          fileId={file.id}
-          fileName={file.fileName}
-          active={file.active}
-          onUpdate={handleRefresh}
-        />
+        <div className="w-12">
+          <FileActionButtons
+            fileId={file.id}
+            fileName={file.fileName}
+            active={file.active}
+            downloadUrl={file.downloadUrl}
+            onUpdate={handleRefresh}
+          />
+        </div>
       );
     },
   },
 ];
 
-
-export default function FilesTable({ 
-  files, 
-  pagination, 
-  searchQuery 
+export default function FilesTable({
+  files,
+  pagination,
+  searchQuery,
 }: FilesTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -132,11 +140,11 @@ export default function FilesTable({
   const handlePageChange = (page: number) => {
     startTransition(() => {
       const params = new URLSearchParams(searchParams.toString());
-      params.set('page', page.toString());
+      params.set("page", page.toString());
       if (searchQuery) {
-        params.set('search', searchQuery);
+        params.set("search", searchQuery);
       } else {
-        params.delete('search');
+        params.delete("search");
       }
       router.push(`?${params.toString()}`);
     });
@@ -146,9 +154,9 @@ export default function FilesTable({
     e.preventDefault();
     startTransition(() => {
       const params = new URLSearchParams();
-      params.set('page', '1');
+      params.set("page", "1");
       if (searchInput.trim()) {
-        params.set('search', searchInput);
+        params.set("search", searchInput);
       }
       router.push(`?${params.toString()}`);
     });
@@ -184,16 +192,16 @@ export default function FilesTable({
               Search
             </Button>
             {searchQuery && (
-              <Button 
+              <Button
                 type="button"
-                variant="ghost" 
+                variant="ghost"
                 size="sm"
                 onClick={() => {
                   setSearchInput("");
                   startTransition(() => {
                     const params = new URLSearchParams(searchParams.toString());
-                    params.delete('search');
-                    params.set('page', '1');
+                    params.delete("search");
+                    params.set("page", "1");
                     router.push(`?${params.toString()}`);
                   });
                 }}
@@ -202,28 +210,35 @@ export default function FilesTable({
               </Button>
             )}
           </form>
-          <Button 
+          <Button
             onClick={handleRefresh}
             disabled={isPending}
             variant="outline"
             size="sm"
           >
-            {isPending ? 'Loading...' : 'Refresh'}
+            {isPending ? "Loading..." : "Refresh"}
           </Button>
         </div>
       </div>
-      
-      <DataTable columns={getColumns(handleRefresh)} data={files} emptyMessage="No files found."/>
-      
+
+      <DataTable
+        columns={getColumns(handleRefresh)}
+        data={files}
+        emptyMessage="No files found."
+      />
+
       {/* Pagination Controls */}
       <div className="flex items-center justify-between space-x-2 py-4">
         <div className="flex-1 text-sm text-neutral-500 dark:text-neutral-400">
           Showing {files.length} of {pagination.totalCount} files
           {pagination.totalPages > 1 && (
-            <span> (Page {pagination.currentPage} of {pagination.totalPages})</span>
+            <span>
+              {" "}
+              (Page {pagination.currentPage} of {pagination.totalPages})
+            </span>
           )}
         </div>
-        
+
         {pagination.totalPages > 1 && (
           <div className="flex items-center space-x-2">
             <Button
@@ -234,34 +249,41 @@ export default function FilesTable({
             >
               Previous
             </Button>
-            
+
             <div className="flex items-center space-x-1">
-              {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
-                let pageNum;
-                if (pagination.totalPages <= 5) {
-                  pageNum = i + 1;
-                } else {
-                  const start = Math.max(1, pagination.currentPage - 2);
-                  const end = Math.min(pagination.totalPages, start + 4);
-                  const adjustedStart = Math.max(1, end - 4);
-                  pageNum = adjustedStart + i;
+              {Array.from(
+                { length: Math.min(pagination.totalPages, 5) },
+                (_, i) => {
+                  let pageNum;
+                  if (pagination.totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else {
+                    const start = Math.max(1, pagination.currentPage - 2);
+                    const end = Math.min(pagination.totalPages, start + 4);
+                    const adjustedStart = Math.max(1, end - 4);
+                    pageNum = adjustedStart + i;
+                  }
+
+                  return (
+                    <Button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      disabled={isPending}
+                      variant={
+                        pagination.currentPage === pageNum
+                          ? "default"
+                          : "outline"
+                      }
+                      size="sm"
+                      className="w-8 h-8 p-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
                 }
-                
-                return (
-                  <Button
-                    key={pageNum}
-                    onClick={() => handlePageChange(pageNum)}
-                    disabled={isPending}
-                    variant={pagination.currentPage === pageNum ? "default" : "outline"}
-                    size="sm"
-                    className="w-8 h-8 p-0"
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
+              )}
             </div>
-            
+
             <Button
               onClick={() => handlePageChange(pagination.currentPage + 1)}
               disabled={!pagination.hasNextPage || isPending}

@@ -79,6 +79,7 @@ export const uploadedFiles = pgTable(
       .notNull()
       .references(() => users.id),
     active: boolean("active").notNull().default(true),
+    downloadUrl: text("download_url"),
   },
   (table) => [uniqueIndex("file_hash_index").on(table.fileHash)]
 );
