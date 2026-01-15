@@ -464,6 +464,127 @@ async function runTestsInBackground(
   }
 }
 
+export async function reEvaluateTestResultAction(
+  profileId: number,
+  testId: number,
+  evaluatorModel: string
+): Promise<ActionResult> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const isAdmin = await checkRole("admin");
+    if (!isAdmin) {
+      return { success: false, error: "Admin access required" };
+    }
+
+    // 1. Get test details
+    const test = await db
+      .select({
+        prompt: testsTable.prompt,
+        expected_result: testsTable.expected_result,
+      })
+      .from(testsTable)
+      .where(eq(testsTable.id, testId))
+      .limit(1);
+
+    if (!test[0]) {
+      return { success: false, error: "Test not found" };
+    }
+
+    // 2. Get the latest results for this test in this profile (per model)
+    // We get all runs for this profile
+    const runs = await db
+      .select({ id: testRuns.id })
+      .from(testRuns)
+      .where(eq(testRuns.profile_id, profileId));
+
+    if (runs.length === 0) {
+      return { success: false, error: "No runs found for this profile" };
+    }
+
+    const runIds = runs.map((r) => r.id);
+
+    // Get all results for this test in these runs
+    const allResults = await db
+      .select()
+      .from(testRunResults)
+      .where(
+        and(
+          eq(testRunResults.test_id, testId),
+          inArray(testRunResults.test_run_id, runIds)
+        )
+      )
+      .orderBy(desc(testRunResults.created_at));
+
+    // Filter to get latest per model
+    const latestResultsMap = new Map<string, (typeof allResults)[0]>();
+    for (const result of allResults) {
+      if (result.model_used && !latestResultsMap.has(result.model_used)) {
+        latestResultsMap.set(result.model_used, result);
+      }
+    }
+
+    const resultsToEvaluate = Array.from(latestResultsMap.values());
+
+    if (resultsToEvaluate.length === 0) {
+      return { success: false, error: "No test results found to evaluate" };
+    }
+
+    // 3. Re-evaluate each result
+    const evaluationPromises = resultsToEvaluate.map(async (result) => {
+      if (!result.output) return;
+
+      try {
+        // Update status to Evaluating
+        await updateTestRunResult({
+          testRunId: result.test_run_id!,
+          testId: result.test_id,
+          status: "Evaluating",
+          filterModel: result.model_used!,
+        });
+
+        const evaluation = await evaluateTestResponse(
+          test[0].prompt,
+          test[0].expected_result,
+          result.output,
+          evaluatorModel
+        );
+
+        await updateTestRunResult({
+          testRunId: result.test_run_id!,
+          testId: result.test_id,
+          status: evaluation.status,
+          explanation: evaluation.explanation,
+          score: evaluation.score,
+          filterModel: result.model_used!,
+        });
+      } catch (error) {
+        console.error(`Error re-evaluating result ${result.id}:`, error);
+        // Revert status to what it was or set to Failed?
+        // Let's set to Failed if evaluation specifically failed
+        await updateTestRunResult({
+          testRunId: result.test_run_id!,
+          testId: result.test_id,
+          status: "Failed",
+          explanation: "Re-evaluation failed",
+          filterModel: result.model_used!,
+        });
+      }
+    });
+
+    await Promise.all(evaluationPromises);
+
+    revalidatePath("/admin/sessions");
+    return { success: true };
+  } catch (error) {
+    console.error("Error re-evaluating test:", error);
+    return { success: false, error: "Failed to re-evaluate test" };
+  }
+}
+
 export interface TestInProfileDetail {
   runId: number;
   runDate: Date;

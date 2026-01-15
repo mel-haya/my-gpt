@@ -19,6 +19,7 @@ import {
   Coins,
   Medal,
   RefreshCcw,
+  Star,
 } from "lucide-react";
 import CreateTestSessionModal from "@/components/CreateTestSessionModal";
 import EditTestSessionModal from "@/components/EditTestSessionModal";
@@ -36,6 +37,7 @@ import {
   getSessionRunsAction,
   getTestInProfileDetailsAction,
   regenerateTestResultAction,
+  reEvaluateTestResultAction,
   type SessionRunResult,
   type TestInProfileDetail,
 } from "@/app/actions/testSessions";
@@ -112,6 +114,9 @@ export default function SessionsPage() {
     new Set()
   );
   const [regeneratingTests, setRegeneratingTests] = useState<Set<number>>(
+    new Set()
+  );
+  const [reEvaluatingTests, setReEvaluatingTests] = useState<Set<number>>(
     new Set()
   );
   const [testDetailsData, setTestDetailsData] = useState<
@@ -343,6 +348,56 @@ export default function SessionsPage() {
       alert("Failed to regenerate test");
     } finally {
       setRegeneratingTests((prev) => {
+        const next = new Set(prev);
+        next.delete(testId);
+        return next;
+      });
+    }
+  };
+
+  const handleReEvaluateTest = async (testId: number) => {
+    if (!selectedProfile) return;
+
+    setReEvaluatingTests((prev) => new Set(prev).add(testId));
+    try {
+      const result = await reEvaluateTestResultAction(
+        selectedProfile.id,
+        testId,
+        evaluatorModel
+      );
+      if (result.success) {
+        // Refresh session runs and test details if expanded
+        loadSessionRuns(selectedProfile.id);
+
+        // Also refresh profile details to update the "Associated Tests" best scores
+        await loadProfileDetails(selectedProfile.id);
+
+        if (expandedTestIds.has(testId)) {
+          // Re-fetch details to show updated scores
+          const profileId = selectedProfile.id;
+          const detailResult = await getTestInProfileDetailsAction(
+            profileId,
+            testId
+          );
+          if (detailResult.success && detailResult.data) {
+            const data = detailResult.data;
+            setTestDetailsData((prev) => ({
+              ...prev,
+              [testId]: {
+                expectedResult: data.test.expected_result,
+                results: data.results,
+              },
+            }));
+          }
+        }
+      } else {
+        alert(result.error || "Failed to re-evaluate test");
+      }
+    } catch (error) {
+      console.error("Error re-evaluating test:", error);
+      alert("Failed to re-evaluate test");
+    } finally {
+      setReEvaluatingTests((prev) => {
         const next = new Set(prev);
         next.delete(testId);
         return next;
@@ -808,6 +863,11 @@ export default function SessionsPage() {
                             )}
                             <div>
                               <Button
+                                title={
+                                  test.best_score === null
+                                    ? "Run Test"
+                                    : "Regenerate Test"
+                                }
                                 variant="ghost"
                                 size="sm"
                                 onClick={(e) => {
@@ -824,6 +884,24 @@ export default function SessionsPage() {
                                   <RefreshCcw className="w-4 h-4" />
                                 )}
                               </Button>
+                              {test.best_score !== null && <Button
+                                title="Re-evaluate Results"
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReEvaluateTest(test.test_id);
+                                }}
+                                disabled={
+                                  reEvaluatingTests.has(test.test_id)
+                                }
+                              >
+                                {reEvaluatingTests.has(test.test_id) ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Star className="w-4 h-4" />
+                                )}
+                              </Button>}
                             </div>
                           </div>
                           <div className="flex flex-col gap-2 w-full mt-3">
