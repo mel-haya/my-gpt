@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,6 +122,15 @@ export default function SessionsPage() {
   const [testDetailsData, setTestDetailsData] = useState<
     Record<number, { expectedResult: string; results: TestInProfileDetail[] }>
   >({});
+
+  const sortedTests = useMemo(() => {
+    if (!selectedProfile?.tests) return [];
+    return [...selectedProfile.tests].sort((a, b) => {
+      const scoreA = a.best_score ?? -1;
+      const scoreB = b.best_score ?? -1;
+      return scoreA - scoreB;
+    });
+  }, [selectedProfile?.tests]);
 
   const handleToggleTestDetails = async (testId: number) => {
     // Toggle expanded state
@@ -832,7 +841,7 @@ export default function SessionsPage() {
                   </Card>
                 ) : (
                   <div className="space-y-2">
-                    {selectedProfile.tests.map((test) => (
+                    {sortedTests.map((test) => (
                       <Card
                         key={test.test_id}
                         className="hover:shadow-sm transition-shadow py-4"
@@ -884,24 +893,24 @@ export default function SessionsPage() {
                                   <RefreshCcw className="w-4 h-4" />
                                 )}
                               </Button>
-                              {test.best_score !== null && <Button
-                                title="Re-evaluate Results"
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleReEvaluateTest(test.test_id);
-                                }}
-                                disabled={
-                                  reEvaluatingTests.has(test.test_id)
-                                }
-                              >
-                                {reEvaluatingTests.has(test.test_id) ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Star className="w-4 h-4" />
-                                )}
-                              </Button>}
+                              {test.best_score !== null && (
+                                <Button
+                                  title="Re-evaluate Results"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReEvaluateTest(test.test_id);
+                                  }}
+                                  disabled={reEvaluatingTests.has(test.test_id)}
+                                >
+                                  {reEvaluatingTests.has(test.test_id) ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Star className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              )}
                             </div>
                           </div>
                           <div className="flex flex-col gap-2 w-full mt-3">
