@@ -184,7 +184,8 @@ export default function Home() {
   }
 
   async function regenerateMessage(
-    options?: ChatRequestOptions): Promise<void> {
+    options?: ChatRequestOptions
+  ): Promise<void> {
     // Check if user is signed in
     if (!isSignedIn) {
       setShowSignInPopup(true);
@@ -285,7 +286,7 @@ export default function Home() {
 
   const onSignOut = useEffectEvent(() => {
     resetConversation();
-    queryClient.removeQueries({ queryKey: ['conversations'] });
+    queryClient.removeQueries({ queryKey: ["conversations"] });
     // setConversations([]);
   });
 
@@ -333,6 +334,7 @@ export default function Home() {
         error={error}
         stop={stop}
         regenerate={regenerateMessage}
+        conversationId={currentConversation?.id}
       />
       <ToastContainer autoClose={3000} theme="dark" pauseOnHover={false} />
       <SignInPopup

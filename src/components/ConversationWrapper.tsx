@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect } from "react";
-import Image from "next/image";
 // import Message from "./message";
 import { ChatMessage } from "@/types/chatMessage";
 import {
@@ -33,13 +32,17 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
-import { CopyIcon, LoaderCircle, RefreshCcw } from "lucide-react";
+import Link from "next/link";
+import { CopyAction } from "./CopyAction";
+import { LoaderCircle, RefreshCcw, ThumbsUp, ThumbsDown } from "lucide-react";
 import Styles from "@/assets/styles/customScrollbar.module.css";
 import Background from "@/components/background";
 import { useUser } from "@clerk/nextjs";
 
 import { useTokenUsage } from "@/hooks/useTokenUsage";
 import { useSubscription } from "@/hooks/useSubscription";
+import { submitFeedbackAction } from "@/app/actions/feedback";
+import { toast } from "react-toastify";
 
 const welcomeMessage = "Hello! How can I assist you today?";
 const promptExamples = [
@@ -48,8 +51,6 @@ const promptExamples = [
   "Who created Linux",
 ];
 
-import Link from "next/link";
-
 export default function ConversationWrapper({
   messages,
   sendMessage,
@@ -57,6 +58,7 @@ export default function ConversationWrapper({
   error,
   stop,
   regenerate,
+  conversationId
 }: {
   messages: ChatMessage[];
   sendMessage: (
@@ -67,6 +69,7 @@ export default function ConversationWrapper({
   error: Error | undefined;
   stop: () => void;
   regenerate: (options?: ChatRequestOptions) => Promise<void>;
+  conversationId?: number;
 }) {
   const [selectedModel, setSelectedModel] =
     useState<string>("openai/gpt-5-nano");
@@ -149,6 +152,50 @@ export default function ConversationWrapper({
     });
   }, [messages]);
 
+  const handleFeedback = async (messageId: string, isGood: boolean) => {
+    const currentIndex = messages.findIndex((m) => m.id === messageId);
+    if (currentIndex === -1) return;
+
+    const currentMessage = messages[currentIndex];
+
+    // Find the previous user message
+    let userContent = "";
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        userContent = messages[i].parts
+          .filter((p) => p.type === "text")
+          .map((p) => p.text)
+          .join("");
+        break;
+      }
+    }
+
+    const assistantContent = currentMessage.parts
+      .filter((p) => p.type === "text")
+      .map((p) => p.text)
+      .join("");
+
+    const combinedMessage = `user: ${userContent}\nassistant: ${assistantContent}`;
+    const feedbackType = isGood ? "positive" : "negative";
+
+    try {
+      const result = await submitFeedbackAction({
+        message: combinedMessage,
+        feedback: feedbackType,
+        conversationId,
+      });
+
+      if (result.success) {
+        toast.success("Feedback submitted! Thank you.");
+      } else {
+        toast.error("Failed to submit feedback.");
+      }
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      toast.error("An error occurred while submitting feedback.");
+    }
+  };
+
   return (
     <div className="flex flex-col grow h-screen relative items-center">
       {/* Upgrade Ribbon */}
@@ -224,18 +271,20 @@ export default function ConversationWrapper({
           <Conversation
             className={`relative size-full z-10 flex-1 overflow-hidden ${Styles.customScrollbar}`}
           >
-            <ConversationContent className="max-w-[1000px] mx-auto">
+            <ConversationContent className="max-w-250 mx-auto">
               {displayMessages.map((message, index) => {
                 const isSystemMessage =
                   typeof message.key === "string" &&
                   message.key.startsWith("system-");
-                
+
                 // Find the last user message index
-                const lastUserMessageIndex = displayMessages.map((msg, idx) => 
-                  msg.role === "user" ? idx : -1
-                ).filter(idx => idx !== -1).pop();
-                
-                const isLastUserMessage = message.role === "user" && index === lastUserMessageIndex;
+                const lastUserMessageIndex = displayMessages
+                  .map((msg, idx) => (msg.role === "user" ? idx : -1))
+                  .filter((idx) => idx !== -1)
+                  .pop();
+
+                const isLastUserMessage =
+                  message.role === "user" && index === lastUserMessageIndex;
                 return (
                   <Message from={message.role} key={message.key}>
                     {message.role === "user" &&
@@ -298,7 +347,7 @@ export default function ConversationWrapper({
                         </div>
                       )}
                     </MessageContent>
-                    {message.role === "user" && (
+                    {message.role === "user" ? (
                       <MessageActions className="flex justify-end gap-0">
                         {isLastUserMessage && (
                           <MessageAction
@@ -311,15 +360,25 @@ export default function ConversationWrapper({
                             <RefreshCcw className="size-4" />
                           </MessageAction>
                         )}
+                        <CopyAction content={message.content} />
+                      </MessageActions>
+                    ) : (
+                      <MessageActions className="flex gap-0">
                         <MessageAction
                           className="cursor-pointer"
-                          onClick={() =>
-                            navigator.clipboard.writeText(message.content)
-                          }
-                          label="Copy"
+                          onClick={() => handleFeedback(message.key, true)}
+                          label="Good response"
                         >
-                          <CopyIcon className="size-4" />
+                          <ThumbsUp className="size-4"  />
                         </MessageAction>
+                        <MessageAction
+                          className="cursor-pointer"
+                          onClick={() => handleFeedback(message.key, false)}
+                          label="Bad response"
+                        >
+                          <ThumbsDown className="size-4" />
+                        </MessageAction>
+                        <CopyAction content={message.content} />
                       </MessageActions>
                     )}
                   </Message>

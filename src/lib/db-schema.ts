@@ -34,6 +34,10 @@ export const testResultStatusEnum = pgEnum("test_result_status", [
   "Evaluating",
   "Stopped",
 ]);
+export const feedbackTypeEnum = pgEnum("feedback_type", [
+  "positive",
+  "negative",
+]);
 export const documents = pgTable(
   "documents",
   {
@@ -288,6 +292,16 @@ export const testProfileModels = pgTable(
   ]
 );
 
+export const feedback = pgTable("feedback", {
+  id: serial("id").primaryKey(),
+  message: text("message").notNull(),
+  feedback: feedbackTypeEnum("feedback").notNull(),
+  submitted_at: timestamp("submitted_at").notNull().defaultNow(),
+  conversation_id: integer("conversation_id").references(
+    () => conversations.id
+  ),
+});
+
 export type InsertDocument = typeof documents.$inferInsert;
 export type SelectDocument = typeof documents.$inferSelect;
 export type InsertConversation = typeof conversations.$inferInsert;
@@ -323,3 +337,5 @@ export type InsertTestProfileTest = typeof testProfileTests.$inferInsert;
 export type SelectTestProfileTest = typeof testProfileTests.$inferSelect;
 export type InsertTestProfileModel = typeof testProfileModels.$inferInsert;
 export type SelectTestProfileModel = typeof testProfileModels.$inferSelect;
+export type InsertFeedback = typeof feedback.$inferInsert;
+export type SelectFeedback = typeof feedback.$inferSelect;
