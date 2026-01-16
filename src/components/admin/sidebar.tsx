@@ -1,5 +1,5 @@
 import { UserAvatar, useUser } from "@clerk/nextjs";
-import { UsersIcon, FilesIcon, SettingsIcon, HomeIcon, FlaskConicalIcon, BookOpenText, MessageSquareCode } from "lucide-react";
+import { UsersIcon, FilesIcon, SettingsIcon, HomeIcon, FlaskConicalIcon, BookOpenText, MessageSquareCode, ThumbsUp  } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 
 export default function SidebarAdmin() {
@@ -14,6 +14,7 @@ export default function SidebarAdmin() {
     { label: "Test Sessions", path: "/admin/sessions", icon: FlaskConicalIcon },
     { label: "Questions", path: "/admin/questions", icon: BookOpenText },
     { label: "System Prompts", path: "/admin/system-prompts", icon: MessageSquareCode },
+    { label: "Feedback", path: "/admin/feedback", icon: ThumbsUp },
     // { label: "Settings", path: "/admin/settings", icon: SettingsIcon },
   ];
 
