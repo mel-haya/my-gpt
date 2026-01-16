@@ -14,7 +14,7 @@ export default function SidebarAdmin() {
     { label: "Test Sessions", path: "/admin/sessions", icon: FlaskConicalIcon },
     { label: "Questions", path: "/admin/questions", icon: BookOpenText },
     { label: "System Prompts", path: "/admin/system-prompts", icon: MessageSquareCode },
-    { label: "Settings", path: "/admin/settings", icon: SettingsIcon },
+    // { label: "Settings", path: "/admin/settings", icon: SettingsIcon },
   ];
 
   return (

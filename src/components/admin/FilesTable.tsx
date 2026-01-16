@@ -52,7 +52,7 @@ const getColumns = (
     accessorKey: "fileName",
     header: "File Name",
     cell: ({ row }) => (
-      <div className="max-w-[200px] truncate" title={row.getValue("fileName")}>
+      <div className="max-w-50 truncate" title={row.getValue("fileName")}>
         {row.getValue("fileName")}
       </div>
     ),

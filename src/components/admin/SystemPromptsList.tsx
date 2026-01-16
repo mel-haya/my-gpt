@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Edit2, Trash2, Search, Eye, Star, User } from "lucide-react";
 import type { SelectSystemPromptWithUser } from "@/services/systemPromptsService";
-import type { SelectSystemPrompt } from "@/lib/db-schema";
 
 interface SystemPromptsTableProps {
   systemPrompts: SelectSystemPromptWithUser[];
@@ -146,7 +145,7 @@ export default function SystemPromptsList({
                           variant="outline"
                           size="sm"
                           onClick={() => onSetDefault(prompt.id, prompt.name)}
-                          title="Set as default for testing"
+                          title="Set as default"
                         >
                           <Star className="h-4 w-4" />
                         </Button>
