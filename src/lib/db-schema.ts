@@ -196,6 +196,7 @@ export const testRunResults = pgTable(
     manual_prompt: text("manual_prompt"),
     manual_expected_result: text("manual_expected_result"),
     tokens_cost: real("tokens_cost"), // Changed from integer to real to store dollar amounts
+    token_count: integer("token_count"),
     execution_time_ms: integer("execution_time_ms"),
     status: testResultStatusEnum("status").notNull().default("Running"),
     evaluator_model: text("evaluator_model"),

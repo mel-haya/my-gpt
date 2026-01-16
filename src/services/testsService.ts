@@ -32,6 +32,7 @@ export interface UpdateTestRunResultParams {
   modelUsed?: string;
   systemPrompt?: string;
   tokensCost?: number;
+  tokenCount?: number;
   executionTimeMs?: number;
   score?: number;
   filterModel?: string;
@@ -66,6 +67,7 @@ export interface IndividualTestResult {
   evaluator_model?: string | null;
   system_prompt?: string | null;
   tokens_cost: number | null;
+  token_count: number | null;
   execution_time_ms: number | null;
   status: string;
   created_at: Date;
@@ -316,6 +318,7 @@ export async function getTestRunsForTest(
         result_manual_prompt: testRunResults.manual_prompt,
         result_manual_expected_result: testRunResults.manual_expected_result,
         result_tokens_cost: testRunResults.tokens_cost,
+        result_token_count: testRunResults.token_count,
         result_execution_time_ms: testRunResults.execution_time_ms,
         result_status: testRunResults.status,
         result_created_at: testRunResults.created_at,
@@ -363,6 +366,7 @@ export async function getTestRunsForTest(
         model_used: row.result_model_used,
         system_prompt: row.result_system_prompt,
         tokens_cost: row.result_tokens_cost,
+        token_count: row.result_token_count,
         execution_time_ms: row.result_execution_time_ms,
         status: row.result_status,
         created_at: row.result_created_at,
@@ -398,6 +402,7 @@ async function getLatestIndividualTestResult(
         model_used: testRunResults.model_used,
         evaluator_model: testRunResults.evaluator_model,
         tokens_cost: testRunResults.tokens_cost,
+        token_count: testRunResults.token_count,
         execution_time_ms: testRunResults.execution_time_ms,
         status: testRunResults.status,
         created_at: testRunResults.created_at,
@@ -617,6 +622,7 @@ export async function updateTestRunResult({
   modelUsed,
   systemPrompt,
   tokensCost,
+  tokenCount,
   executionTimeMs,
   score,
   filterModel,
@@ -644,6 +650,7 @@ export async function updateTestRunResult({
       model_used: modelUsed,
       system_prompt: systemPrompt,
       tokens_cost: tokensCost,
+      token_count: tokenCount,
       execution_time_ms: executionTimeMs,
       evaluator_model: evaluatorModel,
       updated_at: new Date(),
@@ -774,6 +781,7 @@ export async function runSingleTest(
   let score: number | undefined;
   let toolCalls: unknown = undefined;
   let tokensCost: number | undefined;
+  let tokenCount: number | undefined;
   let executionTimeMs: number | undefined;
 
   const startTime = Date.now();
@@ -794,6 +802,7 @@ export async function runSingleTest(
     output = chatResponse.text;
     toolCalls = chatResponse.toolCalls;
     tokensCost = chatResponse.cost;
+    tokenCount = chatResponse.usage?.totalTokens;
 
     if (!output.trim()) {
       throw new Error("No response content received from chat service");
@@ -832,6 +841,7 @@ export async function runSingleTest(
       score: score,
       tool_calls: toolCalls,
       tokens_cost: tokensCost,
+      token_count: tokenCount,
       execution_time_ms: executionTimeMs,
       status: status as SelectTestRunResult["status"],
       created_at: new Date(),

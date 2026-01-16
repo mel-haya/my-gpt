@@ -253,6 +253,13 @@
       "when": 1768508135442,
       "tag": "0035_cooing_black_tom",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1768574392918,
+      "tag": "0036_clever_mandarin",
+      "breakpoints": true
     }
   ]
 }

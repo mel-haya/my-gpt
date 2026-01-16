@@ -408,6 +408,7 @@ async function runTestsInBackground(
             modelUsed: selectedModel,
             systemPrompt,
             tokensCost: chatResponse.cost,
+            tokenCount: chatResponse.usage?.totalTokens,
             executionTimeMs: executionTime,
             filterModel: selectedModel,
           });
@@ -448,6 +449,7 @@ async function runTestsInBackground(
             modelUsed: selectedModel,
             systemPrompt,
             tokensCost: chatResponse.cost,
+            tokenCount: chatResponse.usage?.totalTokens,
             executionTimeMs: executionTime,
             score: evaluation.score,
             filterModel: selectedModel,
@@ -664,6 +666,7 @@ export interface TestInProfileDetail {
   explanation: string | null;
   output: string | null;
   tokens_cost: number | null;
+  token_count: number | null;
   execution_time_ms: number | null;
   evaluator_model: string | null; // Added evaluator_model
 }
@@ -759,6 +762,7 @@ export async function getTestInProfileDetailsAction(
         explanation: testRunResults.explanation,
         output: testRunResults.output,
         tokens_cost: testRunResults.tokens_cost,
+        token_count: testRunResults.token_count,
         execution_time_ms: testRunResults.execution_time_ms,
         evaluator_model: testRunResults.evaluator_model, // Add evaluator_model here
       })
@@ -784,6 +788,7 @@ export async function getTestInProfileDetailsAction(
       explanation: res.explanation,
       output: res.output,
       tokens_cost: res.tokens_cost,
+      token_count: res.token_count,
       execution_time_ms: res.execution_time_ms,
       evaluator_model: res.evaluator_model,
     }));
@@ -1079,6 +1084,7 @@ async function runSingleTestForProfileInBackground(
           toolCalls: chatResponse.toolCalls,
           systemPrompt,
           tokensCost: chatResponse.cost,
+          tokenCount: chatResponse.usage?.totalTokens,
           executionTimeMs: executionTime,
         };
 
