@@ -14,7 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "react-toastify";
-import { createSystemPromptAction, updateSystemPromptAction } from "@/app/actions/systemPrompts";
+import {
+  createSystemPromptAction,
+  updateSystemPromptAction,
+} from "@/app/actions/systemPrompts";
 import type { SelectSystemPrompt } from "@/lib/db-schema";
 
 interface SystemPromptDialogProps {
@@ -36,15 +39,17 @@ export default function SystemPromptDialog({
 
   const isEdit = !!systemPrompt;
 
-  // Update form fields when systemPrompt changes
+  // Update form fields when systemPrompt changes or dialog opens
   useEffect(() => {
-    if (systemPrompt) {
-      setName(systemPrompt.name);
-      setPrompt(systemPrompt.prompt);
-    } else {
-      resetForm();
+    if (open) {
+      if (systemPrompt) {
+        setName(systemPrompt.name);
+        setPrompt(systemPrompt.prompt);
+      } else {
+        resetForm();
+      }
     }
-  }, [systemPrompt]);
+  }, [systemPrompt, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,7 +153,8 @@ export default function SystemPromptDialog({
               required
             />
             <p className="text-xs text-muted-foreground">
-              This prompt will be used as the system message when testing the chatbot.
+              This prompt will be used as the system message when testing the
+              chatbot.
             </p>
           </div>
           <DialogFooter>
@@ -162,9 +168,12 @@ export default function SystemPromptDialog({
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading
-                ? (isEdit ? "Updating..." : "Creating...")
-                : (isEdit ? "Update" : "Create")
-              }
+                ? isEdit
+                  ? "Updating..."
+                  : "Creating..."
+                : isEdit
+                ? "Update"
+                : "Create"}
             </Button>
           </DialogFooter>
         </form>

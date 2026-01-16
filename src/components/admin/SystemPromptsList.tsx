@@ -7,14 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Edit2, Trash2, Search, Eye, Star, User } from "lucide-react";
+  Edit2,
+  Trash2,
+  Search,
+  Eye,
+  Star,
+  Zap,
+  Beaker,
+  DollarSign,
+  Coins,
+} from "lucide-react";
 import type { SelectSystemPromptWithUser } from "@/services/systemPromptsService";
+import { encode } from "gpt-tokenizer";
+import Link from "next/link";
 
 interface SystemPromptsTableProps {
   systemPrompts: SelectSystemPromptWithUser[];
@@ -43,31 +48,18 @@ export default function SystemPromptsList({
   onBulkDelete,
   isPending,
 }: SystemPromptsTableProps) {
-  const [viewPromptModal, setViewPromptModal] = useState<{
-    isOpen: boolean;
-    prompt: SelectSystemPromptWithUser | null;
-  }>({ isOpen: false, prompt: null });
+  const [expandedPrompts, setExpandedPrompts] = useState<Set<number>>(
+    new Set()
+  );
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const truncateToLines = (text: string, maxLines: number) => {
-    const lines = text.split('\n');
-    if (lines.length <= maxLines) {
-      return text;
+  const togglePromptExpansion = (id: number) => {
+    const newExpanded = new Set(expandedPrompts);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
     }
-    return lines.slice(0, maxLines).join('\n') + '...';
-  };
-
-  const handleViewPrompt = (prompt: SelectSystemPromptWithUser) => {
-    setViewPromptModal({ isOpen: true, prompt });
+    setExpandedPrompts(newExpanded);
   };
 
   return (
@@ -113,53 +105,66 @@ export default function SystemPromptsList({
           </div>
         ) : (
           <div className="space-y-4">
-            {systemPrompts.map((prompt) => (
-              <div
-                key={prompt.id}
-                className="flex items-start space-x-4 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                {/* Checkbox */}
-                <Checkbox
-                  checked={selectedRows.has(prompt.id)}
-                  onCheckedChange={(checked) =>
-                    onSelectRow(prompt.id, checked as boolean)
-                  }
-                  className="mt-1"
-                />
+            {systemPrompts.map((prompt) => {
+              const tokensCount = encode(prompt.prompt).length;
+              const isExpanded = expandedPrompts.has(prompt.id);
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-semibold text-sm">{prompt.name}</h3>
-                      {prompt.default && (
-                        <Badge variant="default" className="text-xs">
-                          <Star className="h-3 w-3 mr-1" />
-                          Default
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {!prompt.default && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onSetDefault(prompt.id, prompt.name)}
-                          title="Set as default"
+              return (
+                <div
+                  key={prompt.id}
+                  className="flex flex-col p-4 border rounded-xl hover:shadow-md transition-shadow bg-card"
+                >
+                  {/* Header row */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        checked={selectedRows.has(prompt.id)}
+                        onCheckedChange={(checked) =>
+                          onSelectRow(prompt.id, checked as boolean)
+                        }
+                      />
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground mr-1">
+                          {prompt.name}
+                        </h3>
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] h-4 px-1 py-0 bg-muted text-muted-foreground font-normal rounded-sm"
                         >
-                          <Star className="h-4 w-4" />
-                        </Button>
-                      )}
+                          v1
+                        </Badge>
+                        {prompt.default && (
+                          <Badge
+                            variant="default"
+                            className="text-[10px] h-4 px-1 py-0 font-normal rounded-sm"
+                          >
+                            <Star className="h-2.5 w-2.5 mr-0.5" />
+                            Default
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-1">
                       <Button
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => togglePromptExpansion(prompt.id)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
                         onClick={() => onEdit(prompt)}
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
                       <Button
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
                         onClick={() => onDelete(prompt.id, prompt.name)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -167,66 +172,83 @@ export default function SystemPromptsList({
                     </div>
                   </div>
 
-                  {/* Prompt Preview */}
-                  <div className="mb-3">
-                    <p className="text-sm text-muted-foreground mb-1">
-                      Prompt:
-                    </p>
-                    <div
-                      className="bg-muted p-3 rounded cursor-pointer hover:bg-muted/80 transition-colors group"
-                      onClick={() => handleViewPrompt(prompt)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <p className="text-sm font-mono whitespace-pre-wrap flex-1">
-                          {truncateToLines(prompt.prompt, 2)}
-                        </p>
-                        <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground ml-2 mt-1 shrink-0" />
+                  {/* Stats Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4 px-1">
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                        Average Score
+                      </p>
+                      <div className="flex items-center space-x-1">
+                        <Zap className="h-4 w-4 text-orange-500" />
+                        <span className="font-bold text-sm">
+                          {prompt.averageScore !== null &&
+                          prompt.averageScore !== undefined
+                            ? prompt.averageScore.toFixed(1)
+                            : "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                        Sessions
+                      </p>
+                      <div className="flex items-center space-x-1">
+                        <Beaker className="h-4 w-4 text-blue-500" />
+                        <span className="font-bold text-sm">
+                          {prompt.sessionsCount || 0}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                        Estimated Tokens
+                      </p>
+                      <div className="flex items-center space-x-1 text-green-600">
+                        <Coins className="h-4 w-4" />
+                        <span className="font-bold text-sm">
+                          ~{tokensCount}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Metadata */}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center space-x-4">
-                      <span>
-                        Updated: {formatDate(prompt.updated_at.toString())}
-                      </span>
-                      <span className="flex items-center">
-                        <User className="h-3 w-3 mr-1" />
-                        Created by: {prompt.creator_name || "Unknown"}
-                      </span>
+                  {/* Collapsible Prompt Content */}
+                  {isExpanded && (
+                    <div className="mb-4 bg-muted/50 p-3 rounded-lg border text-sm font-mono whitespace-pre-wrap animate-in fade-in slide-in-from-top-1 duration-200">
+                      {prompt.prompt}
                     </div>
+                  )}
+
+                  {/* Footer actions */}
+                  <div className="flex items-center space-x-4 mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={prompt.default || isPending}
+                      onClick={() => onSetDefault(prompt.id, prompt.name)}
+                      className={`h-8 rounded-md px-3 text-xs font-medium border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700 ${
+                        prompt.default
+                          ? "bg-orange-50 bg-opacity-50 border-none cursor-default"
+                          : ""
+                      }`}
+                    >
+                      {prompt.default ? "Par défaut" : "Définir par défaut"}
+                    </Button>
+                    <Link
+                      href={`/admin/sessions?search=${encodeURIComponent(
+                        prompt.name
+                      )}`}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
+                    >
+                      Voir évaluations
+                    </Link>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
-
-      {/* View Prompt Modal */}
-      <Dialog
-        open={viewPromptModal.isOpen}
-        onOpenChange={(open) => setViewPromptModal({ isOpen: open, prompt: null })}
-      >
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {viewPromptModal.prompt?.name || "System Prompt"}
-            </DialogTitle>
-            <DialogDescription>
-              Full system prompt content
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4">
-            <div className="bg-muted p-4 rounded">
-              <pre className="text-sm font-mono whitespace-pre-wrap wrap-break-word">
-                {viewPromptModal.prompt?.prompt}
-              </pre>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }

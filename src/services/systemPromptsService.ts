@@ -5,6 +5,8 @@ import type { SelectSystemPrompt, InsertSystemPrompt } from "@/lib/db-schema";
 
 export type SelectSystemPromptWithUser = SelectSystemPrompt & {
   creator_name: string | null;
+  sessionsCount?: number;
+  averageScore?: number | null;
 };
 
 export interface SystemPromptsResponse {
@@ -32,14 +34,11 @@ export async function getSystemPrompts(
   const whereConditions = [];
 
   if (search.trim()) {
-    whereConditions.push(
-      ilike(systemPrompts.name, `%${search.trim()}%`)
-    );
+    whereConditions.push(ilike(systemPrompts.name, `%${search.trim()}%`));
   }
 
-  const whereClause = whereConditions.length > 1
-    ? and(...whereConditions)
-    : whereConditions[0];
+  const whereClause =
+    whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0];
 
   // Fetch system prompts and total count
   const [promptsData, totalCountData] = await Promise.all([
@@ -53,6 +52,17 @@ export async function getSystemPrompts(
         created_at: systemPrompts.created_at,
         updated_at: systemPrompts.updated_at,
         creator_name: users.username,
+        sessionsCount:
+          sql<number>`(SELECT COUNT(*) FROM test_profiles WHERE system_prompt_id = ${systemPrompts.id})`.mapWith(
+            Number
+          ),
+        averageScore: sql<number | null>`(
+          SELECT AVG(trr.score)
+          FROM test_run_results trr
+          JOIN test_runs tr ON trr.test_run_id = tr.id
+          JOIN test_profiles tp ON tr.profile_id = tp.id
+          WHERE tp.system_prompt_id = ${systemPrompts.id}
+        )`.mapWith(Number),
       })
       .from(systemPrompts)
       .leftJoin(users, eq(systemPrompts.user_id, users.id))
@@ -61,10 +71,7 @@ export async function getSystemPrompts(
       .limit(limit)
       .offset(offset),
 
-    db
-      .select({ count: count() })
-      .from(systemPrompts)
-      .where(whereClause)
+    db.select({ count: count() }).from(systemPrompts).where(whereClause),
   ]);
 
   const totalCount = totalCountData[0]?.count || 0;
@@ -93,10 +100,7 @@ export async function createSystemPrompt(
       .where(eq(systemPrompts.user_id, data.user_id));
   }
 
-  const [newPrompt] = await db
-    .insert(systemPrompts)
-    .values(data)
-    .returning();
+  const [newPrompt] = await db.insert(systemPrompts).values(data).returning();
 
   return newPrompt;
 }
@@ -112,7 +116,7 @@ export async function updateSystemPrompt(
     if (prompt) {
       await db
         .update(systemPrompts)
-        .set({ default: false, updated_at: new Date() })
+        .set({ default: false, updated_at: new Date() });
     }
   }
 
@@ -134,7 +138,9 @@ export async function deleteSystemPrompt(
 ): Promise<SelectSystemPrompt | null> {
   const [deletedPrompt] = await db
     .delete(systemPrompts)
-    .where(and(eq(systemPrompts.id, promptId), eq(systemPrompts.user_id, userId)))
+    .where(
+      and(eq(systemPrompts.id, promptId), eq(systemPrompts.user_id, userId))
+    )
     .returning();
 
   return deletedPrompt || null;
@@ -149,10 +155,12 @@ export async function bulkDeleteSystemPrompts(
 
   const result = await db
     .delete(systemPrompts)
-    .where(and(
-      eq(systemPrompts.user_id, userId),
-      inArray(systemPrompts.id, promptIds)
-    ))
+    .where(
+      and(
+        eq(systemPrompts.user_id, userId),
+        inArray(systemPrompts.id, promptIds)
+      )
+    )
     .returning();
 
   return result.length; // Return actual count of deleted records
@@ -163,14 +171,16 @@ export async function getDefaultSystemPrompt(
   const [defaultPrompt] = await db
     .select()
     .from(systemPrompts)
-    .where(and(eq(systemPrompts.user_id, userId), eq(systemPrompts.default, true)))
+    .where(
+      and(eq(systemPrompts.user_id, userId), eq(systemPrompts.default, true))
+    )
     .limit(1);
 
   return defaultPrompt || null;
 }
 
 export async function getSystemPromptById(
-  promptId: number,
+  promptId: number
 ): Promise<SelectSystemPrompt | null> {
   const [prompt] = await db
     .select()
