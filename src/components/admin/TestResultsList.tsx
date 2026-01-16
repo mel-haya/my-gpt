@@ -13,8 +13,9 @@ import {
   XCircle,
   AlertCircle,
   RefreshCcw,
+  DollarSign,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatTokens } from "@/lib/utils";
 
 interface TestResult {
   runId: number;
@@ -25,6 +26,7 @@ interface TestResult {
   explanation: string | null;
   output: string | null;
   tokens_cost: number | null;
+  token_count: number | null;
   execution_time_ms: number | null;
   evaluator_model: string | null;
 }
@@ -206,8 +208,15 @@ export default function TestResultsList({
                       className="flex items-center gap-1"
                       title="Token Cost"
                     >
-                      <Coins className="w-3 h-3" />
+                      <DollarSign className="w-3 h-3" />
                       {formatCost(result.tokens_cost)}
+                    </span>
+                    <span
+                      className="flex items-center gap-1"
+                      title="Token Count"
+                    >
+                      <Coins className="w-3 h-3" />
+                      {formatTokens(result.token_count)}
                     </span>
                     <span
                       className="flex items-center gap-1"
@@ -239,8 +248,12 @@ export default function TestResultsList({
                     {/* Execution Metrics (Visible on mobile if hidden above, or just always show in detail view too) */}
                     <div className="flex gap-4 text-xs text-gray-500 md:hidden pb-2 border-b">
                       <span className="flex items-center gap-1">
-                        <Coins className="w-3 h-3" /> Cost:{" "}
+                        <DollarSign className="w-3 h-3" /> Cost:{" "}
                         {formatCost(result.tokens_cost)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Coins className="w-3 h-3" /> Tokens:{" "}
+                        {formatTokens(result.token_count)}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" /> Time:{" "}

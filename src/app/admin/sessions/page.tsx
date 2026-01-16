@@ -20,6 +20,7 @@ import {
   Medal,
   RefreshCcw,
   Star,
+  DollarSign,
 } from "lucide-react";
 import CreateTestSessionModal from "@/components/CreateTestSessionModal";
 import EditTestSessionModal from "@/components/EditTestSessionModal";
@@ -52,6 +53,7 @@ import {
 } from "@/components/ui/select";
 import type { SelectTestProfileWithPrompt } from "@/lib/db-schema";
 import type { DetailedTestProfile } from "@/services/testProfilesService";
+import { formatTokens } from "@/lib/utils";
 
 export default function SessionsPage() {
   const [testProfiles, setTestProfiles] = useState<
@@ -688,12 +690,20 @@ export default function SessionsPage() {
                       className="flex items-center gap-1.5"
                       title="Total Token Cost (Lifetime)"
                     >
-                      <Coins className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                      <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
                       <span className="font-medium text-gray-900 dark:text-gray-100">
-                        $
                         {selectedProfile.total_tokens_cost
                           ? selectedProfile.total_tokens_cost.toFixed(4)
                           : "0.0000"}
+                      </span>
+                    </div>
+                    <div
+                      className="flex items-center gap-1.5"
+                      title="Total Tokens (Lifetime)"
+                    >
+                      <Coins className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {formatTokens(selectedProfile.total_tokens)}
                       </span>
                     </div>
                     <div

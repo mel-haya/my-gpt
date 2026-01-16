@@ -69,6 +69,7 @@ export interface DetailedTestProfile {
   }[];
   models: SelectTestProfileModel[];
   total_tokens_cost: number | null;
+  total_tokens: number | null;
   average_score: number | null;
   manual_tests: ManualTest[] | null;
 }
@@ -428,6 +429,7 @@ export async function getTestProfileWithDetails(
       score: testRunResults.score,
       created_at: testRunResults.created_at,
       tokens_cost: testRunResults.tokens_cost,
+      token_count: testRunResults.token_count,
       manual_prompt: testRunResults.manual_prompt, // Include manual_prompt
     })
     .from(testRuns)
@@ -444,6 +446,7 @@ export async function getTestProfileWithDetails(
       model: string;
       score: number | null;
       cost: number | null;
+      tokens: number | null;
     }
   >();
 
@@ -458,6 +461,7 @@ export async function getTestProfileWithDetails(
         model: res.model_name || "N/A",
         score: res.score,
         cost: res.tokens_cost,
+        tokens: res.token_count,
       });
     }
   }
@@ -516,7 +520,14 @@ export async function getTestProfileWithDetails(
   const validScores = latestResults.filter(
     (r) => r.score !== null && r.score !== undefined
   ) as { score: number }[];
-  const totalCost = latestResults.reduce((sum, r) => sum + (r.cost || 0), 0);
+  const totalCost = latestResults.reduce(
+    (sum, r) => sum + (Number(r.cost) || 0),
+    0
+  );
+  const totalTokens = latestResults.reduce((sum, r) => {
+    const val = Number(r.tokens);
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0);
   const avgScore =
     validScores.length > 0
       ? validScores.reduce((sum, r) => sum + r.score, 0) / validScores.length
@@ -535,6 +546,7 @@ export async function getTestProfileWithDetails(
     tests: [...testsWithBest, ...manualTestsMapped],
     models: profileModels,
     total_tokens_cost: totalCost,
+    total_tokens: totalTokens,
     average_score: avgScore,
     manual_tests: profile.manual_tests as ManualTest[] | null,
   };
