@@ -58,7 +58,7 @@ export default function ConversationWrapper({
   error,
   stop,
   regenerate,
-  conversationId
+  conversationId,
 }: {
   messages: ChatMessage[];
   sendMessage: (
@@ -77,6 +77,14 @@ export default function ConversationWrapper({
   const { isSubscribed, loading: subscriptionLoading } = useSubscription();
   const [showRibbon, setShowRibbon] = useState(true);
   const { user } = useUser();
+  const [localFeedback, setLocalFeedback] = useState<
+    Record<string, "positive" | "negative">
+  >({});
+
+  // Reset local feedback when conversation changes
+  useEffect(() => {
+    setLocalFeedback({});
+  }, [conversationId]);
 
   // Load models and set default to gpt-4o if available
   useEffect(() => {
@@ -177,6 +185,9 @@ export default function ConversationWrapper({
 
     const combinedMessage = `user: ${userContent}\nassistant: ${assistantContent}`;
     const feedbackType = isGood ? "positive" : "negative";
+
+    // Store feedback locally for visual status
+    setLocalFeedback((prev) => ({ ...prev, [messageId]: feedbackType }));
 
     try {
       const result = await submitFeedbackAction({
@@ -364,20 +375,40 @@ export default function ConversationWrapper({
                       </MessageActions>
                     ) : (
                       <MessageActions className="flex gap-0">
-                        <MessageAction
-                          className="cursor-pointer"
-                          onClick={() => handleFeedback(message.key, true)}
-                          label="Good response"
-                        >
-                          <ThumbsUp className="size-4"  />
-                        </MessageAction>
-                        <MessageAction
-                          className="cursor-pointer"
-                          onClick={() => handleFeedback(message.key, false)}
-                          label="Bad response"
-                        >
-                          <ThumbsDown className="size-4" />
-                        </MessageAction>
+                        {(!localFeedback[message.key] ||
+                          localFeedback[message.key] === "positive") && (
+                          <MessageAction
+                            className="cursor-pointer"
+                            onClick={() => handleFeedback(message.key, true)}
+                            label="Good response"
+                          >
+                            <ThumbsUp
+                              className="size-4"
+                              fill={
+                                localFeedback[message.key] === "positive"
+                                  ? "currentColor"
+                                  : "none"
+                              }
+                            />
+                          </MessageAction>
+                        )}
+                        {(!localFeedback[message.key] ||
+                          localFeedback[message.key] === "negative") && (
+                          <MessageAction
+                            className="cursor-pointer"
+                            onClick={() => handleFeedback(message.key, false)}
+                            label="Bad response"
+                          >
+                            <ThumbsDown
+                              className="size-4"
+                              fill={
+                                localFeedback[message.key] === "negative"
+                                  ? "currentColor"
+                                  : "none"
+                              }
+                            />
+                          </MessageAction>
+                        )}
                         <CopyAction content={message.content} />
                       </MessageActions>
                     )}
