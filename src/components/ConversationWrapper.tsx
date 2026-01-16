@@ -312,7 +312,7 @@ export default function ConversationWrapper({
                       )}
 
                     {/* Tools Status Display for Assistant Messages */}
-                    {message.role === "assistant" &&
+                    {/* {message.role === "assistant" &&
                       message.toolsStatus &&
                       message.toolsStatus.length > 0 && (
                         <div className="mb-2">
@@ -341,7 +341,7 @@ export default function ConversationWrapper({
                             </Tool>
                           ))}
                         </div>
-                      )}
+                      )} */}
 
                     <MessageContent>
                       {message.content?.trim() && (
