@@ -45,15 +45,15 @@ export const documents = pgTable(
     content: text("content").notNull(),
     embedding: vector("embedding", { dimensions: 1536 }),
     uploaded_file_id: integer("uploaded_file_id").references(
-      () => uploadedFiles.id
+      () => uploadedFiles.id,
     ),
   },
   (table) => [
     index("documents_embedding_index").using(
       "hnsw",
-      table.embedding.op("vector_cosine_ops")
+      table.embedding.op("vector_cosine_ops"),
     ),
-  ]
+  ],
 );
 
 export const conversations = pgTable("conversations", {
@@ -70,6 +70,8 @@ export const messages = pgTable("messages", {
   role: rolesEnum("role").notNull(),
   parts: jsonb("parts").notNull(),
   text_content: text("text_content"),
+  model_used: text("model_used"),
+  created_at: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const uploadedFiles = pgTable(
@@ -85,7 +87,7 @@ export const uploadedFiles = pgTable(
     active: boolean("active").notNull().default(true),
     downloadUrl: text("download_url"),
   },
-  (table) => [uniqueIndex("file_hash_index").on(table.fileHash)]
+  (table) => [uniqueIndex("file_hash_index").on(table.fileHash)],
 );
 
 export const userTokenUsage = pgTable(
@@ -103,7 +105,7 @@ export const userTokenUsage = pgTable(
   (table) => [
     uniqueIndex("user_date_index").on(table.user_id, table.usage_date),
     index("user_id_index").on(table.user_id),
-  ]
+  ],
 );
 
 export const users = pgTable(
@@ -118,7 +120,7 @@ export const users = pgTable(
   (table) => [
     uniqueIndex("email_index").on(table.email),
     uniqueIndex("username_index").on(table.username),
-  ]
+  ],
 );
 
 export const settings = pgTable("settings", {
@@ -139,7 +141,7 @@ export const subscriptions = pgTable(
     created_date: timestamp("created_date").notNull().defaultNow(),
     expiry_date: timestamp("expiry_date").notNull(),
   },
-  (table) => [index("subscriptions_user_id_index").on(table.user_id)]
+  (table) => [index("subscriptions_user_id_index").on(table.user_id)],
 );
 
 export const tests = pgTable(
@@ -156,7 +158,7 @@ export const tests = pgTable(
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [index("tests_user_id_index").on(table.user_id)]
+  (table) => [index("tests_user_id_index").on(table.user_id)],
 );
 
 export const testRuns = pgTable(
@@ -178,7 +180,7 @@ export const testRuns = pgTable(
     index("test_runs_user_id_index").on(table.user_id),
     index("test_runs_status_index").on(table.status),
     index("test_runs_profile_id_index").on(table.profile_id),
-  ]
+  ],
 );
 
 export const testRunResults = pgTable(
@@ -207,7 +209,7 @@ export const testRunResults = pgTable(
     index("test_run_results_test_run_id_index").on(table.test_run_id),
     index("test_run_results_test_id_index").on(table.test_id),
     index("test_run_results_status_index").on(table.status),
-  ]
+  ],
 );
 
 export const systemPrompts = pgTable(
@@ -226,7 +228,7 @@ export const systemPrompts = pgTable(
   (table) => [
     index("system_prompts_user_id_index").on(table.user_id),
     uniqueIndex("system_prompts_name_user_index").on(table.name, table.user_id),
-  ]
+  ],
 );
 
 export const testProfiles = pgTable(
@@ -236,7 +238,7 @@ export const testProfiles = pgTable(
     name: text("name").notNull(),
     system_prompt_id: integer("system_prompt_id").references(
       () => systemPrompts.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
     manual_tests: jsonb("manual_tests"),
     user_id: text("user_id")
@@ -249,7 +251,7 @@ export const testProfiles = pgTable(
     index("test_profiles_user_id_index").on(table.user_id),
     index("test_profiles_system_prompt_id_index").on(table.system_prompt_id),
     uniqueIndex("test_profiles_name_user_index").on(table.name, table.user_id),
-  ]
+  ],
 );
 
 export const testProfileTests = pgTable(
@@ -269,9 +271,9 @@ export const testProfileTests = pgTable(
     index("test_profile_tests_test_id_index").on(table.test_id),
     uniqueIndex("test_profile_tests_unique").on(
       table.profile_id,
-      table.test_id
+      table.test_id,
     ),
-  ]
+  ],
 );
 
 export const testProfileModels = pgTable(
@@ -288,9 +290,9 @@ export const testProfileModels = pgTable(
     index("test_profile_models_profile_id_index").on(table.profile_id),
     uniqueIndex("test_profile_models_unique").on(
       table.profile_id,
-      table.model_name
+      table.model_name,
     ),
-  ]
+  ],
 );
 
 export const feedback = pgTable("feedback", {
@@ -299,7 +301,7 @@ export const feedback = pgTable("feedback", {
   feedback: feedbackTypeEnum("feedback").notNull(),
   submitted_at: timestamp("submitted_at").notNull().defaultNow(),
   conversation_id: integer("conversation_id").references(
-    () => conversations.id
+    () => conversations.id,
   ),
 });
 

@@ -5,7 +5,8 @@ import { ChatMessage } from "@/types/chatMessage";
 
 export async function saveMessage(
   message: ChatMessage,
-  conversationId: number
+  conversationId: number,
+  modelUsed?: string,
 ): Promise<SelectMessage> {
   const insertMessage: InsertMessage = {
     conversation_id: conversationId,
@@ -15,13 +16,14 @@ export async function saveMessage(
       .filter((part) => part.type === "text")
       .map((part) => part.text)
       .join(" "),
+    model_used: modelUsed,
   };
   const result = await db.insert(messages).values(insertMessage).returning();
   return result[0];
 }
 
 export async function getMessagesByConversationId(
-  conversationId: number
+  conversationId: number,
 ): Promise<SelectMessage[]> {
   const result = await db
     .select()
@@ -32,7 +34,7 @@ export async function getMessagesByConversationId(
 }
 
 export async function getLatestMessageByConversationId(
-  conversationId: number
+  conversationId: number,
 ): Promise<SelectMessage | null> {
   const result = await db
     .select()
@@ -46,17 +48,15 @@ export async function getLatestMessageByConversationId(
 export async function updateMessageTextContent(
   messageId: number,
   textContent: string,
-  parts: any[]
+  parts: ChatMessage["parts"],
 ): Promise<SelectMessage> {
   const result = await db
     .update(messages)
-    .set({ 
+    .set({
       text_content: textContent,
-      parts: parts
+      parts: parts,
     })
     .where(eq(messages.id, messageId))
     .returning();
   return result[0];
 }
-
-

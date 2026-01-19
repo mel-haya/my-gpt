@@ -7,7 +7,7 @@ import { useChat } from "@ai-sdk/react";
 import { ChatMessage } from "@/types/chatMessage";
 import { ToastContainer } from "react-toastify";
 import { FileUIPart, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { useEffect, useState, useEffectEvent } from "react";
+import { useEffect, useState, useEffectEvent, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { ChatRequestOptions } from "ai";
 import { useTokenUsage } from "@/hooks/useTokenUsage";
@@ -29,6 +29,8 @@ export default function Home() {
     refetch,
   } = useConversations(searchQuery, { enabled: isSignedIn });
   const queryClient = useQueryClient();
+  // Track user message count for current conversation to refresh only first 3 times
+  const userMessageCountRef = useRef(0);
   const {
     messages,
     sendMessage,
@@ -78,9 +80,11 @@ export default function Home() {
     //       break;
     //   }
     // },
-    async onFinish({ messages }) {
-      const userMessages = messages.filter((m) => m.role === "user");
-      if (userMessages.length === 1) await refetch();
+    async onFinish() {
+      userMessageCountRef.current++;
+      // Refresh conversations for first 3 user messages to show title updates
+      if (userMessageCountRef.current <= 3)
+        await refetch();
       await refreshUsage();
     },
   });
@@ -115,7 +119,7 @@ export default function Home() {
 
   async function send(
     message: { text: string; files?: FileUIPart[] },
-    options?: ChatRequestOptions
+    options?: ChatRequestOptions,
   ): Promise<void> {
     // Check if user is signed in
     if (!isSignedIn) {
@@ -128,13 +132,13 @@ export default function Home() {
       const resetTime = new Date();
       resetTime.setHours(24, 0, 0, 0); // Next midnight
       const hoursUntilReset = Math.ceil(
-        (resetTime.getTime() - Date.now()) / (1000 * 60 * 60)
+        (resetTime.getTime() - Date.now()) / (1000 * 60 * 60),
       );
 
       addSystemMessage(
         `⚠️ **Daily message limit reached!**\n\nYou've used all your messages for today. Your limit will reset in ${hoursUntilReset} hour${
           hoursUntilReset !== 1 ? "s" : ""
-        }.\n\nPlease try again tomorrow.`
+        }.\n\nPlease try again tomorrow.`,
       );
       return;
     }
@@ -163,18 +167,18 @@ export default function Home() {
         const resetTime = new Date();
         resetTime.setHours(24, 0, 0, 0); // Next midnight
         const hoursUntilReset = Math.ceil(
-          (resetTime.getTime() - Date.now()) / (1000 * 60 * 60)
+          (resetTime.getTime() - Date.now()) / (1000 * 60 * 60),
         );
 
         addSystemMessage(
           `🚫 **Rate limit exceeded!**\n\nYou've reached your daily message limit. Your limit will reset in ${hoursUntilReset} hour${
             hoursUntilReset !== 1 ? "s" : ""
-          }.\n\nPlease try again tomorrow. We appreciate your patience! ✨`
+          }.\n\nPlease try again tomorrow. We appreciate your patience! ✨`,
         );
       } else {
         // Handle other errors
         addSystemMessage(
-          `❌ **Message failed to send**\n\nThere was an issue sending your message. Please try again.\n\nIf the problem persists, please check your connection or contact support.`
+          `❌ **Message failed to send**\n\nThere was an issue sending your message. Please try again.\n\nIf the problem persists, please check your connection or contact support.`,
         );
       }
 
@@ -184,7 +188,7 @@ export default function Home() {
   }
 
   async function regenerateMessage(
-    options?: ChatRequestOptions
+    options?: ChatRequestOptions,
   ): Promise<void> {
     // Check if user is signed in
     if (!isSignedIn) {
@@ -196,13 +200,13 @@ export default function Home() {
       const resetTime = new Date();
       resetTime.setHours(24, 0, 0, 0); // Next midnight
       const hoursUntilReset = Math.ceil(
-        (resetTime.getTime() - Date.now()) / (1000 * 60 * 60)
+        (resetTime.getTime() - Date.now()) / (1000 * 60 * 60),
       );
 
       addSystemMessage(
         `⚠️ **Daily message limit reached!**\n\nYou've used all your messages for today. Your limit will reset in ${hoursUntilReset} hour${
           hoursUntilReset !== 1 ? "s" : ""
-        }.\n\nPlease try again tomorrow.`
+        }.\n\nPlease try again tomorrow.`,
       );
       return;
     }
@@ -227,18 +231,18 @@ export default function Home() {
         const resetTime = new Date();
         resetTime.setHours(24, 0, 0, 0); // Next midnight
         const hoursUntilReset = Math.ceil(
-          (resetTime.getTime() - Date.now()) / (1000 * 60 * 60)
+          (resetTime.getTime() - Date.now()) / (1000 * 60 * 60),
         );
 
         addSystemMessage(
           `🚫 **Rate limit exceeded!**\n\nYou've reached your daily message limit. Your limit will reset in ${hoursUntilReset} hour${
             hoursUntilReset !== 1 ? "s" : ""
-          }.\n\nPlease try again tomorrow. We appreciate your patience! ✨`
+          }.\n\nPlease try again tomorrow. We appreciate your patience! ✨`,
         );
       } else {
         // Handle other errors
         addSystemMessage(
-          `❌ **Message failed to send**\n\nThere was an issue sending your message. Please try again.\n\nIf the problem persists, please check your connection or contact support.`
+          `❌ **Message failed to send**\n\nThere was an issue sending your message. Please try again.\n\nIf the problem persists, please check your connection or contact support.`,
         );
       }
 
@@ -249,6 +253,7 @@ export default function Home() {
   function resetConversation() {
     setMessages([]);
     setCurrentConversation(null);
+    userMessageCountRef.current = 0; // Reset counter for new conversation
   }
 
   async function deleteConversation(conversationId: number) {
@@ -257,7 +262,7 @@ export default function Home() {
         `/api/conversations?conversationId=${conversationId}`,
         {
           method: "DELETE",
-        }
+        },
       );
       const data = await res;
       console.log("Delete response data:", data);
@@ -305,12 +310,16 @@ export default function Home() {
 
   async function changeConversation(conversation: SelectConversation) {
     setCurrentConversation(conversation);
+    userMessageCountRef.current = 0; // Reset counter when changing conversation
     try {
       const res = await fetch(
-        "/api/messages?conversationId=" + conversation?.id
+        "/api/messages?conversationId=" + conversation?.id,
       );
       const data = await res.json();
       setMessages(data);
+      // Set the counter based on existing user messages
+      const userMessages = data.filter((m: ChatMessage) => m.role === "user");
+      userMessageCountRef.current = userMessages.length;
     } catch (error) {
       console.error("Error fetching conversations:", error);
     }

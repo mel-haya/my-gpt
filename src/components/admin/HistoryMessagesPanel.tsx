@@ -106,7 +106,7 @@ export default function HistoryMessagesPanel({
         </p>
       </header>
 
-      <Conversation className="flex-1">
+      <Conversation className="flex-1 custom-scrollbar">
         <ConversationContent className="max-w-4xl mx-auto px-6 py-12 gap-10">
           {messages.map((message) => {
             const parts = message.parts as HistoryMessagePart[];
@@ -162,6 +162,25 @@ export default function HistoryMessagesPanel({
                     return null;
                   })}
                 </MessageContent>
+                <div className={`flex
+                     ${message.role === "assistant" ? "justify-start" : "justify-end"}
+                     gap-1 mt-2 opacity-50 text-[10px] text-neutral-400`}>
+                  {message.role === "assistant" && message.model_used && (
+                    <span>  {message.model_used}</span>
+                  )}
+                  {message.created_at && (
+                    <span>
+                      {new Date(message.created_at).toLocaleString([], {
+                        year: "numeric",
+                        month: "numeric",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
+                    </span>
+                  )}
+                </div>
               </Message>
             );
           })}

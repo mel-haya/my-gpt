@@ -1,8 +1,16 @@
 import { streamText, convertToModelMessages, stepCountIs } from "ai";
 import { tools, webSearchTool } from "./tools";
 import { ChatMessage } from "@/types/chatMessage";
-import { saveMessage, getLatestMessageByConversationId, updateMessageTextContent } from "@/services/messagesService";
-import { hasReachedDailyLimit, getRemainingMessages, recordUsage } from "@/services/tokenUsageService";
+import {
+  saveMessage,
+  getLatestMessageByConversationId,
+  updateMessageTextContent,
+} from "@/services/messagesService";
+import {
+  hasReachedDailyLimit,
+  getRemainingMessages,
+  recordUsage,
+} from "@/services/tokenUsageService";
 import { getSystemPrompt } from "@/services/settingsService";
 import { Tools } from "@/types/Tools";
 import { uploadImageToImageKit } from "./imageKit";
@@ -28,14 +36,10 @@ export async function POST(req: Request) {
     }
 
     // Check if user has reached their daily message limit
-    const hasReachedLimit = await hasReachedDailyLimit(
-      userId
-    );
+    const hasReachedLimit = await hasReachedDailyLimit(userId);
 
     if (hasReachedLimit) {
-      const remainingMessages = await getRemainingMessages(
-        userId
-      );
+      const remainingMessages = await getRemainingMessages(userId);
       return new Response(
         JSON.stringify({
           error: "Daily message limit reached",
@@ -46,12 +50,13 @@ export async function POST(req: Request) {
         {
           status: 429,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
-    const { messages, conversation, model, webSearch, trigger } = await req.json();
-    
+    const { messages, conversation, model, webSearch, trigger } =
+      await req.json();
+
     const lastMessage = messages[messages.length - 1];
     for (const part of lastMessage.parts) {
       if (part.type === "file" && part.mediaType.startsWith("image/")) {
@@ -61,23 +66,30 @@ export async function POST(req: Request) {
 
     const modelMessages = convertToModelMessages(messages);
 
-    const backgroundTasks = Promise.allSettled(
-      [
-        trigger === "submit-message" && saveMessage(lastMessage, conversation.id),
-        !conversation.title &&
-          renameConversationAI(
-            modelMessages,
-            conversation.id,
-            conversation.user_id
-          ),
-      ].filter(Boolean)
-    );
-
-    const toolsToUse: Tools = { ...tools };
-
     const selectedmodel = supportedModels.includes(model)
       ? model
       : "openai/gpt-5-nano";
+
+    // Count user messages to determine if we should rename
+    const userMessageCount = messages.filter(
+      (msg: ChatMessage) => msg.role === "user",
+    ).length;
+
+    const backgroundTasks = Promise.allSettled(
+      [
+        trigger === "submit-message" &&
+          saveMessage(lastMessage, conversation.id, selectedmodel),
+        userMessageCount <= 3 &&
+          renameConversationAI(
+            modelMessages,
+            conversation.id,
+            conversation.user_id,
+            conversation.title || undefined,
+          ),
+      ].filter(Boolean),
+    );
+
+    const toolsToUse: Tools = { ...tools };
 
     if (webSearch) toolsToUse.webSearch = webSearchTool;
 
@@ -120,37 +132,44 @@ export async function POST(req: Request) {
 
           // Handle regenerate-message trigger
           if (trigger === "regenerate-message") {
-            const latestMessage = await getLatestMessageByConversationId(conversation.id);
-            
+            const latestMessage = await getLatestMessageByConversationId(
+              conversation.id,
+            );
+
             if (latestMessage && latestMessage.role === "assistant") {
               // Replace the content of the latest assistant message
               const newTextContent = (responseMessage as ChatMessage).parts
                 .filter((part) => part.type === "text")
                 .map((part) => part.text)
                 .join(" ");
-              
+
               await updateMessageTextContent(
-                latestMessage.id, 
-                newTextContent, 
-                (responseMessage as ChatMessage).parts
+                latestMessage.id,
+                newTextContent,
+                (responseMessage as ChatMessage).parts,
               );
             } else {
               // Latest message is a user message (previous generation failed), save as usual
-              await saveMessage(responseMessage as ChatMessage, conversation.id);
+              await saveMessage(
+                responseMessage as ChatMessage,
+                conversation.id,
+                selectedmodel,
+              );
             }
           } else {
-            await saveMessage(responseMessage as ChatMessage, conversation.id);
+            await saveMessage(
+              responseMessage as ChatMessage,
+              conversation.id,
+              selectedmodel,
+            );
           }
 
           // Record message usage with actual token count from AI response
           const actualTokens = streamUsage?.totalTokens || 0;
-          const usageResult = await recordUsage(
-            userId,
-            actualTokens
-          );
+          const usageResult = await recordUsage(userId, actualTokens);
 
           console.log(
-            `User ${userId} - Messages: ${usageResult.usage.messages_sent}/${usageResult.usage.daily_message_limit}, Actual Tokens: ${usageResult.usage.tokens_used}`
+            `User ${userId} - Messages: ${usageResult.usage.messages_sent}/${usageResult.usage.daily_message_limit}, Actual Tokens: ${usageResult.usage.tokens_used}`,
           );
         } catch (error) {
           console.error("Error in onFinish:", error);
