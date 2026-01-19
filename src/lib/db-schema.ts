@@ -379,6 +379,10 @@ export type SelectTestProfileWithPrompt = SelectTestProfile & {
   system_prompt: string | null;
   username: string;
   latest_status: string | null;
+  total_tokens_cost: number | null;
+  total_tokens: number | null;
+  average_score: number | null;
+  best_model: string | null;
 };
 export type InsertTestProfileTest = typeof testProfileTests.$inferInsert;
 export type SelectTestProfileTest = typeof testProfileTests.$inferSelect;

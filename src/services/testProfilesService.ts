@@ -130,10 +130,42 @@ export async function getTestProfiles(options?: {
         u.username, 
         tp.created_at, 
         tp.updated_at,
-        (SELECT status FROM test_runs WHERE profile_id = tp.id ORDER BY created_at DESC LIMIT 1) as latest_status
+        tp.manual_tests,
+        (SELECT status FROM test_runs WHERE profile_id = tp.id ORDER BY created_at DESC LIMIT 1) as latest_status,
+        stats.total_tokens_cost,
+        stats.total_tokens,
+        stats.average_score,
+        stats.best_model
       FROM test_profiles tp
       LEFT JOIN system_prompts sp ON tp.system_prompt_id = sp.id
       INNER JOIN users u ON tp.user_id = u.id
+      LEFT JOIN LATERAL (
+        WITH deduped AS (
+          SELECT DISTINCT ON (COALESCE(test_id::text, manual_prompt), model_used)
+            trr.tokens_cost,
+            trr.token_count,
+            trr.score,
+            trr.model_used,
+            trr.id
+          FROM test_runs tr
+          JOIN test_run_results trr ON tr.id = trr.test_run_id
+          WHERE tr.profile_id = tp.id
+          ORDER BY COALESCE(test_id::text, manual_prompt), model_used, trr.created_at DESC
+        )
+        SELECT 
+          SUM(tokens_cost) as total_tokens_cost,
+          SUM(token_count) as total_tokens,
+          AVG(score) as average_score,
+          (
+            SELECT model_used
+            FROM deduped
+            WHERE score IS NOT NULL
+            GROUP BY model_used
+            ORDER BY AVG(score) DESC
+            LIMIT 1
+          ) as best_model
+        FROM deduped
+      ) stats ON true
       ${
         options?.search
           ? sql`WHERE tp.name ILIKE ${`%${options.search}%`}`
@@ -141,7 +173,7 @@ export async function getTestProfiles(options?: {
       }
       ORDER BY tp.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
-    `
+    `,
   );
 
   const totalCountResult = await countQuery;
@@ -160,7 +192,7 @@ export async function getTestProfiles(options?: {
 }
 
 export async function getTestProfileById(
-  id: number
+  id: number,
 ): Promise<SelectTestProfile | null> {
   const result = await db
     .select()
@@ -172,7 +204,7 @@ export async function getTestProfileById(
 
 export async function getTestProfileByName(
   name: string,
-  userId: string
+  userId: string,
 ): Promise<SelectTestProfile | null> {
   const result = await db
     .select()
@@ -183,7 +215,7 @@ export async function getTestProfileByName(
 }
 
 export async function createTestProfile(
-  data: CreateTestProfileData
+  data: CreateTestProfileData,
 ): Promise<SelectTestProfile> {
   try {
     // Create the test profile first
@@ -204,21 +236,21 @@ export async function createTestProfile(
           (test_id) => ({
             profile_id: profile.id,
             test_id,
-          })
+          }),
         );
         await db.insert(testProfileTests).values(testProfileTestData);
       } catch (testError) {
         // If adding tests fails, attempt to delete the created profile
         console.error(
           "Failed to add tests to profile, attempting cleanup:",
-          testError
+          testError,
         );
         try {
           await db.delete(testProfiles).where(eq(testProfiles.id, profile.id));
         } catch (cleanupError) {
           console.error(
             "Failed to cleanup profile after test insertion error:",
-            cleanupError
+            cleanupError,
           );
         }
         throw new Error("Failed to create test profile: Unable to add tests");
@@ -238,7 +270,7 @@ export async function createTestProfile(
         // If adding models fails, attempt to clean up both profile and tests
         console.error(
           "Failed to add models to profile, attempting cleanup:",
-          modelError
+          modelError,
         );
         try {
           await db
@@ -248,11 +280,11 @@ export async function createTestProfile(
         } catch (cleanupError) {
           console.error(
             "Failed to cleanup profile after model insertion error:",
-            cleanupError
+            cleanupError,
           );
         }
         throw new Error(
-          "Failed to create test profile: Unable to add model configurations"
+          "Failed to create test profile: Unable to add model configurations",
         );
       }
     }
@@ -272,7 +304,7 @@ export async function createTestProfile(
 
 export async function updateTestProfile(
   id: number,
-  data: UpdateTestProfileData
+  data: UpdateTestProfileData,
 ): Promise<SelectTestProfile> {
   try {
     // 1. Identify models to be removed FIRST before any deletions
@@ -311,7 +343,7 @@ export async function updateTestProfile(
         (test_id) => ({
           profile_id: id,
           test_id,
-        })
+        }),
       );
       await db.insert(testProfileTests).values(testProfileTestData);
     }
@@ -326,7 +358,7 @@ export async function updateTestProfile(
         (model_name) => ({
           profile_id: id,
           model_name,
-        })
+        }),
       );
       await db.insert(testProfileModels).values(modelConfigData);
     }
@@ -346,8 +378,8 @@ export async function updateTestProfile(
           .where(
             and(
               inArray(testRunResults.test_run_id, runIds),
-              inArray(testRunResults.model_used, removedModels)
-            )
+              inArray(testRunResults.model_used, removedModels),
+            ),
           );
       }
     }
@@ -377,7 +409,7 @@ export async function getSystemPromptsForSelection(): Promise<
 }
 
 export async function getTestProfileWithDetails(
-  id: number
+  id: number,
 ): Promise<DetailedTestProfile | null> {
   // Get profile with system prompt details by joining tables
   const profileResult = await db
@@ -396,7 +428,7 @@ export async function getTestProfileWithDetails(
     .from(testProfiles)
     .leftJoin(
       systemPrompts,
-      eq(testProfiles.system_prompt_id, systemPrompts.id)
+      eq(testProfiles.system_prompt_id, systemPrompts.id),
     )
     .innerJoin(users, eq(testProfiles.user_id, users.id))
     .where(eq(testProfiles.id, id))
@@ -518,11 +550,11 @@ export async function getTestProfileWithDetails(
 
   // Get aggregated metrics using ONLY the latest results
   const validScores = latestResults.filter(
-    (r) => r.score !== null && r.score !== undefined
+    (r) => r.score !== null && r.score !== undefined,
   ) as { score: number }[];
   const totalCost = latestResults.reduce(
     (sum, r) => sum + (Number(r.cost) || 0),
-    0
+    0,
   );
   const totalTokens = latestResults.reduce((sum, r) => {
     const val = Number(r.tokens);

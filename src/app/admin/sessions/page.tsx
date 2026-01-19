@@ -21,6 +21,8 @@ import {
   RefreshCcw,
   Star,
   DollarSign,
+  Trophy,
+  Pause,
 } from "lucide-react";
 import CreateTestSessionModal from "@/components/CreateTestSessionModal";
 import EditTestSessionModal from "@/components/EditTestSessionModal";
@@ -62,7 +64,7 @@ export default function SessionsPage() {
   const [selectedProfile, setSelectedProfile] =
     useState<DetailedTestProfile | null>(null);
   const [selectedTestId, setSelectedTestId] = useState<number | string | null>(
-    null
+    null,
   );
   const [sessionRuns, setSessionRuns] = useState<SessionRunResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,7 +112,7 @@ export default function SessionsPage() {
       try {
         const result = await getTestInProfileDetailsAction(
           selectedProfile.id,
-          testId
+          testId,
         );
         if (result.success && result.data) {
           setTestDetailsData(result.data);
@@ -121,7 +123,7 @@ export default function SessionsPage() {
         setTestDetailsLoading(false);
       }
     },
-    [selectedProfile]
+    [selectedProfile],
   );
 
   const handleToggleTestDetails = useCallback(
@@ -134,23 +136,30 @@ export default function SessionsPage() {
         loadTestDetails(testId);
       }
     },
-    [selectedTestId, loadTestDetails]
+    [selectedTestId, loadTestDetails],
   );
 
-  const loadTestProfiles = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await getTestProfilesAction(searchQuery, 10, currentPage);
-      if (result.success && result.data) {
-        setTestProfiles(result.data.testProfiles);
-        setTotalPages(result.data.totalPages);
+  const loadTestProfiles = useCallback(
+    async (silent: boolean = false) => {
+      if (!silent) setLoading(true);
+      try {
+        const result = await getTestProfilesAction(
+          searchQuery,
+          10,
+          currentPage,
+        );
+        if (result.success && result.data) {
+          setTestProfiles(result.data.testProfiles);
+          setTotalPages(result.data.totalPages);
+        }
+      } catch (error) {
+        console.error("Error loading test profiles:", error);
+      } finally {
+        if (!silent) setLoading(false);
       }
-    } catch (error) {
-      console.error("Error loading test profiles:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchQuery, currentPage]);
+    },
+    [searchQuery, currentPage],
+  );
 
   const loadModels = useCallback(async () => {
     try {
@@ -195,7 +204,7 @@ export default function SessionsPage() {
         if (!silent) setDetailsLoading(false);
       }
     },
-    [loadSessionRuns]
+    [loadSessionRuns],
   );
 
   useEffect(() => {
@@ -275,7 +284,7 @@ export default function SessionsPage() {
 
   const handleRegenerateTest = async (
     testId: number | string,
-    modelUsed?: string
+    modelUsed?: string,
   ) => {
     if (!selectedProfile) return;
     setRegeneratingTests((prev) => new Set(prev).add(testId));
@@ -284,7 +293,7 @@ export default function SessionsPage() {
       const result = await regenerateTestResultAction(
         selectedProfile.id,
         testId,
-        modelUsed
+        modelUsed,
       );
       if (result.success && result.data) {
         // Start polling for status updates
@@ -317,13 +326,14 @@ export default function SessionsPage() {
       const result = await reEvaluateTestResultAction(
         selectedProfile.id,
         testId,
-        "openai/gpt-4o"
+        "openai/gpt-4o",
       );
       if (result.success) {
         if (selectedTestId === testId) {
           loadTestDetails(testId);
         }
         loadProfileDetails(selectedProfile.id);
+        loadTestProfiles(true);
       }
     } catch (error) {
       console.error("Error re-evaluating test:", error);
@@ -354,6 +364,8 @@ export default function SessionsPage() {
               loadSessionRuns(selectedProfile.id);
               // Also refresh profile details
               loadProfileDetails(selectedProfile.id, true);
+              // Refresh the entire list to update stats (tokens, cost, score)
+              loadTestProfiles(true);
 
               // If we are polling because of a single test regeneration, refresh its details
               if (testId && selectedTestId === testId) {
@@ -374,7 +386,8 @@ export default function SessionsPage() {
       loadProfileDetails,
       selectedTestId,
       loadTestDetails,
-    ]
+      loadTestProfiles,
+    ],
   );
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -386,10 +399,12 @@ export default function SessionsPage() {
     // Check if this profile is currently running (in-memory state)
     if (runningSession === profile.id) {
       return (
-        <Badge variant="default" className="bg-blue-500">
-          <Clock className="w-3 h-3 mr-1" />
-          Running
-        </Badge>
+        <div className="group relative" title="Running">
+          <Clock className="w-3 h-3 text-blue-500 animate-pulse" />
+          <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+            Running
+          </span>
+        </div>
       );
     }
 
@@ -402,42 +417,97 @@ export default function SessionsPage() {
     }
 
     if (!status) {
-      return <Badge variant="secondary">Idle</Badge>;
+      return (
+        <div className="group relative" title="Idle">
+          <Pause className="w-3 h-3 text-gray-400" />
+          <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+            Idle
+          </span>
+        </div>
+      );
     }
 
     switch (status) {
       case "Running":
         return (
-          <Badge variant="default" className="bg-blue-500">
-            <Clock className="w-3 h-3 mr-1" />
-            Running
-          </Badge>
+          <div className="group relative" title="Running">
+            <Clock className="w-3 h-3 text-blue-500 animate-pulse" />
+            <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+              Running
+            </span>
+          </div>
         );
       case "Done":
         return (
-          <Badge variant="default" className="bg-green-500">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Completed
-          </Badge>
+          <div className="group relative" title="Completed">
+            <CheckCircle className="w-3 h-3 text-green-500" />
+            <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+              Completed
+            </span>
+          </div>
         );
       case "Failed":
         return (
-          <Badge variant="destructive">
-            <XCircle className="w-3 h-3 mr-1" />
-            Failed
-          </Badge>
+          <div className="group relative" title="Failed">
+            <XCircle className="w-3 h-3 text-red-500" />
+            <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+              Failed
+            </span>
+          </div>
         );
       case "Stopped":
         return (
-          <Badge variant="secondary">
-            <XCircle className="w-3 h-3 mr-1" />
-            Stopped
-          </Badge>
+          <div className="group relative" title="Stopped">
+            <XCircle className="w-3 h-3 text-orange-500" />
+            <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+              Stopped
+            </span>
+          </div>
         );
       default:
-        return <Badge variant="secondary">Idle</Badge>;
+        return (
+          <div className="group relative" title="Idle">
+            <Pause className="w-3 h-3 text-gray-400" />
+            <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+              Idle
+            </span>
+          </div>
+        );
     }
   };
+
+  // Compute the winner model (model with highest average score across all tests)
+  const winnerModel = useMemo(() => {
+    if (!selectedProfile?.tests || selectedProfile.tests.length === 0)
+      return null;
+
+    // Group scores by model
+    const modelScores: Record<string, { total: number; count: number }> = {};
+
+    for (const test of selectedProfile.tests) {
+      if (test.best_model && test.best_score !== null) {
+        if (!modelScores[test.best_model]) {
+          modelScores[test.best_model] = { total: 0, count: 0 };
+        }
+        modelScores[test.best_model].total += test.best_score;
+        modelScores[test.best_model].count += 1;
+      }
+    }
+
+    // Find the model with highest average
+    let bestModel: string | null = null;
+    let bestAvg = -1;
+
+    for (const [model, scores] of Object.entries(modelScores)) {
+      const avg = scores.total / scores.count;
+      if (avg > bestAvg) {
+        bestAvg = avg;
+        bestModel = model;
+      }
+    }
+
+    return bestModel ? { model: bestModel, avgScore: bestAvg } : null;
+  }, [selectedProfile?.tests]);
 
   return (
     <div className="flex h-[calc(100vh-2rem)] gap-6 p-6">
@@ -492,17 +562,67 @@ export default function SessionsPage() {
                 }`}
                 onClick={() => handleSelectProfile(profile)}
               >
-                <CardHeader className="">
-                  <div className="flex items-start justify-between">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <CardTitle className="text-sm font-medium truncate">
                         {profile.name}
                       </CardTitle>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500">
                         {getStatusBadge(profile)}
-                        <span className="text-xs text-gray-500">
+                        <span>
                           {new Date(profile.created_at).toLocaleDateString()}
                         </span>
+                      </div>
+                      {/* Stats Row */}
+                      <div className="flex items-center gap-3 mt-2 text-[10px]">
+                        {profile.total_tokens_cost !== null &&
+                          profile.total_tokens_cost > 0 && (
+                            <div
+                              className="flex items-center gap-0.5"
+                              title="Total Cost"
+                            >
+                              <DollarSign className="w-3 h-3 text-green-500" />
+                              <span className="text-gray-400">
+                                {Number(profile.total_tokens_cost).toFixed(4)}
+                              </span>
+                            </div>
+                          )}
+                        {profile.total_tokens !== null &&
+                          Number(profile.total_tokens) > 0 && (
+                            <div
+                              className="flex items-center gap-0.5"
+                              title="Total Tokens"
+                            >
+                              <Coins className="w-3 h-3 text-yellow-500" />
+                              <span className="text-gray-400">
+                                {formatTokens(Number(profile.total_tokens))}
+                              </span>
+                            </div>
+                          )}
+                        {profile.average_score !== null &&
+                          !isNaN(Number(profile.average_score)) && (
+                            <div
+                              className="flex items-center gap-0.5"
+                              title="Average Score"
+                            >
+                              <Medal className="w-3 h-3 text-blue-500" />
+                              <span className="text-gray-400">
+                                {Number(profile.average_score).toFixed(1)}
+                              </span>
+                            </div>
+                          )}
+                        {profile.best_model && (
+                          <div
+                            className="flex items-center gap-0.5 min-w-0"
+                            title={`Best Model: ${profile.best_model}`}
+                          >
+                            <Trophy className="w-3 h-3 text-amber-500 shrink-0" />
+                            <span className="text-gray-400 truncate">
+                              {profile.best_model.split("/").pop()}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -715,6 +835,28 @@ export default function SessionsPage() {
                         {selectedProfile.average_score.toFixed(1)}/10
                       </span>
                     </div>
+                    {winnerModel && (
+                      <div
+                        className="flex items-center gap-1.5"
+                        title={`Winner Model: ${winnerModel.model} (Avg: ${winnerModel.avgScore.toFixed(1)}/10)`}
+                      >
+                        <Trophy className="w-4 h-4 text-amber-500" />
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {winnerModel.model.split("/").pop()}:{" "}
+                          <span
+                            className={
+                              winnerModel.avgScore >= 8
+                                ? `text-green-600 dark:text-green-400`
+                                : winnerModel.avgScore >= 6
+                                  ? `text-yellow-600 dark:text-yellow-400`
+                                  : `text-red-600 dark:text-red-400`
+                            }
+                          >
+                            {winnerModel.avgScore.toFixed(1)}
+                          </span>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
             </div>
@@ -988,7 +1130,7 @@ export default function SessionsPage() {
                                 </div>
                                 <div className="text-xs text-gray-500">
                                   {Math.round(
-                                    (run.completedTests / run.totalTests) * 100
+                                    (run.completedTests / run.totalTests) * 100,
                                   )}
                                   %
                                 </div>
@@ -999,8 +1141,8 @@ export default function SessionsPage() {
                                     run.status === "Done"
                                       ? "bg-green-500"
                                       : run.status === "Failed"
-                                      ? "bg-red-500"
-                                      : "bg-blue-500"
+                                        ? "bg-red-500"
+                                        : "bg-blue-500"
                                   }`}
                                   style={{
                                     width: `${
