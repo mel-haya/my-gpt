@@ -14,7 +14,6 @@ import {
   Star,
   Zap,
   Beaker,
-  DollarSign,
   Coins,
 } from "lucide-react";
 import type { SelectSystemPromptWithUser } from "@/services/systemPromptsService";

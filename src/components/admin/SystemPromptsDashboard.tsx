@@ -22,7 +22,6 @@ import { updateSystemPromptAction } from "@/app/actions/systemPrompts";
 import SystemPromptDialog from "./SystemPromptDialog";
 import DeleteSystemPromptDialog from "./DeleteSystemPromptDialog";
 import SystemPromptsList from "./SystemPromptsList";
-import type { SelectSystemPrompt } from "@/lib/db-schema";
 import type { SelectSystemPromptWithUser } from "@/services/systemPromptsService";
 
 interface SystemPromptsDashboardProps {
