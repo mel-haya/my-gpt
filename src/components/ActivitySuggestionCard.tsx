@@ -1,5 +1,5 @@
-import React from "react";
 import { ExternalLink, Phone, MapPin, Clock, Euro } from "lucide-react";
+import NextImage from "next/image";
 export interface Activity {
   id: number;
   name: string;
@@ -42,11 +42,13 @@ export default function ActivitySuggestionCard({
       <div className="flex flex-col md:flex-row">
         {/* Image Section */}
         {imageUrl && (
-          <div className="relative h-48 md:h-auto md:w-1/3 min-w-[150px] overflow-hidden">
-            <img
+          <div className="relative h-48 md:h-auto md:w-1/3 min-w-37.5 overflow-hidden">
+            <NextImage
               src={imageUrl}
               alt={activity.name}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+              fill
+              className="object-cover transition-transform duration-500 group-hover/card:scale-105"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
             {/* Gradient Overlay for text readability on mobile if needed, or just aesthetic */}
             <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent md:hidden" />
@@ -107,7 +109,7 @@ export default function ActivitySuggestionCard({
               </a>
             )}
             {activity.location && (
-              <span className="ml-auto text-xs text-neutral-400 hidden sm:block truncate max-w-[150px]">
+              <span className="ml-auto text-xs text-neutral-400 hidden sm:block truncate max-w-37.5">
                 {activity.location}
               </span>
             )}
