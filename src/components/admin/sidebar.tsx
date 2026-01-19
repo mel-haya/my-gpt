@@ -1,5 +1,16 @@
 import { UserAvatar, useUser } from "@clerk/nextjs";
-import { UsersIcon, FilesIcon, SettingsIcon, HistoryIcon, HomeIcon, FlaskConicalIcon, BookOpenText, MessageSquareCode, ThumbsUp  } from "lucide-react";
+import {
+  UsersIcon,
+  FilesIcon,
+  SettingsIcon,
+  HistoryIcon,
+  HomeIcon,
+  FlaskConicalIcon,
+  BookOpenText,
+  MessageSquareCode,
+  ThumbsUp,
+  Compass,
+} from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 
 export default function SidebarAdmin() {
@@ -13,9 +24,14 @@ export default function SidebarAdmin() {
     { label: "Tests", path: "/admin/tests", icon: FlaskConicalIcon },
     { label: "Test Sessions", path: "/admin/sessions", icon: FlaskConicalIcon },
     { label: "Questions", path: "/admin/questions", icon: BookOpenText },
-    { label: "System Prompts", path: "/admin/system-prompts", icon: MessageSquareCode },
+    {
+      label: "System Prompts",
+      path: "/admin/system-prompts",
+      icon: MessageSquareCode,
+    },
     { label: "Feedback", path: "/admin/feedback", icon: ThumbsUp },
-    {label: "History", path:"/admin/history", icon: HistoryIcon }
+    { label: "Activities", path: "/admin/activities", icon: Compass },
+    { label: "History", path: "/admin/history", icon: HistoryIcon },
     // { label: "Settings", path: "/admin/settings", icon: SettingsIcon },
   ];
 
@@ -37,9 +53,9 @@ export default function SidebarAdmin() {
             {user.firstName && user.lastName
               ? `${user.firstName} ${user.lastName}`
               : user.firstName ||
-              user.lastName ||
-              user.username ||
-              user.emailAddresses[0]?.emailAddress}
+                user.lastName ||
+                user.username ||
+                user.emailAddresses[0]?.emailAddress}
           </div>
         )}
         {/* Home Button */}
@@ -58,8 +74,9 @@ export default function SidebarAdmin() {
           return (
             <li
               key={item.path}
-              className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${isActive ? "bg-gray-300 dark:bg-neutral-700" : ""
-                }`}
+              className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${
+                isActive ? "bg-gray-300 dark:bg-neutral-700" : ""
+              }`}
               onClick={() => router.push(item.path)}
             >
               <Icon size={20} />

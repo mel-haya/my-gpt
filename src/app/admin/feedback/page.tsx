@@ -10,9 +10,10 @@ export const dynamic = "force-dynamic";
 export default async function FeedbackPage({
   searchParams,
 }: {
-  searchParams: { page?: string };
+  searchParams: Promise<{ page?: string }>;
 }) {
-  const currentPage = parseInt(searchParams.page || "1");
+  const resolvedSearchParams = await searchParams;
+  const currentPage = parseInt(resolvedSearchParams.page || "1");
   const pageSize = 10;
 
   const [feedbacksResult, statsResult] = await Promise.all([
