@@ -3,6 +3,9 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 // import Message from "./message";
 import { ChatMessage } from "@/types/chatMessage";
+import ActivitySuggestionCard, {
+  Activity,
+} from "@/components/ActivitySuggestionCard"; // [NEW] Import custom card component
 import {
   Tool,
   ToolContent,
@@ -63,7 +66,7 @@ export default function ConversationWrapper({
   messages: ChatMessage[];
   sendMessage: (
     message: { text: string; files?: FileUIPart[] },
-    options?: ChatRequestOptions
+    options?: ChatRequestOptions,
   ) => Promise<void>;
   status: ChatStatus;
   error: Error | undefined;
@@ -95,7 +98,7 @@ export default function ConversationWrapper({
 
         // Check if gpt-4o is available and set it as default
         const gpt4oModel = availableModels.find(
-          (model) => model.id === "openai/gpt-4o"
+          (model) => model.id === "openai/gpt-4o",
         );
         if (gpt4oModel) {
           setSelectedModel("openai/gpt-4o");
@@ -140,7 +143,7 @@ export default function ConversationWrapper({
         //     part.state === "output-available"
         // );
         const toolParts = parts.filter((part) =>
-          isToolOrDynamicToolUIPart(part)
+          isToolOrDynamicToolUIPart(part),
         );
         return {
           key: id,
@@ -316,30 +319,86 @@ export default function ConversationWrapper({
                       message.toolsStatus &&
                       message.toolsStatus.length > 0 && (
                         <div className="mb-2">
-                          {message.toolsStatus.map((tool, index) => (
-                            <Tool key={`${message.key}-tool-${index}`}>
-                              <ToolHeader
-                                title={getToolOrDynamicToolName(tool)}
-                                type={
-                                  tool.type === "dynamic-tool"
-                                    ? "tool-dynamic"
-                                    : (tool.type as `tool-${string}`)
+                          {message.toolsStatus.map((tool, index) => {
+                            const toolName = getToolOrDynamicToolName(tool);
+                            // console.log("Tool Debug:", { toolName, state: tool.state, output: tool.output });
+
+                            if (
+                              toolName === "suggestActivities" &&
+                              tool.state === "output-available" &&
+                              tool.output
+                            ) {
+                              let activities = [];
+                              try {
+                                const outputData =
+                                  typeof tool.output === "string"
+                                    ? JSON.parse(tool.output)
+                                    : tool.output;
+                                if (
+                                  outputData.activities &&
+                                  Array.isArray(outputData.activities)
+                                ) {
+                                  activities = outputData.activities;
+                                } else if (
+                                  outputData.data &&
+                                  Array.isArray(outputData.data)
+                                ) {
+                                  // Fallback for previous structure if any
+                                  activities = outputData.data;
+                                } else if (Array.isArray(outputData)) {
+                                  activities = outputData;
                                 }
-                                state={tool.state}
-                              />
-                              <ToolContent>
-                                {tool.input && <ToolInput input={tool.input} />}
-                                {(tool.output || tool.errorText) &&
-                                  tool.state === "output-available" && (
-                                    <ToolOutput
-                                      output={tool.output}
-                                      errorText={tool.errorText}
-                                      toolName={getToolOrDynamicToolName(tool)}
-                                    />
-                                  )}
-                              </ToolContent>
-                            </Tool>
-                          ))}
+                              } catch (e) {
+                                console.error(
+                                  "Error parsing activities output:",
+                                  e,
+                                );
+                              }
+
+                              if (activities.length > 0) {
+                                return (
+                                  <div
+                                    key={`${message.key}-tool-${index}`}
+                                    className="w-full my-4"
+                                  >
+                                    {activities.map((activity: Activity) => (
+                                      <ActivitySuggestionCard
+                                        key={activity.id || Math.random()}
+                                        activity={activity}
+                                      />
+                                    ))}
+                                  </div>
+                                );
+                              }
+                            }
+
+                            // return (
+                            //   <Tool key={`${message.key}-tool-${index}`}>
+                            //     <ToolHeader
+                            //       title={toolName}
+                            //       type={
+                            //         tool.type === "dynamic-tool"
+                            //           ? "tool-dynamic"
+                            //           : (tool.type as `tool-${string}`)
+                            //       }
+                            //       state={tool.state}
+                            //     />
+                            //     <ToolContent>
+                            //       {tool.input && (
+                            //         <ToolInput input={tool.input} />
+                            //       )}
+                            //       {(tool.output || tool.errorText) &&
+                            //         tool.state === "output-available" && (
+                            //           <ToolOutput
+                            //             output={tool.output}
+                            //             errorText={tool.errorText}
+                            //             toolName={toolName}
+                            //           />
+                            //         )}
+                            //     </ToolContent>
+                            //   </Tool>
+                            // );
+                          })}
                         </div>
                       )}
 

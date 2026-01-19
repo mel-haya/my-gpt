@@ -141,6 +141,8 @@ export const tools = {
           price_indicator: z.string().optional(),
           distance: z.string().optional(),
           website: z.string().optional(),
+          phone: z.string().optional(),
+          image: z.string().optional(),
         }),
       ),
     }),
@@ -157,6 +159,7 @@ export const tools = {
             price_indicator: a.price_indicator || undefined,
             distance: a.distance_from_hotel || undefined,
             website: a.website || undefined,
+            phone: a.phone || undefined,
             image: a.image_url || undefined,
           })),
         };
