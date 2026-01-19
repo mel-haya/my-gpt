@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   ChevronDown,
   ChevronRight,
@@ -16,6 +15,14 @@ import {
   DollarSign,
 } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
+import {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
+import { SearchKnowledgeBaseResult } from "@/app/api/chat/tools";
 
 interface TestResult {
   runId: number;
@@ -24,6 +31,7 @@ interface TestResult {
   status: string;
   score: number | null;
   explanation: string | null;
+  tool_calls: unknown;
   output: string | null;
   tokens_cost: number | null;
   token_count: number | null;
@@ -102,6 +110,65 @@ export default function TestResultsList({
     if (score >= 8) return "bg-green-100 text-green-800 border-green-200";
     if (score >= 5) return "bg-yellow-100 text-yellow-800 border-yellow-200";
     return "bg-red-100 text-red-800 border-red-200";
+  };
+
+  // Component to render tool calls
+  interface ToolCall {
+    toolCallId: string;
+    toolName: string;
+    args: Record<string, unknown>;
+    result?: {
+      input?: Record<string, unknown>;
+      output?: SearchKnowledgeBaseResult | unknown;
+    };
+  }
+
+  const ToolCallsDisplay = ({
+    toolCalls,
+  }: {
+    toolCalls: unknown;
+  }): React.ReactElement | null => {
+    // Type guard to check if toolCalls is an array of ToolCall objects
+    if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
+      return null;
+    }
+
+    // Filter for valid tool calls
+    const validToolCalls = toolCalls.filter(
+      (item): item is ToolCall =>
+        typeof item === "object" &&
+        item !== null &&
+        "toolName" in item &&
+        typeof item.toolName === "string"
+    );
+
+    if (validToolCalls.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="space-y-2">
+        {validToolCalls.map((toolCall, index) => (
+          <Tool key={toolCall.toolCallId || index} defaultOpen={false}>
+            <ToolHeader
+              title={toolCall.toolName}
+              type="tool-call"
+              state={
+                toolCall.result?.output ? "output-available" : "output-error"
+              }
+            />
+            <ToolContent>
+              <ToolInput input={toolCall.result?.input || toolCall.args} />
+              <ToolOutput
+                output={toolCall.result?.output as unknown as ReactNode}
+                errorText={undefined}
+                toolName={toolCall.toolName}
+              />
+            </ToolContent>
+          </Tool>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -261,7 +328,6 @@ export default function TestResultsList({
                       </span>
                     </div>
 
-                    {/* Output */}
                     <div>
                       <h5 className="text-xs font-semibold text-gray-500 mb-1">
                         Model Output
@@ -279,7 +345,6 @@ export default function TestResultsList({
                       </div>
                     </div>
 
-                    {/* Explanation */}
                     {result.explanation && (
                       <div>
                         <h5 className="text-xs font-semibold text-gray-500 mb-1">
@@ -290,6 +355,16 @@ export default function TestResultsList({
                             {result.explanation}
                           </div>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Tool Calls */}
+                    {!!result.tool_calls && (
+                      <div>
+                        <h5 className="text-xs font-semibold text-gray-500 mb-1">
+                          Tool Calls
+                        </h5>
+                        <ToolCallsDisplay toolCalls={result.tool_calls} />
                       </div>
                     )}
                   </div>

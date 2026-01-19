@@ -668,6 +668,7 @@ export interface TestInProfileDetail {
   tokens_cost: number | null;
   token_count: number | null;
   execution_time_ms: number | null;
+  tool_calls: unknown;
   evaluator_model: string | null; // Added evaluator_model
 }
 
@@ -757,6 +758,7 @@ export async function getTestInProfileDetailsAction(
         runId: testRunResults.test_run_id,
         runDate: testRunResults.created_at,
         model: testRunResults.model_used,
+        tool_calls: testRunResults.tool_calls,
         status: testRunResults.status,
         score: testRunResults.score,
         explanation: testRunResults.explanation,
@@ -791,6 +793,7 @@ export async function getTestInProfileDetailsAction(
       token_count: res.token_count,
       execution_time_ms: res.execution_time_ms,
       evaluator_model: res.evaluator_model,
+      tool_calls: res.tool_calls,
     }));
 
     return {
