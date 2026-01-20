@@ -34,56 +34,56 @@ export default function FeedbackPageClient({
       </header>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg">
-          <div className="p-4 rounded-2xl flex items-center justify-center bg-blue-500/10 text-blue-500">
+        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex flex-col">
+          <div className="p-4 rounded-2xl flex gap-2 items-center justify-center bg-blue-500/10 text-blue-500">
             <MessageSquare size={24} />
-          </div>
-          <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
               Total Feedback
             </span>
+          </div>
+          <div className="flex items-center gap-2">
             <span className="text-3xl font-bold text-white leading-tight">
               {stats.total}
             </span>
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg">
-          <div className="p-4 rounded-2xl flex items-center justify-center bg-green-500/10 text-green-500">
+        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex flex-col">
+          <div className="p-4 rounded-2xl flex gap-2 items-center justify-center bg-green-500/10 text-green-500">
             <ThumbsUp size={24} />
-          </div>
-          <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
               Positive
             </span>
+          </div>
+          <div className="flex items-center gap-2">
             <span className="text-3xl font-bold text-white leading-tight">
               {stats.positive}
             </span>
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg">
-          <div className="p-4 rounded-2xl flex items-center justify-center bg-red-500/10 text-red-500">
+        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex flex-col">
+          <div className="p-4 rounded-2xl flex items-center justify-center bg-red-500/10 text-red-500 gap-2">
             <ThumbsDown size={24} />
-          </div>
-          <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
               Negative
             </span>
+          </div>
+          <div className="flex items-center gap-2">
             <span className="text-3xl font-bold text-white leading-tight">
               {stats.negative}
             </span>
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg">
-          <div className="p-4 rounded-2xl flex items-center justify-center bg-purple-500/10 text-purple-500">
+        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex flex-col">
+          <div className="p-4 flex gap-2 rounded-2xl flex items-center justify-center bg-purple-500/10 text-purple-500">
             <Activity size={24} />
-          </div>
-          <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
               Satisfaction Rate
             </span>
+          </div>
+          <div className="flex items-center gap-2">
             <span className="text-3xl font-bold text-white leading-tight">
               {stats.satisfactionRate}%
             </span>

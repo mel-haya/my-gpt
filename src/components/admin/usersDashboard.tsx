@@ -22,7 +22,7 @@ export default async function UsersDashboard({ searchParams }: UsersDashboardPro
   );
 
   return (
-    <div className="flex flex-col w-full max-w-350 mx-4 2xl:mx-auto my-4 gap-4">
+    <div className="flex flex-col max-w-350 mx-4 2xl:mx-auto my-4 gap-4">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Users Dashboard</h1>
       <UserStatisticsCards
         totalUsers={data.pagination.totalCount}

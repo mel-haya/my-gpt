@@ -248,14 +248,12 @@ export default function TestResultsList({
                           "w-3.5 h-3.5",
                           (result.status === "Running" ||
                             result.status === "Evaluating") &&
-                            "animate-spin text-blue-500"
+                          "animate-spin text-blue-500"
                         )}
                       />
                     </Button>
                   )}
 
-                  {/* Status */}
-                  {getStatusBadge(result.status)}
 
                   {/* Score */}
                   {result.score !== null && (
@@ -270,7 +268,7 @@ export default function TestResultsList({
                   )}
 
                   {/* Metrics */}
-                  <div className="flex items-center gap-3 text-xs text-gray-500 border-l pl-3 ml-1 md:flex">
+                  <div className="hidden lg:flex items-center gap-3 text-xs text-gray-500 border-l pl-3 ml-1">
                     <span
                       className="flex items-center gap-1"
                       title="Token Cost"
@@ -294,12 +292,12 @@ export default function TestResultsList({
                     </span>
                   </div>
 
-                  {/* Evaluator Model */}
+                  {/* Evaluator Model
                   {result.evaluator_model && (
                     <span className="text-[10px] text-gray-400 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded sm:block hidden">
                       Eva: {result.evaluator_model.split("/").pop()}
                     </span>
-                  )}
+                  )} */}
 
                   {/* Date */}
                   <span className="text-xs text-gray-400 hidden sm:block">
@@ -311,9 +309,10 @@ export default function TestResultsList({
               {/* Collapsible Content */}
               {openResults[result.model] && (
                 <div className="border-t">
+                  {/* Metrics */}
                   <div className="p-4 space-y-4 bg-neutral-50/50 dark:bg-neutral-900/20">
                     {/* Execution Metrics (Visible on mobile if hidden above, or just always show in detail view too) */}
-                    <div className="flex gap-4 text-xs text-gray-500 md:hidden pb-2 border-b">
+                    <div className="flex gap-4 text-xs text-gray-500 lg:hidden pb-2 border-b">
                       <span className="flex items-center gap-1">
                         <DollarSign className="w-3 h-3" /> Cost:{" "}
                         {formatCost(result.tokens_cost)}

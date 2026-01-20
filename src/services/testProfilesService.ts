@@ -49,6 +49,14 @@ export interface UpdateTestProfileData {
   manual_tests?: ManualTest[];
 }
 
+export interface ModelAverage {
+  model: string;
+  average_score: number;
+  test_count: number;
+  total_tokens: number;
+  total_cost: number;
+}
+
 export interface DetailedTestProfile {
   id: number;
   name: string;
@@ -71,6 +79,7 @@ export interface DetailedTestProfile {
   total_tokens_cost: number | null;
   total_tokens: number | null;
   average_score: number | null;
+  model_averages: ModelAverage[];
   manual_tests: ManualTest[] | null;
 }
 
@@ -166,10 +175,9 @@ export async function getTestProfiles(options?: {
           ) as best_model
         FROM deduped
       ) stats ON true
-      ${
-        options?.search
-          ? sql`WHERE tp.name ILIKE ${`%${options.search}%`}`
-          : sql``
+      ${options?.search
+        ? sql`WHERE tp.name ILIKE ${`%${options.search}%`}`
+        : sql``
       }
       ORDER BY tp.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -565,6 +573,43 @@ export async function getTestProfileWithDetails(
       ? validScores.reduce((sum, r) => sum + r.score, 0) / validScores.length
       : null;
 
+  // Calculate average score, tokens, and cost per model from the latest results
+  // latestResultsMap has keys like "id-{testId}-{model}" or "manual-{prompt}-{model}"
+  const modelScoresMap = new Map<string, { total: number; count: number; tokens: number; cost: number }>();
+  for (const res of latestResults) {
+    if (res.score === null || res.score === undefined) continue;
+
+    const validTokens = isNaN(Number(res.tokens)) ? 0 : Number(res.tokens);
+    const validCost = isNaN(Number(res.cost)) ? 0 : Number(res.cost);
+
+    const model = res.model;
+    const existing = modelScoresMap.get(model);
+    if (existing) {
+      existing.total += res.score;
+      existing.count += 1;
+      existing.tokens += validTokens;
+      existing.cost += validCost;
+    } else {
+      modelScoresMap.set(model, {
+        total: res.score,
+        count: 1,
+        tokens: validTokens,
+        cost: validCost
+      });
+    }
+  }
+
+  // Convert to array and sort by average score descending
+  const modelAverages: ModelAverage[] = Array.from(modelScoresMap.entries())
+    .map(([model, data]) => ({
+      model,
+      average_score: data.total / data.count,
+      test_count: data.count,
+      total_tokens: data.tokens,
+      total_cost: data.cost,
+    }))
+    .sort((a, b) => b.average_score - a.average_score);
+
   return {
     id: profile.id,
     name: profile.name,
@@ -580,6 +625,7 @@ export async function getTestProfileWithDetails(
     total_tokens_cost: totalCost,
     total_tokens: totalTokens,
     average_score: avgScore,
+    model_averages: modelAverages,
     manual_tests: profile.manual_tests as ManualTest[] | null,
   };
 }

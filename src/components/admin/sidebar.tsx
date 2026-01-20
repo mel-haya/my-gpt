@@ -19,6 +19,7 @@ export default function SidebarAdmin() {
   const pathname = usePathname();
 
   const navItems = [
+    { label: "Home", path: "/", icon: HomeIcon },
     { label: "Users", path: "/admin/users", icon: UsersIcon },
     { label: "Files", path: "/admin/files", icon: FilesIcon },
     { label: "Tests", path: "/admin/tests", icon: FlaskConicalIcon },
@@ -37,13 +38,14 @@ export default function SidebarAdmin() {
 
   return (
     <div className="flex flex-col gap-2 min-w-60 bg-gray-200 dark:bg-neutral-900  h-screen">
-      <div className="flex flex-col gap-4 items-center mt-8">
+      <div className="flex flex-col gap-4 items-center mt-4">
+        <div className="flex gap-2 items-center w-full px-4">
         <UserAvatar
           appearance={{
             elements: {
               avatarBox: {
-                width: "80px",
-                height: "80px",
+                width: "40px",
+                height: "40px",
               },
             },
           }}
@@ -58,16 +60,10 @@ export default function SidebarAdmin() {
                 user.emailAddresses[0]?.emailAddress}
           </div>
         )}
-        {/* Home Button */}
-        <button
-          className="mt-2 flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 rounded hover:bg-gray-300 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
-          onClick={() => router.push("/")}
-        >
-          <HomeIcon size={20} />
-          Home
-        </button>
+
+        </div>
       </div>
-      <ul className="flex flex-col mt-8">
+      <ul className="flex flex-col mt-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.path;
