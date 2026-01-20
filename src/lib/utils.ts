@@ -22,5 +22,5 @@ export function formatTokens(n: number | null | undefined): string {
   if (n <= 9999) return n.toLocaleString();
   const k = Math.floor(n / 1000);
   const d = Math.floor((n % 1000) / 100);
-  return `${k}k${d}`;
+  return d > 0 ? `${k}.${d}k` : `${k}k`;
 }
