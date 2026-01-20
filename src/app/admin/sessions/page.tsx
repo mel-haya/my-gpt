@@ -1221,11 +1221,16 @@ export default function SessionsPage() {
         <ViewSystemPromptDialog
           open={showSystemPrompt}
           onOpenChange={setShowSystemPrompt}
+          systemPromptId={selectedProfile.system_prompt_id}
           name={
             selectedProfile.system_prompt_name ||
             `Prompt #${selectedProfile.system_prompt_id}`
           }
           prompt={selectedProfile.system_prompt}
+          onPromptUpdated={() => {
+            loadProfileDetails(selectedProfile.id);
+            loadTestProfiles(true);
+          }}
         />
       )}
     </div>
