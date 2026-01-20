@@ -2,14 +2,18 @@
 
 import { Input } from "@/components/ui/input";
 import { Search, MessageSquare, User } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { HistoryConversation } from "@/types/history";
+import { Loader2 } from "lucide-react";
 
 interface ConversationsListProps {
   conversations: HistoryConversation[];
   selectedId: number | null;
   onSelect: (id: number) => void;
+  onLoadMore: () => void;
+  hasMore: boolean;
+  isLoading: boolean;
   className?: string;
 }
 
@@ -17,6 +21,9 @@ export default function ConversationsList({
   conversations,
   selectedId,
   onSelect,
+  onLoadMore,
+  hasMore,
+  isLoading,
   className,
 }: ConversationsListProps) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,6 +36,28 @@ export default function ConversationsList({
       (c.email?.toLowerCase() || "").includes(searchLower)
     );
   });
+
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Only set up observer if we're not searching (search filters locally for now)
+    if (searchTerm) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, onLoadMore, searchTerm]);
 
   return (
     <div
@@ -103,6 +132,24 @@ export default function ConversationsList({
                 </div>
               </button>
             ))}
+
+            {/* Pagination Sentinel */}
+            {!searchTerm && (
+              <div
+                ref={observerTarget}
+                className="py-4 flex justify-center items-center"
+              >
+                {isLoading ? (
+                  <Loader2 className="size-5 text-blue-500 animate-spin" />
+                ) : hasMore ? (
+                  <div className="h-4" /> // Invisible trigger
+                ) : conversations.length > 0 ? (
+                  <p className="text-[10px] text-neutral-600 uppercase tracking-widest font-semibold">
+                    No more conversations
+                  </p>
+                ) : null}
+              </div>
+            )}
           </div>
         )}
       </div>

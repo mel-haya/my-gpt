@@ -7,13 +7,15 @@ export const dynamic = "force-dynamic";
 export default async function HistoryPage() {
   const result = await getAllConversationsAction();
 
-  const conversations = result.success
-    ? (result.data as HistoryConversation[])
-    : [];
+  const initialData = result.success ? result.data : { data: [], hasMore: false, nextCursor: null };
 
   return (
     <div className="h-screen overflow-hidden flex flex-col">
-      <HistoryPageClient initialConversations={conversations} />
+      <HistoryPageClient
+        initialConversations={initialData.data}
+        initialHasMore={initialData.hasMore}
+        initialNextCursor={initialData.nextCursor}
+      />
     </div>
   );
 }
