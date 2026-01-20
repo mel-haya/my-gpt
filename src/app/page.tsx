@@ -80,12 +80,13 @@ export default function Home() {
     //       break;
     //   }
     // },
-    async onFinish() {
+    onFinish() {
       userMessageCountRef.current++;
-      // Refresh conversations for first 3 user messages to show title updates
-      if (userMessageCountRef.current <= 3)
-        await refetch();
-      await refreshUsage();
+      // Refresh conversations and usage in background (don't block status transition)
+      Promise.allSettled([
+        userMessageCountRef.current <= 3 ? refetch() : Promise.resolve(),
+        refreshUsage(),
+      ]).catch(console.error);
     },
   });
 

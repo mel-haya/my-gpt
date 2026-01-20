@@ -438,54 +438,55 @@ export default function ConversationWrapper({
                         <CopyAction content={message.content} />
                       </MessageActions>
                     ) : (
-                      <MessageActions className="flex gap-0">
-                        {(!localFeedback[message.key] ||
-                          localFeedback[message.key] === "positive") && (
-                            <MessageAction
-                              className="cursor-pointer"
-                              onClick={() => handleFeedback(message.key, true)}
-                              label="Good response"
-                            >
-                              <ThumbsUp
-                                className="size-4"
-                                fill={
-                                  localFeedback[message.key] === "positive"
-                                    ? "currentColor"
-                                    : "none"
-                                }
-                              />
-                            </MessageAction>
-                          )}
-                        {(!localFeedback[message.key] ||
-                          localFeedback[message.key] === "negative") && (
-                            <MessageAction
-                              className="cursor-pointer"
-                              onClick={() => handleFeedback(message.key, false)}
-                              label="Bad response"
-                            >
-                              <ThumbsDown
-                                className="size-4"
-                                fill={
-                                  localFeedback[message.key] === "negative"
-                                    ? "currentColor"
-                                    : "none"
-                                }
-                              />
-                            </MessageAction>
-                          )}
-                        <CopyAction content={message.content} />
-                      </MessageActions>
+                      <>
+                        {/* Show loading spinner above actions for the last assistant message while streaming */}
+                        {status !== "ready" && index === displayMessages.length - 1 && (
+                          <div className="mb-2">
+                            <LoaderCircle className="animate-spin inline-block size-4" />
+                          </div>
+                        )}
+                        <MessageActions className="flex gap-0">
+                          {(!localFeedback[message.key] ||
+                            localFeedback[message.key] === "positive") && (
+                              <MessageAction
+                                className="cursor-pointer"
+                                onClick={() => handleFeedback(message.key, true)}
+                                label="Good response"
+                              >
+                                <ThumbsUp
+                                  className="size-4"
+                                  fill={
+                                    localFeedback[message.key] === "positive"
+                                      ? "currentColor"
+                                      : "none"
+                                  }
+                                />
+                              </MessageAction>
+                            )}
+                          {(!localFeedback[message.key] ||
+                            localFeedback[message.key] === "negative") && (
+                              <MessageAction
+                                className="cursor-pointer"
+                                onClick={() => handleFeedback(message.key, false)}
+                                label="Bad response"
+                              >
+                                <ThumbsDown
+                                  className="size-4"
+                                  fill={
+                                    localFeedback[message.key] === "negative"
+                                      ? "currentColor"
+                                      : "none"
+                                  }
+                                />
+                              </MessageAction>
+                            )}
+                          <CopyAction content={message.content} />
+                        </MessageActions>
+                      </>
                     )}
                   </Message>
                 );
               })}
-              {status !== "ready" && (
-                <Message from="assistant">
-                  <MessageContent>
-                    <LoaderCircle className="animate-spin mr-2 inline-block" />
-                  </MessageContent>
-                </Message>
-              )}
             </ConversationContent>
             <ConversationScrollButton />
           </Conversation>
