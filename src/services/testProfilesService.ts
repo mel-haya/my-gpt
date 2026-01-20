@@ -63,6 +63,7 @@ export interface DetailedTestProfile {
   system_prompt_id: number | null;
   system_prompt: string | null;
   system_prompt_name: string | null;
+  system_prompt_default?: boolean;
   user_id: string;
   username: string;
   created_at: Date;
@@ -175,9 +176,10 @@ export async function getTestProfiles(options?: {
           ) as best_model
         FROM deduped
       ) stats ON true
-      ${options?.search
-        ? sql`WHERE tp.name ILIKE ${`%${options.search}%`}`
-        : sql``
+      ${
+        options?.search
+          ? sql`WHERE tp.name ILIKE ${`%${options.search}%`}`
+          : sql``
       }
       ORDER BY tp.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -402,6 +404,23 @@ export async function updateTestProfile(
   }
 }
 
+export async function updateTestProfileSystemPrompt(
+  profileId: number,
+  systemPromptId: number,
+): Promise<void> {
+  const result = await db
+    .update(testProfiles)
+    .set({
+      system_prompt_id: systemPromptId,
+      updated_at: new Date(),
+    })
+    .where(eq(testProfiles.id, profileId));
+
+  if (!result) {
+    throw new Error("Failed to update test profile system prompt");
+  }
+}
+
 export async function deleteTestProfile(id: number): Promise<void> {
   await db.delete(testProfiles).where(eq(testProfiles.id, id));
 }
@@ -431,6 +450,7 @@ export async function getTestProfileWithDetails(
       updated_at: testProfiles.updated_at,
       system_prompt: systemPrompts.prompt,
       system_prompt_name: systemPrompts.name,
+      system_prompt_default: systemPrompts.default,
       manual_tests: testProfiles.manual_tests,
     })
     .from(testProfiles)
@@ -575,7 +595,10 @@ export async function getTestProfileWithDetails(
 
   // Calculate average score, tokens, and cost per model from the latest results
   // latestResultsMap has keys like "id-{testId}-{model}" or "manual-{prompt}-{model}"
-  const modelScoresMap = new Map<string, { total: number; count: number; tokens: number; cost: number }>();
+  const modelScoresMap = new Map<
+    string,
+    { total: number; count: number; tokens: number; cost: number }
+  >();
   for (const res of latestResults) {
     if (res.score === null || res.score === undefined) continue;
 
@@ -594,7 +617,7 @@ export async function getTestProfileWithDetails(
         total: res.score,
         count: 1,
         tokens: validTokens,
-        cost: validCost
+        cost: validCost,
       });
     }
   }
@@ -616,6 +639,7 @@ export async function getTestProfileWithDetails(
     system_prompt_id: profile.system_prompt_id,
     system_prompt: profile.system_prompt, // Now contains the actual prompt text from the join
     system_prompt_name: profile.system_prompt_name, // Include the system prompt name
+    system_prompt_default: profile.system_prompt_default ?? false,
     user_id: profile.user_id,
     username: profile.username,
     created_at: profile.created_at,

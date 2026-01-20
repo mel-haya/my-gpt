@@ -478,7 +478,10 @@ export default function SessionsPage() {
 
   // Get the winner model from backend-computed model_averages (correctly calculated)
   const winnerModel = useMemo(() => {
-    if (!selectedProfile?.model_averages || selectedProfile.model_averages.length === 0)
+    if (
+      !selectedProfile?.model_averages ||
+      selectedProfile.model_averages.length === 0
+    )
       return null;
 
     // model_averages is already sorted by average_score descending
@@ -532,10 +535,11 @@ export default function SessionsPage() {
             testProfiles.map((profile) => (
               <Card
                 key={profile.id}
-                className={`cursor-pointer transition-all hover:shadow-md ${selectedProfile?.id === profile.id
-                  ? "ring-2 ring-neutral-500 bg-neutral-600/40 border-blue-200"
-                  : ""
-                  }`}
+                className={`cursor-pointer transition-all hover:shadow-md ${
+                  selectedProfile?.id === profile.id
+                    ? "ring-2 ring-neutral-500 bg-neutral-600/40 border-blue-200"
+                    : ""
+                }`}
                 onClick={() => handleSelectProfile(profile)}
               >
                 <CardHeader>
@@ -679,10 +683,11 @@ export default function SessionsPage() {
                       <div
                         className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                         style={{
-                          width: `${(currentRunStatus.completedTests /
-                            currentRunStatus.totalTests) *
+                          width: `${
+                            (currentRunStatus.completedTests /
+                              currentRunStatus.totalTests) *
                             100
-                            }%`,
+                          }%`,
                         }}
                       />
                     </div>
@@ -850,7 +855,7 @@ export default function SessionsPage() {
                     <p className="text-xs text-gray-400">
                       {selectedProfile.system_prompt
                         ? selectedProfile.system_prompt_name ||
-                        `Prompt #${selectedProfile.system_prompt_id}`
+                          `Prompt #${selectedProfile.system_prompt_id}`
                         : "No prompt assigned"}
                     </p>
                   </div>
@@ -868,73 +873,82 @@ export default function SessionsPage() {
               </div>
 
               {/* Model Rankings */}
-              {selectedProfile.model_averages && selectedProfile.model_averages.length > 0 && (
-                <div className="p-4 bg-neutral-900 border border-gray-700 rounded-lg">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-gray-800 rounded-md">
-                      <Trophy className="w-5 h-5 text-amber-500" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-white">
-                        Model Rankings
-                      </h3>
-                      <p className="text-xs text-gray-400">
-                        Average score per model (latest runs)
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {selectedProfile.model_averages.map((modelAvg, index) => (
-                      <div
-                        key={modelAvg.model}
-                        className="flex items-center justify-between p-2 bg-gray-800 rounded-md"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className={`text-sm font-bold ${index === 0 ? 'text-amber-500' :
-                            index === 1 ? 'text-gray-400' :
-                              index === 2 ? 'text-amber-700' : 'text-gray-500'
-                            }`}>
-                            #{index + 1}
-                          </span>
-                          <span className="text-sm text-white">
-                            {modelAvg.model.split("/").pop()}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div
-                            className="flex items-center gap-1.5"
-                            title="Total Tokens"
-                          >
-                            <Coins className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
-                            <span className="text-xs text-gray-400">
-                              {formatTokens(modelAvg.total_tokens)}
-                            </span>
-                          </div>
-                          <div
-                            className="flex items-center gap-1.5"
-                            title="Total Cost"
-                          >
-                            <DollarSign className="w-3 h-3 text-green-600 dark:text-green-400" />
-                            <span className="text-xs text-gray-400">
-                              ${modelAvg.total_cost.toFixed(4)}
-                            </span>
-                          </div>
-                          <span
-                            className={`text-sm font-medium ${modelAvg.average_score >= 8
-                              ? 'text-green-500'
-                              : modelAvg.average_score >= 6
-                                ? 'text-yellow-500'
-                                : 'text-red-500'
-                              }`}
-                          >
-                            {modelAvg.average_score.toFixed(2)}/10
-                          </span>
-                        </div>
+              {selectedProfile.model_averages &&
+                selectedProfile.model_averages.length > 0 && (
+                  <div className="p-4 bg-neutral-900 border border-gray-700 rounded-lg">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 bg-gray-800 rounded-md">
+                        <Trophy className="w-5 h-5 text-amber-500" />
                       </div>
-                    ))}
+                      <div>
+                        <h3 className="text-sm font-semibold text-white">
+                          Model Rankings
+                        </h3>
+                        <p className="text-xs text-gray-400">
+                          Average score per model (latest runs)
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {selectedProfile.model_averages.map((modelAvg, index) => (
+                        <div
+                          key={modelAvg.model}
+                          className="flex items-center justify-between p-2 bg-gray-800 rounded-md"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-sm font-bold ${
+                                index === 0
+                                  ? "text-amber-500"
+                                  : index === 1
+                                    ? "text-gray-400"
+                                    : index === 2
+                                      ? "text-amber-700"
+                                      : "text-gray-500"
+                              }`}
+                            >
+                              #{index + 1}
+                            </span>
+                            <span className="text-sm text-white">
+                              {modelAvg.model.split("/").pop()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div
+                              className="flex items-center gap-1.5"
+                              title="Total Tokens"
+                            >
+                              <Coins className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
+                              <span className="text-xs text-gray-400">
+                                {formatTokens(modelAvg.total_tokens)}
+                              </span>
+                            </div>
+                            <div
+                              className="flex items-center gap-1.5"
+                              title="Total Cost"
+                            >
+                              <DollarSign className="w-3 h-3 text-green-600 dark:text-green-400" />
+                              <span className="text-xs text-gray-400">
+                                ${modelAvg.total_cost.toFixed(4)}
+                              </span>
+                            </div>
+                            <span
+                              className={`text-sm font-medium ${
+                                modelAvg.average_score >= 8
+                                  ? "text-green-500"
+                                  : modelAvg.average_score >= 6
+                                    ? "text-yellow-500"
+                                    : "text-red-500"
+                              }`}
+                            >
+                              {modelAvg.average_score.toFixed(2)}/10
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Associated Tests */}
               <div>
@@ -1033,7 +1047,7 @@ export default function SessionsPage() {
                                 disabled={testDetailsLoading}
                               >
                                 {testDetailsLoading &&
-                                  selectedTestId === test.test_id ? (
+                                selectedTestId === test.test_id ? (
                                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                                 ) : (
                                   <Eye className="w-4 h-4 mr-1" />
@@ -1181,16 +1195,18 @@ export default function SessionsPage() {
                               </div>
                               <div className="w-16 bg-gray-200 rounded-full h-2">
                                 <div
-                                  className={`h-2 rounded-full transition-all ${run.status === "Done"
-                                    ? "bg-green-500"
-                                    : run.status === "Failed"
-                                      ? "bg-red-500"
-                                      : "bg-blue-500"
-                                    }`}
+                                  className={`h-2 rounded-full transition-all ${
+                                    run.status === "Done"
+                                      ? "bg-green-500"
+                                      : run.status === "Failed"
+                                        ? "bg-red-500"
+                                        : "bg-blue-500"
+                                  }`}
                                   style={{
-                                    width: `${(run.completedTests / run.totalTests) *
+                                    width: `${
+                                      (run.completedTests / run.totalTests) *
                                       100
-                                      }%`,
+                                    }%`,
                                   }}
                                 />
                               </div>
@@ -1231,6 +1247,8 @@ export default function SessionsPage() {
             loadProfileDetails(selectedProfile.id);
             loadTestProfiles(true);
           }}
+          isDefault={selectedProfile.system_prompt_default}
+          testProfileId={selectedProfile.id}
         />
       )}
     </div>

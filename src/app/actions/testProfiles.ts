@@ -7,6 +7,7 @@ import {
   getTestProfiles,
   createTestProfile,
   updateTestProfile,
+  updateTestProfileSystemPrompt,
   deleteTestProfile,
   getTestsForSelection,
   getSystemPromptsForSelection,
@@ -32,7 +33,7 @@ export type ActionResult<T = void> = {
 export async function getTestProfilesAction(
   searchQuery?: string,
   limit: number = 10,
-  page: number = 1
+  page: number = 1,
 ): Promise<ActionResult<TestProfilesResponse>> {
   try {
     const { userId } = await auth();
@@ -107,7 +108,7 @@ export async function updateTestProfileAction(
     test_ids: number[];
     model_configs: string[];
     manual_tests?: ManualTest[];
-  }
+  },
 ): Promise<ActionResult<SelectTestProfile>> {
   try {
     const { userId } = await auth();
@@ -156,8 +157,36 @@ export async function updateTestProfileAction(
   }
 }
 
+export async function updateTestProfileSystemPromptAction(
+  profileId: number,
+  systemPromptId: number,
+): Promise<ActionResult<void>> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const isAdmin = await checkRole("admin");
+    if (!isAdmin) {
+      return { success: false, error: "Admin access required" };
+    }
+
+    await updateTestProfileSystemPrompt(profileId, systemPromptId);
+
+    revalidatePath("/admin/sessions");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating test profile system prompt:", error);
+    return {
+      success: false,
+      error: "Failed to update test profile system prompt",
+    };
+  }
+}
+
 export async function deleteTestProfileAction(
-  id: number
+  id: number,
 ): Promise<ActionResult> {
   try {
     const { userId } = await auth();
@@ -225,7 +254,7 @@ export async function getSystemPromptsForSelectionAction(): Promise<
 }
 
 export async function getTestProfileDetailsAction(
-  id: number
+  id: number,
 ): Promise<ActionResult<DetailedTestProfile>> {
   try {
     const { userId } = await auth();
