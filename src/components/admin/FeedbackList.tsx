@@ -16,11 +16,10 @@ export function FeedbackCard({ feedback }: { feedback: SelectFeedback }) {
     <div className="bg-gray-800/30 backdrop-blur-md border border-white/5 rounded-2xl p-6 w-full transition-all duration-200 hover:bg-gray-800/50 hover:border-indigo-500/30">
       <div className="flex justify-between items-center mb-4">
         <span
-          className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-            isPositive
+          className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${isPositive
               ? "bg-green-500/10 text-green-400 border border-green-500/20"
               : "bg-red-500/10 text-red-400 border border-red-500/20"
-          }`}
+            }`}
         >
           {isPositive ? "Positive" : "Negative"}
         </span>
@@ -35,9 +34,12 @@ export function FeedbackCard({ feedback }: { feedback: SelectFeedback }) {
       </div>
       <div className="mt-5 pt-4 border-t border-white/5 flex justify-between items-center">
         {feedback.conversation_id && (
-          <span className="text-gray-400 text-xs text-opacity-70">
-            Conversation ID: {feedback.conversation_id}
-          </span>
+          <button
+            onClick={() => router.push(`/admin/history?conversationId=${feedback.conversation_id}`)}
+            className="text-indigo-400 text-xs font-medium hover:text-indigo-300 hover:bg-indigo-500/10 px-3 py-1.5 rounded-lg transition-all duration-200"
+          >
+            View Conversation
+          </button>
         )}
         <button
           onClick={() => setIsDeleteDialogOpen(true)}

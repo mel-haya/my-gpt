@@ -10,18 +10,20 @@ interface HistoryPageClientProps {
   initialConversations: HistoryConversation[];
   initialHasMore: boolean;
   initialNextCursor: number | null;
+  initialConversationId?: number | null;
 }
 
 export default function HistoryPageClient({
   initialConversations,
   initialHasMore,
   initialNextCursor,
+  initialConversationId = null,
 }: HistoryPageClientProps) {
   const [conversations, setConversations] = useState<HistoryConversation[]>(initialConversations);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [nextCursor, setNextCursor] = useState<number | null>(initialNextCursor);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(initialConversationId);
 
   const selectedConversation = conversations.find(
     (c) => c.id === selectedId,
