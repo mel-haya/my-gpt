@@ -1,6 +1,6 @@
 "use client";
 
-import { FeedbackCard, Pagination } from "@/components/admin/FeedbackList";
+import { FeedbackCard, Pagination, FeedbackData } from "@/components/admin/FeedbackList";
 import { MessageSquare, ThumbsDown, ThumbsUp, Activity } from "lucide-react";
 import { SelectFeedback } from "@/lib/db-schema";
 
@@ -17,7 +17,7 @@ export default function FeedbackPageClient({
   currentPage,
   hasMore,
 }: {
-  feedbacks: SelectFeedback[];
+  feedbacks: FeedbackData[];
   stats: Stats;
   currentPage: number;
   hasMore: boolean;

@@ -11,6 +11,7 @@ interface HistoryPageClientProps {
   initialHasMore: boolean;
   initialNextCursor: number | null;
   initialConversationId?: number | null;
+  initialMessageId?: number | null;
 }
 
 export default function HistoryPageClient({
@@ -18,6 +19,7 @@ export default function HistoryPageClient({
   initialHasMore,
   initialNextCursor,
   initialConversationId = null,
+  initialMessageId = null,
 }: HistoryPageClientProps) {
   const [conversations, setConversations] = useState<HistoryConversation[]>(initialConversations);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -57,6 +59,7 @@ export default function HistoryPageClient({
       <HistoryMessagesPanel
         conversationId={selectedId}
         conversationTitle={selectedConversation?.title || null}
+        highlightMessageId={initialMessageId}
       />
     </div>
   );

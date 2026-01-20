@@ -7,11 +7,15 @@ export const dynamic = "force-dynamic";
 export default async function HistoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ conversationId?: string }>;
+  searchParams: Promise<{ conversationId?: string; messageId?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const initialConversationId = resolvedSearchParams?.conversationId
     ? parseInt(resolvedSearchParams.conversationId, 10)
+    : null;
+
+  const initialMessageId = resolvedSearchParams?.messageId
+    ? parseInt(resolvedSearchParams.messageId, 10)
     : null;
 
   const result = await getAllConversationsAction();
@@ -25,6 +29,7 @@ export default async function HistoryPage({
         initialHasMore={initialData.hasMore}
         initialNextCursor={initialData.nextCursor}
         initialConversationId={initialConversationId}
+        initialMessageId={initialMessageId}
       />
     </div>
   );

@@ -1,16 +1,18 @@
 "use server";
 
 import { db } from "@/lib/db-config";
-import { feedback } from "@/lib/db-schema";
+import { feedback, messages } from "@/lib/db-schema";
 import { currentUser } from "@clerk/nextjs/server";
 import { desc, eq } from "drizzle-orm";
 
+import { getMessageByLlmKey } from "@/services/messagesService";
+
 export async function submitFeedbackAction({
-  message,
+  llmKey,
   feedback: feedbackType,
   conversationId,
 }: {
-  message: string;
+  llmKey: string;
   feedback: "positive" | "negative";
   conversationId?: number;
 }) {
@@ -20,8 +22,17 @@ export async function submitFeedbackAction({
       throw new Error("User not authenticated");
     }
 
+    if (!conversationId) {
+      throw new Error("Conversation ID is required");
+    }
+
+    const message = await getMessageByLlmKey(conversationId, llmKey);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
     await db.insert(feedback).values({
-      message,
+      message_id: message.id,
       feedback: feedbackType,
       conversation_id: conversationId,
     });
@@ -53,8 +64,16 @@ export async function getFeedbacksAction({
     const offset = (page - 1) * limit;
 
     const feedbackEntries = await db
-      .select()
+      .select({
+        id: feedback.id,
+        feedback: feedback.feedback,
+        submitted_at: feedback.submitted_at,
+        conversation_id: feedback.conversation_id,
+        message_id: feedback.message_id,
+        message_content: messages.text_content,
+      })
       .from(feedback)
+      .leftJoin(messages, eq(feedback.message_id, messages.id))
       .orderBy(desc(feedback.submitted_at))
       .limit(limit)
       .offset(offset);

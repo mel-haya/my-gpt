@@ -6,7 +6,16 @@ import { useState } from "react";
 import { SelectFeedback } from "@/lib/db-schema";
 import DeleteFeedbackDialog from "@/components/admin/DeleteFeedbackDialog";
 
-export function FeedbackCard({ feedback }: { feedback: SelectFeedback }) {
+export interface FeedbackData {
+  id: number;
+  feedback: "positive" | "negative" | null;
+  submitted_at: Date;
+  conversation_id: number | null;
+  message_id: number | null;
+  message_content: string | null;
+}
+
+export function FeedbackCard({ feedback }: { feedback: FeedbackData }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const router = useRouter();
 
@@ -17,8 +26,8 @@ export function FeedbackCard({ feedback }: { feedback: SelectFeedback }) {
       <div className="flex justify-between items-center mb-4">
         <span
           className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${isPositive
-              ? "bg-green-500/10 text-green-400 border border-green-500/20"
-              : "bg-red-500/10 text-red-400 border border-red-500/20"
+            ? "bg-green-500/10 text-green-400 border border-green-500/20"
+            : "bg-red-500/10 text-red-400 border border-red-500/20"
             }`}
         >
           {isPositive ? "Positive" : "Negative"}
@@ -29,13 +38,17 @@ export function FeedbackCard({ feedback }: { feedback: SelectFeedback }) {
       </div>
       <div className="mb-5">
         <p className="text-gray-200 leading-relaxed text-base whitespace-pre-wrap">
-          {feedback.message}
+          {feedback.message_content || "Message content not available"}
         </p>
       </div>
       <div className="mt-5 pt-4 border-t border-white/5 flex justify-between items-center">
         {feedback.conversation_id && (
           <button
-            onClick={() => router.push(`/admin/history?conversationId=${feedback.conversation_id}`)}
+            onClick={() =>
+              router.push(
+                `/admin/history?conversationId=${feedback.conversation_id}&messageId=${feedback.message_id}`,
+              )
+            }
             className="text-indigo-400 text-xs font-medium hover:text-indigo-300 hover:bg-indigo-500/10 px-3 py-1.5 rounded-lg transition-all duration-200"
           >
             View Conversation

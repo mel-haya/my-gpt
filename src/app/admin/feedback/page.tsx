@@ -3,7 +3,7 @@ import {
   getFeedbackStatsAction,
 } from "@/app/actions/feedback";
 import FeedbackPageClient from "@/components/admin/FeedbackPageClient";
-import { SelectFeedback } from "@/lib/db-schema";
+import { FeedbackData } from "@/components/admin/FeedbackList";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +21,8 @@ export default async function FeedbackPage({
     getFeedbackStatsAction(),
   ]);
 
-  const feedbacks: SelectFeedback[] = feedbacksResult.success
-    ? (feedbacksResult.data as SelectFeedback[]) || []
+  const feedbacks: FeedbackData[] = feedbacksResult.success
+    ? (feedbacksResult.data as FeedbackData[]) || []
     : [];
   const stats =
     statsResult.success && statsResult.data

@@ -90,6 +90,7 @@ export const messages = pgTable("messages", {
   parts: jsonb("parts").notNull(),
   text_content: text("text_content"),
   model_used: text("model_used"),
+  llm_key: text("llm_key"),
   created_at: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -316,7 +317,7 @@ export const testProfileModels = pgTable(
 
 export const feedback = pgTable("feedback", {
   id: serial("id").primaryKey(),
-  message: text("message").notNull(),
+  message_id: integer("message_id").references(() => messages.id),
   feedback: feedbackTypeEnum("feedback").notNull(),
   submitted_at: timestamp("submitted_at").notNull().defaultNow(),
   conversation_id: integer("conversation_id").references(

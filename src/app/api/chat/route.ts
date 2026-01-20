@@ -78,14 +78,14 @@ export async function POST(req: Request) {
     const backgroundTasks = Promise.allSettled(
       [
         trigger === "submit-message" &&
-          saveMessage(lastMessage, conversation.id, selectedmodel),
+        saveMessage(lastMessage, conversation.id, selectedmodel),
         userMessageCount <= 3 &&
-          renameConversationAI(
-            modelMessages,
-            conversation.id,
-            conversation.user_id,
-            conversation.title || undefined,
-          ),
+        renameConversationAI(
+          modelMessages,
+          conversation.id,
+          conversation.user_id,
+          conversation.title || undefined,
+        ),
       ].filter(Boolean),
     );
 
@@ -130,6 +130,31 @@ export async function POST(req: Request) {
             }
           });
 
+          // Determine the LLM key from provider metadata if available
+          // Determine the LLM key from provider metadata if available
+          let llmKey = (responseMessage as any).id;
+
+          if (!llmKey && (responseMessage as ChatMessage).parts) {
+            for (const part of (responseMessage as ChatMessage).parts) {
+              const metadata = (part as any).providerMetadata;
+              if (metadata) {
+                if (metadata.openai?.itemId) {
+                  llmKey = metadata.openai.itemId;
+                  break;
+                } else if (metadata.anthropic?.id) {
+                  llmKey = metadata.anthropic.id;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (!llmKey) {
+            console.warn("Could not determine LLM Key for AI message:", JSON.stringify(responseMessage, null, 2));
+          } else {
+            // console.log("Successfully determined LLM Key:", llmKey);
+          }
+
           // Handle regenerate-message trigger
           if (trigger === "regenerate-message") {
             const latestMessage = await getLatestMessageByConversationId(
@@ -150,15 +175,23 @@ export async function POST(req: Request) {
               );
             } else {
               // Latest message is a user message (previous generation failed), save as usual
+              const messageToSave = {
+                ...(responseMessage as ChatMessage),
+                id: llmKey || (responseMessage as any).id,
+              };
               await saveMessage(
-                responseMessage as ChatMessage,
+                messageToSave,
                 conversation.id,
                 selectedmodel,
               );
             }
           } else {
+            const messageToSave = {
+              ...(responseMessage as ChatMessage),
+              id: llmKey || (responseMessage as any).id,
+            };
             await saveMessage(
-              responseMessage as ChatMessage,
+              messageToSave,
               conversation.id,
               selectedmodel,
             );
@@ -171,6 +204,7 @@ export async function POST(req: Request) {
           console.log(
             `User ${userId} - Messages: ${usageResult.usage.messages_sent}/${usageResult.usage.daily_message_limit}, Actual Tokens: ${usageResult.usage.tokens_used}`,
           );
+
         } catch (error) {
           console.error("Error in onFinish:", error);
         }
