@@ -19,7 +19,7 @@ import {
   Coins,
   Medal,
   RefreshCcw,
-  Star,
+  ListTodo,
   DollarSign,
   Trophy,
   Pause,
@@ -1015,7 +1015,7 @@ export default function SessionsPage() {
                                   {reEvaluatingTests.has(test.test_id) ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
-                                    <Star className="w-4 h-4" />
+                                    <ListTodo className="w-4 h-4" />
                                   )}
                                 </Button>
                               )}
