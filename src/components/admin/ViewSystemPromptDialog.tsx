@@ -87,9 +87,13 @@ export default function ViewSystemPromptDialog({
 
     setIsSaving(true);
     try {
+      // Append a short random string to ensure uniqueness as requested
+      const uniqueSuffix = Math.random().toString(36).substring(2, 8);
+      const newName = `Copy of ${name || "System Prompt"} - ${uniqueSuffix}`;
+
       // 1. Create the new system prompt
       const createResult = await createSystemPromptAction({
-        name: `Copy of ${name || "System Prompt"}`,
+        name: newName,
         prompt: currentPrompt,
       });
 
@@ -114,7 +118,7 @@ export default function ViewSystemPromptDialog({
         );
       }
 
-      toast.success("Created copy and updated test session");
+      toast.success(`Created "${newName}" and updated test session`);
       setIsEditing(false);
       setShowConfirmDialog(false);
       if (onPromptUpdated) {
