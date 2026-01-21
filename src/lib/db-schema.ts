@@ -90,7 +90,6 @@ export const messages = pgTable("messages", {
   parts: jsonb("parts").notNull(),
   text_content: text("text_content"),
   model_used: text("model_used"),
-  llm_key: text("llm_key"),
   created_at: timestamp("created_at").notNull().defaultNow(),
 });
 

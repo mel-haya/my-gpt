@@ -17,12 +17,7 @@ import { uploadImageToImageKit } from "./imageKit";
 import { auth } from "@clerk/nextjs/server";
 import { renameConversationAI } from "./renameConversationAI";
 
-const supportedModels = [
-  "openai/gpt-4o",
-  "google/gemini-2.5-flash",
-  "anthropic/claude-haiku-4.5",
-  "xai/grok-4-fast-non-reasoning",
-];
+import { getAvailableModels } from "@/app/actions/models";
 
 export async function POST(req: Request) {
   try {
@@ -66,7 +61,10 @@ export async function POST(req: Request) {
 
     const modelMessages = convertToModelMessages(messages);
 
-    const selectedmodel = supportedModels.includes(model)
+    const availableModels = await getAvailableModels();
+    const supportedIds = availableModels.map((m) => m.id);
+
+    const selectedmodel = supportedIds.includes(model)
       ? model
       : "openai/gpt-5-nano";
 
@@ -78,14 +76,14 @@ export async function POST(req: Request) {
     const backgroundTasks = Promise.allSettled(
       [
         trigger === "submit-message" &&
-        saveMessage(lastMessage, conversation.id, selectedmodel),
+          saveMessage(lastMessage, conversation.id, selectedmodel),
         userMessageCount <= 3 &&
-        renameConversationAI(
-          modelMessages,
-          conversation.id,
-          conversation.user_id,
-          conversation.title || undefined,
-        ),
+          renameConversationAI(
+            modelMessages,
+            conversation.id,
+            conversation.user_id,
+            conversation.title || undefined,
+          ),
       ].filter(Boolean),
     );
 
@@ -102,6 +100,7 @@ export async function POST(req: Request) {
 
     // Get configurable system prompt
     const systemPrompt = await getSystemPrompt();
+    console.log("Model", selectedmodel);
     const response = streamText({
       messages: modelMessages,
       model: selectedmodel,
@@ -130,31 +129,6 @@ export async function POST(req: Request) {
             }
           });
 
-          // Determine the LLM key from provider metadata if available
-          // Determine the LLM key from provider metadata if available
-          let llmKey = (responseMessage as any).id;
-
-          if (!llmKey && (responseMessage as ChatMessage).parts) {
-            for (const part of (responseMessage as ChatMessage).parts) {
-              const metadata = (part as any).providerMetadata;
-              if (metadata) {
-                if (metadata.openai?.itemId) {
-                  llmKey = metadata.openai.itemId;
-                  break;
-                } else if (metadata.anthropic?.id) {
-                  llmKey = metadata.anthropic.id;
-                  break;
-                }
-              }
-            }
-          }
-
-          if (!llmKey) {
-            console.warn("Could not determine LLM Key for AI message:", JSON.stringify(responseMessage, null, 2));
-          } else {
-            // console.log("Successfully determined LLM Key:", llmKey);
-          }
-
           // Handle regenerate-message trigger
           if (trigger === "regenerate-message") {
             const latestMessage = await getLatestMessageByConversationId(
@@ -175,23 +149,15 @@ export async function POST(req: Request) {
               );
             } else {
               // Latest message is a user message (previous generation failed), save as usual
-              const messageToSave = {
-                ...(responseMessage as ChatMessage),
-                id: llmKey || (responseMessage as any).id,
-              };
               await saveMessage(
-                messageToSave,
+                responseMessage as ChatMessage,
                 conversation.id,
                 selectedmodel,
               );
             }
           } else {
-            const messageToSave = {
-              ...(responseMessage as ChatMessage),
-              id: llmKey || (responseMessage as any).id,
-            };
             await saveMessage(
-              messageToSave,
+              responseMessage as ChatMessage,
               conversation.id,
               selectedmodel,
             );
@@ -204,7 +170,6 @@ export async function POST(req: Request) {
           console.log(
             `User ${userId} - Messages: ${usageResult.usage.messages_sent}/${usageResult.usage.daily_message_limit}, Actual Tokens: ${usageResult.usage.tokens_used}`,
           );
-
         } catch (error) {
           console.error("Error in onFinish:", error);
         }

@@ -163,45 +163,18 @@ export default function ConversationWrapper({
     });
   }, [messages]);
 
-  const handleFeedback = async (messageId: string, isGood: boolean) => {
+  const handleFeedback = async (messageIndex: number, isGood: boolean) => {
     const feedbackType = isGood ? "positive" : "negative";
+    const messageKey = displayMessages[messageIndex]?.key;
+
+    if (!messageKey) return;
 
     // Store feedback locally for visual status
-    setLocalFeedback((prev) => ({ ...prev, [messageId]: feedbackType }));
-
-    // Find the message object to check for provider metadata
-    const message = messages.find(m => m.id === messageId);
-    let llmKey = messageId;
-
-    if (message) {
-      if ((message as any).providerMetadata) {
-        const metadata = (message as any).providerMetadata;
-        if (metadata.openai?.itemId) {
-          llmKey = metadata.openai.itemId;
-        } else if (metadata.anthropic?.id) {
-          llmKey = metadata.anthropic.id;
-        }
-      } else if (message.parts) {
-        for (const part of message.parts) {
-          if ((part as any).providerMetadata) {
-            const metadata = (part as any).providerMetadata;
-            if (metadata.openai?.itemId) {
-              llmKey = metadata.openai.itemId;
-              break;
-            } else if (metadata.anthropic?.id) {
-              llmKey = metadata.anthropic.id;
-              break;
-            }
-          }
-        }
-      }
-    }
-
-    // console.log("Submitting feedback with key:", llmKey, "original:", messageId);
+    setLocalFeedback((prev) => ({ ...prev, [messageKey]: feedbackType }));
 
     try {
       const result = await submitFeedbackAction({
-        llmKey: llmKey, // Use the provider ID if available, otherwise the client ID
+        messageIndex,
         feedback: feedbackType,
         conversationId,
       });
@@ -223,10 +196,11 @@ export default function ConversationWrapper({
       {/* Upgrade Ribbon (not full width, dismissible with transition) - Hidden for subscribed users */}
       {!isSubscribed && !subscriptionLoading && user && (
         <div
-          className={`z-30 flex justify-center absolute top-3 left-0 w-full pointer-events-none transition-all duration-500 ${showRibbon
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 -translate-y-10 pointer-events-none"
-            }`}
+          className={`z-30 flex justify-center absolute top-3 left-0 w-full pointer-events-none transition-all duration-500 ${
+            showRibbon
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 -translate-y-10 pointer-events-none"
+          }`}
         >
           <div className="flex items-center gap-3 px-4 py-2 md:rounded-md bg-linear-to-r from-blue-500 to-purple-600 shadow-lg text-white text-sm font-semibold w-full md:w-auto mx-auto pointer-events-auto relative whitespace-nowrap">
             <span className="whitespace-nowrap flex-1 overflow-hidden">
@@ -270,10 +244,11 @@ export default function ConversationWrapper({
                   <div
                     onClick={() => !isDisabled && sendMessage({ text: p })}
                     key={`prompt_${index}`}
-                    className={`p-4 rounded-lg transition-colors ${isDisabled
-                      ? "bg-neutral-800/20 text-neutral-600 cursor-not-allowed"
-                      : "bg-neutral-800/40 cursor-pointer hover:bg-neutral-800/60"
-                      }`}
+                    className={`p-4 rounded-lg transition-colors ${
+                      isDisabled
+                        ? "bg-neutral-800/20 text-neutral-600 cursor-not-allowed"
+                        : "bg-neutral-800/40 cursor-pointer hover:bg-neutral-800/60"
+                    }`}
                     title={isDisabled ? "Daily message limit reached" : ""}
                   >
                     {p}
@@ -440,46 +415,47 @@ export default function ConversationWrapper({
                     ) : (
                       <>
                         {/* Show loading spinner above actions for the last assistant message while streaming */}
-                        {status !== "ready" && index === displayMessages.length - 1 && (
-                          <div className="mb-2">
-                            <LoaderCircle className="animate-spin inline-block size-4" />
-                          </div>
-                        )}
+                        {status !== "ready" &&
+                          index === displayMessages.length - 1 && (
+                            <div className="mb-2">
+                              <LoaderCircle className="animate-spin inline-block size-4" />
+                            </div>
+                          )}
                         <MessageActions className="flex gap-0">
                           {(!localFeedback[message.key] ||
                             localFeedback[message.key] === "positive") && (
-                              <MessageAction
-                                className="cursor-pointer"
-                                onClick={() => handleFeedback(message.key, true)}
-                                label="Good response"
-                              >
-                                <ThumbsUp
-                                  className="size-4"
-                                  fill={
-                                    localFeedback[message.key] === "positive"
-                                      ? "currentColor"
-                                      : "none"
-                                  }
-                                />
-                              </MessageAction>
-                            )}
+                            <MessageAction
+                              className="cursor-pointer"
+                              onClick={() => handleFeedback(index, true)}
+                              label="Good response"
+                            >
+                              <ThumbsUp
+                                className="size-4"
+                                fill={
+                                  localFeedback[message.key] === "positive"
+                                    ? "currentColor"
+                                    : "none"
+                                }
+                              />
+                            </MessageAction>
+                          )}
                           {(!localFeedback[message.key] ||
                             localFeedback[message.key] === "negative") && (
-                              <MessageAction
-                                className="cursor-pointer"
-                                onClick={() => handleFeedback(message.key, false)}
-                                label="Bad response"
-                              >
-                                <ThumbsDown
-                                  className="size-4"
-                                  fill={
-                                    localFeedback[message.key] === "negative"
-                                      ? "currentColor"
-                                      : "none"
-                                  }
-                                />
-                              </MessageAction>
-                            )}
+                            <MessageAction
+                              className="cursor-pointer"
+                              onClick={() => handleFeedback(index, false)}
+                              label="Bad response"
+                            >
+                              <ThumbsDown
+                                className="size-4"
+                                fill={
+                                  localFeedback[message.key] === "negative"
+                                    ? "currentColor"
+                                    : "none"
+                                }
+                              />
+                            </MessageAction>
+                          )}
                           <CopyAction content={message.content} />
                         </MessageActions>
                       </>

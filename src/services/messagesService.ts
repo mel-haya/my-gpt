@@ -1,5 +1,5 @@
 import { db } from "@/lib/db-config";
-import { eq, asc, desc, and } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
 import { messages, InsertMessage, SelectMessage } from "@/lib/db-schema";
 import { ChatMessage } from "@/types/chatMessage";
 
@@ -17,7 +17,6 @@ export async function saveMessage(
       .map((part) => part.text)
       .join(" "),
     model_used: modelUsed,
-    llm_key: message.id, // Store key provided by LLM
   };
   const result = await db.insert(messages).values(insertMessage).returning();
   return result[0];
@@ -34,19 +33,20 @@ export async function getMessagesByConversationId(
   return result;
 }
 
-export async function getMessageByLlmKey(
+/**
+ * Get a message by its index (0-based position) within a conversation.
+ * Messages are ordered by their database ID (insertion order).
+ */
+export async function getMessageByIndex(
   conversationId: number,
-  llmKey: string,
+  messageIndex: number,
 ): Promise<SelectMessage | null> {
   const result = await db
     .select()
     .from(messages)
-    .where(
-      and(
-        eq(messages.conversation_id, conversationId),
-        eq(messages.llm_key, llmKey),
-      ),
-    )
+    .where(eq(messages.conversation_id, conversationId))
+    .orderBy(asc(messages.id))
+    .offset(messageIndex)
     .limit(1);
   return result[0] || null;
 }

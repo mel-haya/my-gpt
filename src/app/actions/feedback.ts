@@ -5,14 +5,14 @@ import { feedback, messages } from "@/lib/db-schema";
 import { currentUser } from "@clerk/nextjs/server";
 import { desc, eq } from "drizzle-orm";
 
-import { getMessageByLlmKey } from "@/services/messagesService";
+import { getMessageByIndex } from "@/services/messagesService";
 
 export async function submitFeedbackAction({
-  llmKey,
+  messageIndex,
   feedback: feedbackType,
   conversationId,
 }: {
-  llmKey: string;
+  messageIndex: number;
   feedback: "positive" | "negative";
   conversationId?: number;
 }) {
@@ -26,7 +26,11 @@ export async function submitFeedbackAction({
       throw new Error("Conversation ID is required");
     }
 
-    const message = await getMessageByLlmKey(conversationId, llmKey);
+    if (typeof messageIndex !== "number" || messageIndex < 0) {
+      throw new Error("Invalid message index");
+    }
+
+    const message = await getMessageByIndex(conversationId, messageIndex);
     if (!message) {
       throw new Error("Message not found");
     }
@@ -100,7 +104,7 @@ export async function getFeedbackStatsAction() {
 
     const total = allFeedback.length;
     const positive = allFeedback.filter(
-      (f) => f.feedback === "positive"
+      (f) => f.feedback === "positive",
     ).length;
     const negative = total - positive;
     const satisfactionRate = total > 0 ? (positive / total) * 100 : 0;
