@@ -21,15 +21,29 @@ export default function HistoryPageClient({
   initialConversationId = null,
   initialMessageId = null,
 }: HistoryPageClientProps) {
-  const [conversations, setConversations] = useState<HistoryConversation[]>(initialConversations);
+  const [conversations, setConversations] =
+    useState<HistoryConversation[]>(initialConversations);
   const [hasMore, setHasMore] = useState(initialHasMore);
-  const [nextCursor, setNextCursor] = useState<number | null>(initialNextCursor);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(initialConversationId);
-
-  const selectedConversation = conversations.find(
-    (c) => c.id === selectedId,
+  const [nextCursor, setNextCursor] = useState<number | null>(
+    initialNextCursor,
   );
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(
+    initialConversationId,
+  );
+  const [highlightMessageId, setHighlightMessageId] = useState<number | null>(
+    initialMessageId,
+  );
+
+  const selectedConversation = conversations.find((c) => c.id === selectedId);
+
+  const handleSelectConversation = (id: number | null) => {
+    setSelectedId(id);
+    // Clear highlight when changing conversations
+    if (id !== initialConversationId) {
+      setHighlightMessageId(null);
+    }
+  };
 
   const loadMoreConversations = async () => {
     if (isLoading || !hasMore || !nextCursor) return;
@@ -38,7 +52,7 @@ export default function HistoryPageClient({
     const result = await getAllConversationsAction(undefined, 20, nextCursor);
 
     if (result.success) {
-      setConversations(prev => [...prev, ...result.data.data]);
+      setConversations((prev) => [...prev, ...result.data.data]);
       setHasMore(result.data.hasMore);
       setNextCursor(result.data.nextCursor);
     }
@@ -50,7 +64,7 @@ export default function HistoryPageClient({
       <ConversationsList
         conversations={conversations}
         selectedId={selectedId}
-        onSelect={setSelectedId}
+        onSelect={handleSelectConversation}
         onLoadMore={loadMoreConversations}
         hasMore={hasMore}
         isLoading={isLoading}
@@ -59,7 +73,7 @@ export default function HistoryPageClient({
       <HistoryMessagesPanel
         conversationId={selectedId}
         conversationTitle={selectedConversation?.title || null}
-        highlightMessageId={initialMessageId}
+        highlightMessageId={highlightMessageId}
       />
     </div>
   );

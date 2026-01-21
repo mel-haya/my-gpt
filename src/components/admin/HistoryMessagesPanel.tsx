@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+} from "@/components/ai-elements/conversation";
 import { getConversationMessagesAction } from "@/app/actions/history";
-import { ConversationEmptyState } from "@/components/ai-elements/conversation";
 import {
   Message,
   MessageContent,
@@ -24,6 +28,104 @@ interface HistoryMessagesPanelProps {
   highlightMessageId?: number | null;
 }
 
+// Shared message rendering component
+function MessagesContent({
+  messages,
+  highlightMessageId,
+}: {
+  messages: SelectMessage[];
+  highlightMessageId?: number | null;
+}) {
+  return (
+    <>
+      {messages.map((message) => {
+        const parts = message.parts as HistoryMessagePart[];
+
+        return (
+          <div
+            id={`message-${message.id}`}
+            key={message.id}
+            className={
+              highlightMessageId === message.id
+                ? "rounded-lg ring-2 ring-indigo-500/50 p-1 -m-1 transition-all duration-300"
+                : ""
+            }
+          >
+            <Message from={message.role as "user" | "assistant" | "system"}>
+              <MessageContent>
+                {parts.map((part, idx) => {
+                  if (part.type === "text" && part.text) {
+                    return (
+                      <MessageResponse key={idx}>{part.text}</MessageResponse>
+                    );
+                  }
+
+                  if (
+                    part.type === "tool-call" &&
+                    part.toolName &&
+                    part.toolCallId
+                  ) {
+                    const toolResult = parts.find(
+                      (p) =>
+                        p.type === "tool-result" &&
+                        p.toolCallId === part.toolCallId,
+                    ) as { type: "tool-result"; result: unknown } | undefined;
+                    return (
+                      <Tool
+                        key={idx}
+                        defaultValue="open"
+                        className="bg-neutral-900/40 border-white/5 mt-4"
+                      >
+                        <ToolHeader
+                          title={part.toolName}
+                          state="output-available"
+                          type="tool-call"
+                          className="hover:bg-white/5"
+                        />
+                        <ToolInput input={part.args} />
+                        {toolResult && (
+                          <ToolOutput
+                            output={toolResult.result}
+                            errorText={undefined}
+                            toolName={part.toolName}
+                          />
+                        )}
+                      </Tool>
+                    );
+                  }
+
+                  return null;
+                })}
+              </MessageContent>
+              <div
+                className={`flex
+                 ${message.role === "assistant" ? "justify-start" : "justify-end"}
+                 gap-1 mt-2 opacity-50 text-[10px] text-neutral-400`}
+              >
+                {message.role === "assistant" && message.model_used && (
+                  <span> {message.model_used}</span>
+                )}
+                {message.created_at && (
+                  <span>
+                    {new Date(message.created_at).toLocaleString([], {
+                      year: "numeric",
+                      month: "numeric",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })}
+                  </span>
+                )}
+              </div>
+            </Message>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 export default function HistoryMessagesPanel({
   conversationId,
   conversationTitle,
@@ -41,18 +143,27 @@ export default function HistoryMessagesPanel({
     }
   }, [conversationId]);
 
-  // Handle auto-scrolling when messages are loaded and highlightMessageId is present
+  // Handle highlight scrolling when using the manual scroll container
   useEffect(() => {
     if (!loading && messages.length > 0 && highlightMessageId) {
-      const element = document.getElementById(`message-${highlightMessageId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Optional: Add a temporary highlight effect
-        element.classList.add("bg-indigo-500/10", "transition-colors", "duration-1000");
-        setTimeout(() => {
-          element.classList.remove("bg-indigo-500/10");
-        }, 2000);
-      }
+      // Small delay to ensure DOM is rendered
+      const timer = setTimeout(() => {
+        const element = document.getElementById(
+          `message-${highlightMessageId}`,
+        );
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          element.classList.add(
+            "bg-indigo-500/10",
+            "transition-colors",
+            "duration-1000",
+          );
+          setTimeout(() => {
+            element.classList.remove("bg-indigo-500/10");
+          }, 2000);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [loading, messages, highlightMessageId]);
 
@@ -108,8 +219,10 @@ export default function HistoryMessagesPanel({
     );
   }
 
+  const contentClassName = "max-w-4xl mx-auto px-6 py-12 flex flex-col gap-10";
+
   return (
-    <div className="flex-1 flex flex-col h-full bg-neutral-950 overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-neutral-950 overflow-hidden custom-scrollbar">
       <header className="px-6 py-4 border-b border-white/5 bg-neutral-900/50 backdrop-blur-md">
         <h2 className="text-lg font-bold text-white truncate">
           {conversationTitle || "Untitled Conversation"}
@@ -119,101 +232,25 @@ export default function HistoryMessagesPanel({
         </p>
       </header>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="max-w-4xl mx-auto px-6 py-12 flex flex-col gap-10">
-          {messages.map((message) => {
-            const parts = message.parts as HistoryMessagePart[];
-
-            return (
-              <div
-                id={`message-${message.id}`}
-                key={message.id}
-                className={
-                  highlightMessageId === message.id
-                    ? "rounded-lg ring-2 ring-indigo-500/50 p-1 -m-1 transition-all duration-300"
-                    : ""
-                }
-              >
-                <Message
-                  from={message.role as "user" | "assistant" | "system"}
-                >
-                  <MessageContent>
-                    {parts.map((part, idx) => {
-                      if (part.type === "text" && part.text) {
-                        return (
-                          <MessageResponse key={idx}>
-                            {part.text}
-                          </MessageResponse>
-                        );
-                      }
-
-                      if (
-                        part.type === "tool-call" &&
-                        part.toolName &&
-                        part.toolCallId
-                      ) {
-                        const toolResult = parts.find(
-                          (p) =>
-                            p.type === "tool-result" &&
-                            p.toolCallId === part.toolCallId,
-                        ) as
-                          | { type: "tool-result"; result: unknown }
-                          | undefined;
-                        return (
-                          <Tool
-                            key={idx}
-                            defaultValue="open"
-                            className="bg-neutral-900/40 border-white/5 mt-4"
-                          >
-                            <ToolHeader
-                              title={part.toolName}
-                              state="output-available"
-                              type="tool-call"
-                              className="hover:bg-white/5"
-                            />
-                            <ToolInput input={part.args} />
-                            {toolResult && (
-                              <ToolOutput
-                                output={toolResult.result}
-                                errorText={undefined}
-                                toolName={part.toolName}
-                              />
-                            )}
-                          </Tool>
-                        );
-                      }
-
-                      // Tool results are handled inside tool-call part for better rendering
-                      return null;
-                    })}
-                  </MessageContent>
-                  <div
-                    className={`flex
-                     ${message.role === "assistant" ? "justify-start" : "justify-end"}
-                     gap-1 mt-2 opacity-50 text-[10px] text-neutral-400`}
-                  >
-                    {message.role === "assistant" && message.model_used && (
-                      <span> {message.model_used}</span>
-                    )}
-                    {message.created_at && (
-                      <span>
-                        {new Date(message.created_at).toLocaleString([], {
-                          year: "numeric",
-                          month: "numeric",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })}
-                      </span>
-                    )}
-                  </div>
-                </Message>
-              </div>
-            );
-          })}
+      {/* Use regular scrollable div when highlighting, StickToBottom otherwise */}
+      {highlightMessageId ? (
+        <div className="flex-1 overflow-y-auto">
+          <div className={`${contentClassName}`}>
+            <MessagesContent
+              messages={messages}
+              highlightMessageId={highlightMessageId}
+            />
+          </div>
         </div>
-      </div>
+      ) : (
+        <Conversation className="flex-1">
+          <ConversationContent
+            className={`${contentClassName} custom-scrollbar`}
+          >
+            <MessagesContent messages={messages} />
+          </ConversationContent>
+        </Conversation>
+      )}
     </div>
   );
 }
