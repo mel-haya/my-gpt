@@ -37,7 +37,14 @@ import {
 } from "@/components/ai-elements/message";
 import Link from "next/link";
 import { CopyAction } from "./CopyAction";
-import { LoaderCircle, RefreshCcw, ThumbsUp, ThumbsDown } from "lucide-react";
+import {
+  LoaderCircle,
+  RefreshCcw,
+  ThumbsUp,
+  ThumbsDown,
+  FlaskConical,
+} from "lucide-react";
+import TestDialog from "@/components/admin/TestDialog";
 import Styles from "@/assets/styles/customScrollbar.module.css";
 import Background from "@/components/background";
 import { useUser } from "@clerk/nextjs";
@@ -83,6 +90,10 @@ export default function ConversationWrapper({
   const [localFeedback, setLocalFeedback] = useState<
     Record<string, "positive" | "negative">
   >({});
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
+  const [testDialogQuestion, setTestDialogQuestion] = useState("");
+
+  const isAdmin = user?.publicMetadata?.role === "admin";
 
   // Reset local feedback when conversation changes
   useEffect(() => {
@@ -410,6 +421,18 @@ export default function ConversationWrapper({
                             <RefreshCcw className="size-4" />
                           </MessageAction>
                         )}
+                        {isAdmin && (
+                          <MessageAction
+                            className="cursor-pointer"
+                            onClick={() => {
+                              setTestDialogQuestion(message.content);
+                              setTestDialogOpen(true);
+                            }}
+                            label="Add to Tests"
+                          >
+                            <FlaskConical className="size-4" />
+                          </MessageAction>
+                        )}
                         <CopyAction content={message.content} />
                       </MessageActions>
                     ) : (
@@ -474,6 +497,15 @@ export default function ConversationWrapper({
             onModelChange={handleModelChange}
           />
         </>
+      )}
+      {/* Admin Test Dialog */}
+      {isAdmin && (
+        <TestDialog
+          mode="add"
+          isOpen={testDialogOpen}
+          onOpenChange={setTestDialogOpen}
+          initialPrompt={testDialogQuestion}
+        />
       )}
     </div>
   );

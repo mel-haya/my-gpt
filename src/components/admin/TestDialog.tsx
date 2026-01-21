@@ -25,6 +25,7 @@ interface TestDialogProps {
   trigger?: React.ReactNode;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  initialPrompt?: string;
 }
 
 export default function TestDialog({
@@ -34,6 +35,7 @@ export default function TestDialog({
   trigger,
   isOpen,
   onOpenChange,
+  initialPrompt,
 }: TestDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,15 +60,15 @@ export default function TestDialog({
         expected_result: test.expected_result,
         category: test.category || "",
       });
-    } else if (!isEditMode) {
+    } else if (!isEditMode && open) {
       setFormData({
         // name removed
-        prompt: "",
+        prompt: initialPrompt || "",
         expected_result: "",
         category: "",
       });
     }
-  }, [isEditMode, test, open]);
+  }, [isEditMode, test, open, initialPrompt]);
 
   // handleInputChange updated implicitly by strict string typing or just reusing same function
   const handleInputChange = (field: string, value: string) => {
@@ -117,18 +119,18 @@ export default function TestDialog({
         onSuccess?.();
       } else {
         setError(
-          result.error || `Failed to ${isEditMode ? "update" : "create"} test`
+          result.error || `Failed to ${isEditMode ? "update" : "create"} test`,
         );
       }
     } catch (error) {
       console.error(
         `Error ${isEditMode ? "updating" : "creating"} test:`,
-        error
+        error,
       );
       setError(
         error instanceof Error
           ? error.message
-          : `Failed to ${isEditMode ? "update" : "create"} test`
+          : `Failed to ${isEditMode ? "update" : "create"} test`,
       );
     } finally {
       setIsSubmitting(false);
@@ -188,7 +190,6 @@ export default function TestDialog({
                 {error}
               </div>
             )}
-
 
             <div className="grid gap-2">
               <Label htmlFor="test-prompt">Question</Label>
