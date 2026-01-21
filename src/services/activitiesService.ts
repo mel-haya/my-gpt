@@ -109,12 +109,12 @@ export async function getActivityById(
 export async function createActivity(
   data: InsertActivity,
 ): Promise<SelectActivity> {
-  const textForEmbedding = `${data.name} ${data.description} ${data.category || ""} ${data.location || ""}`;
+  const textForEmbedding = `${"Activity name: " + data.name} ${"Activity description: " + data.description} ${"Activity category: " + (data.category || "")} ${"Activity location: " + (data.location || "")}`;
   const embedding = await generateEmbedding(textForEmbedding);
 
   const [newActivity] = await db
     .insert(activities)
-    .values({ ...data, embedding })
+    .values({ ...data, embedding, embedded_text: textForEmbedding })
     .returning();
   return newActivity;
 }
@@ -124,18 +124,23 @@ export async function updateActivity(
   data: Partial<InsertActivity>,
 ): Promise<SelectActivity> {
   let embedding;
+  let textForEmbedding;
 
   if (data.name || data.description || data.category || data.location) {
     const existing = await getActivityById(id);
     if (existing) {
-      const textForEmbedding = `${data.name ?? existing.name} ${data.description ?? existing.description} ${data.category ?? existing.category ?? ""} ${data.location ?? existing.location ?? ""}`;
+      textForEmbedding = `${"Activity name: " + (data.name ?? existing.name)} ${"Activity description: " + (data.description ?? existing.description)} ${"Activity category: " + (data.category ?? existing.category ?? "")} ${"Activity location: " + (data.location ?? existing.location ?? "")}`;
       embedding = await generateEmbedding(textForEmbedding);
     }
   }
 
   const [updatedActivity] = await db
     .update(activities)
-    .set({ ...data, ...(embedding && { embedding }), updated_at: new Date() })
+    .set({
+      ...data,
+      ...(embedding && { embedding, embedded_text: textForEmbedding }),
+      updated_at: new Date(),
+    })
     .where(eq(activities.id, id))
     .returning();
   return updatedActivity;

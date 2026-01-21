@@ -15,6 +15,9 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 
+import { useState } from "react";
+import ViewEmbeddedTextDialog from "./ViewEmbeddedTextDialog";
+
 interface ActivitiesListProps {
   activities: SelectActivity[];
   onEdit: (activity: SelectActivity) => void;
@@ -26,6 +29,10 @@ export function ActivitiesList({
   onEdit,
   onDelete,
 }: ActivitiesListProps) {
+  const [selectedActivity, setSelectedActivity] =
+    useState<SelectActivity | null>(null);
+  const [isViewEmbeddedTextOpen, setIsViewEmbeddedTextOpen] = useState(false);
+
   if (activities.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -35,16 +42,29 @@ export function ActivitiesList({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {activities.map((activity) => (
-        <ActivityCard
-          key={activity.id}
-          activity={activity}
-          onEdit={() => onEdit(activity)}
-          onDelete={() => onDelete(activity)}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {activities.map((activity) => (
+          <ActivityCard
+            key={activity.id}
+            activity={activity}
+            onEdit={() => onEdit(activity)}
+            onDelete={() => onDelete(activity)}
+            onViewEmbeddedText={() => {
+              setSelectedActivity(activity);
+              setIsViewEmbeddedTextOpen(true);
+            }}
+          />
+        ))}
+      </div>
+
+      <ViewEmbeddedTextDialog
+        open={isViewEmbeddedTextOpen}
+        onOpenChange={setIsViewEmbeddedTextOpen}
+        text={selectedActivity?.embedded_text || null}
+        activityName={selectedActivity?.name || ""}
+      />
+    </>
   );
 }
 
@@ -52,10 +72,12 @@ function ActivityCard({
   activity,
   onEdit,
   onDelete,
+  onViewEmbeddedText,
 }: {
   activity: SelectActivity;
   onEdit: () => void;
   onDelete: () => void;
+  onViewEmbeddedText: () => void;
 }) {
   return (
     <div className="flex flex-col p-4 border rounded-xl hover:shadow-md transition-shadow bg-card h-full">
@@ -178,10 +200,10 @@ function ActivityCard({
           <Button
             variant="link"
             size="sm"
-            onClick={onEdit}
+            onClick={onViewEmbeddedText}
             className="text-[10px] p-0 h-auto uppercase tracking-widest text-muted-foreground hover:text-foreground"
           >
-            Voir détails
+            View embedded text
           </Button>
         </div>
       </div>

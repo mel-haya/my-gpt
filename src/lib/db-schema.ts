@@ -338,6 +338,7 @@ export const activities = pgTable(
     phone: text("phone"),
     website: text("website"),
     image_url: text("image_url"),
+    embedded_text: text("embedded_text"),
     embedding: vector("embedding", { dimensions: 1536 }),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
