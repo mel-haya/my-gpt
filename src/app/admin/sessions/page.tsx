@@ -23,6 +23,8 @@ import {
   DollarSign,
   Trophy,
   Pause,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import CreateTestSessionModal from "@/components/CreateTestSessionModal";
 import EditTestSessionModal from "@/components/EditTestSessionModal";
@@ -95,6 +97,7 @@ export default function SessionsPage() {
   const [reEvaluatingTests, setReEvaluatingTests] = useState<
     Set<number | string>
   >(new Set());
+  const [associatedTestsExpanded, setAssociatedTestsExpanded] = useState(true);
 
   const sortedTests = useMemo(() => {
     if (!selectedProfile?.tests) return [];
@@ -490,9 +493,9 @@ export default function SessionsPage() {
   }, [selectedProfile?.model_averages]);
 
   return (
-    <div className="flex h-[calc(100vh-2rem)] gap-6 p-6">
+    <div className="flex h-[calc(100vh-2rem)] gap-6 p-6 custom-scrollbar">
       {/* Left Sidebar - Sessions List */}
-      <div className="w-1/3 min-w-[320px] space-y-4">
+      <div className="w-1/3 min-w-[320px] flex flex-col h-full space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Test Sessions</h1>
@@ -641,7 +644,7 @@ export default function SessionsPage() {
       </div>
 
       {/* Right Panel - Session Details */}
-      <div className="flex-1 border rounded-lg">
+      <div className="flex-1 border rounded-lg overflow-y-auto h-full">
         {!selectedProfile ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             <div className="text-center">
@@ -663,7 +666,7 @@ export default function SessionsPage() {
             </div>
           </div>
         ) : (
-          <div className="p-6 h-full">
+          <div className="p-6 min-h-full">
             {/* Session Header */}
             <div className="flex items-start justify-between">
               <div>
@@ -952,130 +955,145 @@ export default function SessionsPage() {
 
               {/* Associated Tests */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">
-                  Associated Tests ({selectedProfile.tests.length})
-                </h3>
-                {selectedProfile.tests.length === 0 ? (
-                  <Card>
-                    <CardContent className="pt-4 text-center text-gray-500">
-                      <p>No tests associated with this session</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-2">
-                    {sortedTests.map((test) => (
-                      <Card
-                        key={test.test_id}
-                        className="hover:shadow-sm transition-shadow py-4"
-                      >
-                        <CardContent>
-                          <div className="flex items-center justify-between mb-2 gap-4">
-                            <div className="flex-1 min-w-0">
-                              <h4
-                                className="text-base font-bold text-neutral-900 dark:text-neutral-100 line-clamp-2 leading-tight"
-                                title={test.test_prompt}
-                              >
-                                {test.test_prompt}
-                              </h4>
-                            </div>
-                            {test.best_model && test.best_score !== null && (
-                              <Badge
-                                variant="secondary"
-                                className="bg-neutral-800 text-[10px] gap-1 py-0 px-2 h-5 border-neutral-700 shrink-0"
-                              >
-                                <Medal className="w-3 h-3 text-blue-400" />
-                                <span className="text-gray-400 font-normal">
-                                  {test.best_model}:
-                                </span>
-                                <span className="font-bold text-white">
-                                  {test.best_score}/10
-                                </span>
-                              </Badge>
-                            )}
-                            <div>
-                              <Button
-                                title={
-                                  test.best_score === null
-                                    ? "Run Test"
-                                    : "Regenerate Test"
-                                }
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRegenerateTest(test.test_id);
-                                }}
-                                disabled={regeneratingTests.has(test.test_id)}
-                              >
-                                {regeneratingTests.has(test.test_id) ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : test.best_score === null ? (
-                                  <Play className="w-4 h-4" />
-                                ) : (
-                                  <RefreshCcw className="w-4 h-4" />
-                                )}
-                              </Button>
-                              {test.best_score !== null && (
+                <div
+                  className="flex items-center gap-2 mb-3 cursor-pointer group select-none"
+                  onClick={() =>
+                    setAssociatedTestsExpanded(!associatedTestsExpanded)
+                  }
+                >
+                  {associatedTestsExpanded ? (
+                    <ChevronDown className="w-5 h-5 text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200" />
+                  )}
+                  <h3 className="text-lg font-semibold">
+                    Associated Tests ({selectedProfile.tests.length})
+                  </h3>
+                </div>
+                {associatedTestsExpanded &&
+                  (selectedProfile.tests.length === 0 ? (
+                    <Card>
+                      <CardContent className="pt-4 text-center text-gray-500">
+                        <p>No tests associated with this session</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-2">
+                      {sortedTests.map((test) => (
+                        <Card
+                          key={test.test_id}
+                          className="hover:shadow-sm transition-shadow py-4"
+                        >
+                          <CardContent>
+                            <div className="flex items-center justify-between mb-2 gap-4">
+                              <div className="flex-1 min-w-0">
+                                <h4
+                                  className="text-base font-bold text-neutral-900 dark:text-neutral-100 line-clamp-2 leading-tight"
+                                  title={test.test_prompt}
+                                >
+                                  {test.test_prompt}
+                                </h4>
+                              </div>
+                              {test.best_model && test.best_score !== null && (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-neutral-800 text-[10px] gap-1 py-0 px-2 h-5 border-neutral-700 shrink-0"
+                                >
+                                  <Medal className="w-3 h-3 text-blue-400" />
+                                  <span className="text-gray-400 font-normal">
+                                    {test.best_model}:
+                                  </span>
+                                  <span className="font-bold text-white">
+                                    {test.best_score}/10
+                                  </span>
+                                </Badge>
+                              )}
+                              <div>
                                 <Button
-                                  title="Re-evaluate Results"
+                                  title={
+                                    test.best_score === null
+                                      ? "Run Test"
+                                      : "Regenerate Test"
+                                  }
                                   variant="ghost"
                                   size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleReEvaluateTest(test.test_id);
+                                    handleRegenerateTest(test.test_id);
                                   }}
-                                  disabled={reEvaluatingTests.has(test.test_id)}
+                                  disabled={regeneratingTests.has(test.test_id)}
                                 >
-                                  {reEvaluatingTests.has(test.test_id) ? (
+                                  {regeneratingTests.has(test.test_id) ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : test.best_score === null ? (
+                                    <Play className="w-4 h-4" />
                                   ) : (
-                                    <ListTodo className="w-4 h-4" />
+                                    <RefreshCcw className="w-4 h-4" />
                                   )}
                                 </Button>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-2 w-full mt-3">
-                            <div className="flex items-center justify-between">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleTestDetails(test.test_id);
-                                }}
-                                disabled={testDetailsLoading}
-                              >
-                                {testDetailsLoading &&
-                                selectedTestId === test.test_id ? (
-                                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                                ) : (
-                                  <Eye className="w-4 h-4 mr-1" />
+                                {test.best_score !== null && (
+                                  <Button
+                                    title="Re-evaluate Results"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleReEvaluateTest(test.test_id);
+                                    }}
+                                    disabled={reEvaluatingTests.has(
+                                      test.test_id,
+                                    )}
+                                  >
+                                    {reEvaluatingTests.has(test.test_id) ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <ListTodo className="w-4 h-4" />
+                                    )}
+                                  </Button>
                                 )}
-                                {selectedTestId === test.test_id
-                                  ? "Hide Details"
-                                  : "View Details"}
-                              </Button>
+                              </div>
                             </div>
+                            <div className="flex flex-col gap-2 w-full mt-3">
+                              <div className="flex items-center justify-between">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleTestDetails(test.test_id);
+                                  }}
+                                  disabled={testDetailsLoading}
+                                >
+                                  {testDetailsLoading &&
+                                  selectedTestId === test.test_id ? (
+                                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                  ) : (
+                                    <Eye className="w-4 h-4 mr-1" />
+                                  )}
+                                  {selectedTestId === test.test_id
+                                    ? "Hide Details"
+                                    : "View Details"}
+                                </Button>
+                              </div>
 
-                            {selectedTestId === test.test_id &&
-                              testDetailsData && (
-                                <TestResultsList
-                                  expectedResult={
-                                    testDetailsData.test.expected_result
-                                  }
-                                  results={testDetailsData.results}
-                                  onRegenerateModel={(model: string) =>
-                                    handleRegenerateTest(test.test_id, model)
-                                  }
-                                />
-                              )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                              {selectedTestId === test.test_id &&
+                                testDetailsData && (
+                                  <TestResultsList
+                                    expectedResult={
+                                      testDetailsData.test.expected_result
+                                    }
+                                    results={testDetailsData.results}
+                                    onRegenerateModel={(model: string) =>
+                                      handleRegenerateTest(test.test_id, model)
+                                    }
+                                  />
+                                )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ))}
               </div>
 
               {/* Model Configurations */}
