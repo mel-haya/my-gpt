@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const modelMessages = convertToModelMessages(messages);
+    const modelMessages = await convertToModelMessages(messages);
 
     const availableModels = await getAvailableModels();
     const supportedIds = availableModels.map((m) => m.id);

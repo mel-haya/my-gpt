@@ -55,7 +55,7 @@ export async function generateChatCompletionWithToolCalls(
   try {
     const { messages, model, systemPrompt: customSystemPrompt } = request;
 
-    const modelMessages = convertToModelMessages(messages);
+    const modelMessages = await convertToModelMessages(messages);
 
     const selectedModel = supportedModels.includes(model)
       ? model

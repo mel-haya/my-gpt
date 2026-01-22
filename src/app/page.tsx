@@ -137,7 +137,8 @@ export default function Home() {
       );
 
       addSystemMessage(
-        `⚠️ **Daily message limit reached!**\n\nYou've used all your messages for today. Your limit will reset in ${hoursUntilReset} hour${hoursUntilReset !== 1 ? "s" : ""
+        `⚠️ **Daily message limit reached!**\n\nYou've used all your messages for today. Your limit will reset in ${hoursUntilReset} hour${
+          hoursUntilReset !== 1 ? "s" : ""
         }.\n\nPlease try again tomorrow.`,
       );
       return;
@@ -171,7 +172,8 @@ export default function Home() {
         );
 
         addSystemMessage(
-          `🚫 **Rate limit exceeded!**\n\nYou've reached your daily message limit. Your limit will reset in ${hoursUntilReset} hour${hoursUntilReset !== 1 ? "s" : ""
+          `🚫 **Rate limit exceeded!**\n\nYou've reached your daily message limit. Your limit will reset in ${hoursUntilReset} hour${
+            hoursUntilReset !== 1 ? "s" : ""
           }.\n\nPlease try again tomorrow. We appreciate your patience! ✨`,
         );
       } else {
@@ -203,7 +205,8 @@ export default function Home() {
       );
 
       addSystemMessage(
-        `⚠️ **Daily message limit reached!**\n\nYou've used all your messages for today. Your limit will reset in ${hoursUntilReset} hour${hoursUntilReset !== 1 ? "s" : ""
+        `⚠️ **Daily message limit reached!**\n\nYou've used all your messages for today. Your limit will reset in ${hoursUntilReset} hour${
+          hoursUntilReset !== 1 ? "s" : ""
         }.\n\nPlease try again tomorrow.`,
       );
       return;
@@ -233,7 +236,8 @@ export default function Home() {
         );
 
         addSystemMessage(
-          `🚫 **Rate limit exceeded!**\n\nYou've reached your daily message limit. Your limit will reset in ${hoursUntilReset} hour${hoursUntilReset !== 1 ? "s" : ""
+          `🚫 **Rate limit exceeded!**\n\nYou've reached your daily message limit. Your limit will reset in ${hoursUntilReset} hour${
+            hoursUntilReset !== 1 ? "s" : ""
           }.\n\nPlease try again tomorrow. We appreciate your patience! ✨`,
         );
       } else {

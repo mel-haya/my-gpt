@@ -11,8 +11,8 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.72",
-    "@ai-sdk/react": "^2.0.86",
+    "@ai-sdk/openai": "^3.0.14",
+    "@ai-sdk/react": "^3.0.46",
     "@clerk/nextjs": "^6.34.5",
     "@clerk/themes": "^2.4.33",
     "@imagekit/next": "^2.1.3",
@@ -37,7 +37,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@types/pdf-parse": "^1.1.5",
     "@vercel/blob": "^2.0.0",
-    "ai": "^5.0.114",
+    "ai": "^6.0.44",
     "axios": "^1.13.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

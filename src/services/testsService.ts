@@ -18,7 +18,7 @@ import {
   SQL,
 } from "drizzle-orm";
 import { generateChatCompletionWithToolCalls } from "@/services/chatService";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { z } from "zod";
 
 export interface UpdateTestRunResultParams {
@@ -711,7 +711,7 @@ export async function evaluateTestResponse(
   });
 
   // Evaluate the response using generateObject with system prompt
-  const { object: evaluation } = await generateObject({
+  const { output: evaluation } = await generateText({
     model: evaluatorModel,
     system: `You are an AI response evaluator. Your job is to score the AI's response on a scale from 1 to 10:
 
@@ -742,7 +742,7 @@ Expected Response: "${expectedResult}"
 AI Response: "${aiResponse}"
 
 Score this response from 1 to 10 based on accuracy, completeness, and helpfulness.`,
-    schema: evaluationSchema,
+    output: Output.object({schema: evaluationSchema}),
   });
 
   // Set status based on evaluation score (7+ is Success, below 7 is Failed)

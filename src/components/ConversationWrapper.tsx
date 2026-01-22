@@ -18,8 +18,8 @@ import {
   ChatRequestOptions,
   FileUIPart,
   ChatStatus,
-  isToolOrDynamicToolUIPart,
-  getToolOrDynamicToolName,
+  isToolUIPart ,
+  getToolName,
 } from "ai";
 import {
   Conversation,
@@ -154,7 +154,7 @@ export default function ConversationWrapper({
         //     part.state === "output-available"
         // );
         const toolParts = parts.filter((part) =>
-          isToolOrDynamicToolUIPart(part),
+          isToolUIPart(part),
         );
         return {
           key: id,
@@ -311,7 +311,7 @@ export default function ConversationWrapper({
                       message.toolsStatus.length > 0 && (
                         <div className="mb-2">
                           {message.toolsStatus.map((tool, index) => {
-                            const toolName = getToolOrDynamicToolName(tool);
+                            const toolName = getToolName(tool);
                             // console.log("Tool Debug:", { toolName, state: tool.state, output: tool.output });
 
                             if (

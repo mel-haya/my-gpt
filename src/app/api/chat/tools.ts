@@ -1,4 +1,4 @@
-import { tool, experimental_generateImage as generateImage } from "ai";
+import { tool, generateImage } from "ai";
 import { openai } from "./models";
 import { z } from "zod";
 import { openai as originalOpenAI } from "@ai-sdk/openai";
@@ -84,11 +84,10 @@ export const tools = {
   //     .describe("The URL of the image with the background removed."),
   // }),
   searchKnowledgeBase: tool({
-    name: "searchKnowledgeBase",
     description:
       "Searches the knowledge base for relevant information based on a query.",
     inputSchema: searchKnowledgeBaseInputSchema,
-    outputSchema: searchKnowledgeBaseOutputSchema,
+    // outputSchema: searchKnowledgeBaseOutputSchema,
     execute: async ({ query }) => {
       try {
         const response = await searchDocuments(query, 5, 0);
@@ -120,7 +119,6 @@ export const tools = {
     },
   }),
   suggestActivities: tool({
-    name: "suggestActivities",
     description:
       "Suggests hotel activities (restaurants, tours, wellness, etc.) based on a search query or guest preferences.",
     inputSchema: z.object({
@@ -130,22 +128,22 @@ export const tools = {
           "The search query for activities, e.g., 'romantic dinner' or 'outdoor hiking'",
         ),
     }),
-    outputSchema: z.object({
-      success: z.boolean(),
-      activities: z.array(
-        z.object({
-          name: z.string(),
-          description: z.string(),
-          location: z.string().optional(),
-          category: z.string().optional(),
-          price_indicator: z.string().optional(),
-          distance: z.string().optional(),
-          website: z.string().optional(),
-          phone: z.string().optional(),
-          image: z.string().optional(),
-        }),
-      ),
-    }),
+    // outputSchema: z.object({
+    //   success: z.boolean(),
+    //   activities: z.array(
+    //     z.object({
+    //       name: z.string(),
+    //       description: z.string(),
+    //       location: z.string().optional(),
+    //       category: z.string().optional(),
+    //       price_indicator: z.string().optional(),
+    //       distance: z.string().optional(),
+    //       website: z.string().optional(),
+    //       phone: z.string().optional(),
+    //       image: z.string().optional(),
+    //     }),
+    //   ),
+    // }),
     execute: async ({ query }) => {
       try {
         const results = await searchActivitiesForSuggestion(query);
