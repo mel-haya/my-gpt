@@ -15,6 +15,7 @@ import {
   Coins,
   Medal,
   Trophy,
+  RefreshCw,
 } from "lucide-react";
 import EditTestSessionModal from "@/components/EditTestSessionModal";
 import { formatTokens } from "@/lib/utils";
@@ -34,6 +35,8 @@ interface SessionHeaderProps {
   onDeleteSession: () => void;
   onSessionUpdated: () => void;
   winnerModel: { model: string; avgScore: number } | null;
+  onReEvaluateSession: () => void;
+  isReEvaluating?: boolean;
 }
 
 export function SessionHeader({
@@ -48,6 +51,8 @@ export function SessionHeader({
   onDeleteSession,
   onSessionUpdated,
   winnerModel,
+  onReEvaluateSession,
+  isReEvaluating = false,
 }: SessionHeaderProps) {
   return (
     <div className="mb-6">
@@ -115,6 +120,24 @@ export function SessionHeader({
               </SelectContent>
             </Select>
           </div>
+          {/* Re-evaluate Button */}
+          <Button
+            onClick={onReEvaluateSession}
+            variant="secondary"
+            size="sm"
+            disabled={
+              isRunning ||
+              isReEvaluating ||
+              !profile.tests.length ||
+              !profile.models.length
+            }
+          >
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${isReEvaluating ? "animate-spin" : ""}`}
+            />
+            {isReEvaluating ? "Re-evaluating..." : "Re-evaluate"}
+          </Button>
+
           {isRunning ? (
             <Button
               onClick={onStopSession}

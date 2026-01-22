@@ -17,6 +17,7 @@ import {
   getTestInProfileDetailsAction,
   regenerateTestResultAction,
   reEvaluateTestResultAction,
+  reEvaluateSessionAction,
   type SessionRunResult,
   type TestInProfileDetailResult,
 } from "@/app/actions/testSessions";
@@ -69,6 +70,7 @@ export default function SessionsPage() {
   const [reEvaluatingTests, setReEvaluatingTests] = useState<
     Set<number | string>
   >(new Set());
+  const [isReEvaluatingSession, setIsReEvaluatingSession] = useState(false);
 
   const loadTestDetails = useCallback(
     async (testId: number | string) => {
@@ -355,6 +357,31 @@ export default function SessionsPage() {
     }
   };
 
+  const handleReEvaluateSession = async () => {
+    if (!selectedProfile) return;
+    setIsReEvaluatingSession(true);
+    try {
+      const result = await reEvaluateSessionAction(
+        selectedProfile.id,
+        evaluatorModel,
+      );
+      if (result.success) {
+        loadProfileDetails(selectedProfile.id, true);
+        loadTestProfiles(true);
+        if (selectedTestId) {
+          loadTestDetails(selectedTestId);
+        }
+      } else {
+        alert(result.error || "Failed to re-evaluate session");
+      }
+    } catch (error) {
+      console.error("Error re-evaluating session:", error);
+      alert("Failed to re-evaluate session");
+    } finally {
+      setIsReEvaluatingSession(false);
+    }
+  };
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
@@ -434,6 +461,8 @@ export default function SessionsPage() {
                 setSelectedTestId(null);
               }}
               winnerModel={winnerModel}
+              onReEvaluateSession={handleReEvaluateSession}
+              isReEvaluating={isReEvaluatingSession}
             />
 
             <div className="space-y-6">

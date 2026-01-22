@@ -38,7 +38,7 @@ export interface SessionRunResult {
 
 export async function runTestSessionAction(
   profileId: number,
-  evaluatorModel: string = "openai/gpt-4o"
+  evaluatorModel: string = "openai/gpt-4o",
 ): Promise<ActionResult<{ testRunId: number }>> {
   try {
     const { userId } = await auth();
@@ -121,7 +121,7 @@ export async function runTestSessionAction(
       })),
       profile.models,
       profile.system_prompt ?? "",
-      evaluatorModel
+      evaluatorModel,
     ).catch(console.error);
 
     revalidatePath("/admin/sessions");
@@ -133,7 +133,7 @@ export async function runTestSessionAction(
 }
 
 export async function stopTestSessionAction(
-  testRunId: number
+  testRunId: number,
 ): Promise<ActionResult> {
   try {
     const { userId } = await auth();
@@ -157,7 +157,7 @@ export async function stopTestSessionAction(
 }
 
 export async function getSessionRunStatusAction(
-  testRunId: number
+  testRunId: number,
 ): Promise<ActionResult<SessionRunResult>> {
   try {
     const { userId } = await auth();
@@ -195,7 +195,7 @@ export async function getSessionRunStatusAction(
 
     const totalTests = results.length;
     const completedTests = results.filter(
-      (r) => r.status === "Success" || r.status === "Failed"
+      (r) => r.status === "Success" || r.status === "Failed",
     ).length;
 
     const resultCounts = {
@@ -205,7 +205,7 @@ export async function getSessionRunStatusAction(
         (r) =>
           r.status === "Pending" ||
           r.status === "Running" ||
-          r.status === "Evaluating"
+          r.status === "Evaluating",
       ).length,
     };
 
@@ -226,7 +226,7 @@ export async function getSessionRunStatusAction(
 }
 
 export async function getSessionRunsAction(
-  profileId: number
+  profileId: number,
 ): Promise<ActionResult<SessionRunResult[]>> {
   try {
     const { userId } = await auth();
@@ -263,7 +263,7 @@ export async function getSessionRunsAction(
 
       const totalTests = results.length;
       const completedTests = results.filter(
-        (r) => r.status === "Success" || r.status === "Failed"
+        (r) => r.status === "Success" || r.status === "Failed",
       ).length;
 
       const resultCounts = {
@@ -273,7 +273,7 @@ export async function getSessionRunsAction(
           (r) =>
             r.status === "Pending" ||
             r.status === "Running" ||
-            r.status === "Evaluating"
+            r.status === "Evaluating",
         ).length,
       };
 
@@ -309,13 +309,13 @@ async function runTestsInBackground(
     created_at: Date;
   }[],
   systemPrompt: string,
-  evaluatorModel = "openai/gpt-4o"
+  evaluatorModel = "openai/gpt-4o",
 ) {
   // Helper function with timeout
   const withTimeout = <T>(
     promise: Promise<T>,
     timeoutMs: number,
-    errorMessage: string
+    errorMessage: string,
   ): Promise<T> => {
     let timeoutId: NodeJS.Timeout;
     const timeoutPromise = new Promise<T>((_, reject) => {
@@ -388,7 +388,7 @@ async function runTestsInBackground(
               systemPrompt: systemPrompt,
             }),
             60000, // 1 minute timeout for generation
-            "Test execution timed out after 60 seconds"
+            "Test execution timed out after 60 seconds",
           );
 
           const executionTime = Date.now() - startTime;
@@ -434,7 +434,7 @@ async function runTestsInBackground(
             test.test_prompt,
             testDetails.expected_result,
             chatResponse.text.trim(),
-            evaluatorModel
+            evaluatorModel,
           );
 
           // Final update with evaluation results
@@ -459,7 +459,7 @@ async function runTestsInBackground(
             `Error processing test ${
               test.test_id || test.test_prompt
             } for model ${selectedModel}:`,
-            error
+            error,
           );
           await updateTestRunResult({
             testRunId,
@@ -488,8 +488,8 @@ async function runTestsInBackground(
       .where(
         and(
           eq(testRunResults.test_run_id, testRunId),
-          inArray(testRunResults.status, ["Pending", "Running", "Evaluating"])
-        )
+          inArray(testRunResults.status, ["Pending", "Running", "Evaluating"]),
+        ),
       );
 
     if (pendingResults[0]?.count === 0) {
@@ -507,7 +507,7 @@ async function runTestsInBackground(
 export async function reEvaluateTestResultAction(
   profileId: number,
   testId: number | string,
-  evaluatorModel: string
+  evaluatorModel: string,
 ): Promise<ActionResult> {
   try {
     const { userId } = await auth();
@@ -618,7 +618,7 @@ export async function reEvaluateTestResultAction(
           testInfo.prompt,
           testInfo.expected_result,
           result.output,
-          evaluatorModel
+          evaluatorModel,
         );
 
         await updateTestRunResult({
@@ -679,7 +679,7 @@ export interface TestInProfileDetailResult {
 
 export async function getTestInProfileDetailsAction(
   profileId: number,
-  testId: number | string
+  testId: number | string,
 ): Promise<ActionResult<TestInProfileDetailResult>> {
   try {
     const { userId } = await auth();
@@ -812,7 +812,7 @@ export async function getTestInProfileDetailsAction(
 export async function regenerateTestResultAction(
   profileId: number,
   testId: number | string,
-  modelUsed?: string
+  modelUsed?: string,
 ): Promise<ActionResult<{ testRunId: number }>> {
   try {
     const { userId } = await auth();
@@ -858,7 +858,7 @@ export async function regenerateTestResultAction(
         ? testId.substring(7)
         : testId;
       const manualTest = (profile.manual_tests as ManualTest[])?.find(
-        (t) => t.prompt === prompt
+        (t) => t.prompt === prompt,
       );
       if (!manualTest)
         return { success: false, error: "Manual test not found" };
@@ -917,12 +917,12 @@ export async function regenerateTestResultAction(
         ? and(
             eq(testRunResults.test_run_id, testRunId),
             eq(testRunResults.manual_prompt, testInfo.test_prompt),
-            eq(testRunResults.model_used, model.model_name)
+            eq(testRunResults.model_used, model.model_name),
           )
         : and(
             eq(testRunResults.test_run_id, testRunId),
             eq(testRunResults.test_id, testInfo.test_id as number),
-            eq(testRunResults.model_used, model.model_name)
+            eq(testRunResults.model_used, model.model_name),
           );
 
       const existingResult = await db
@@ -954,7 +954,7 @@ export async function regenerateTestResultAction(
       testRunId,
       testId,
       modelsToRun,
-      profile.system_prompt || ""
+      profile.system_prompt || "",
     ).catch(console.error);
 
     revalidatePath("/admin/sessions");
@@ -969,14 +969,14 @@ async function runSingleTestForProfileInBackground(
   testRunId: number,
   testId: number | string, // Changed from `test` object to `testId`
   models: { model_name: string }[],
-  systemPrompt: string
+  systemPrompt: string,
 ) {
   const evaluatorModel = "openai/gpt-4o";
 
   const withTimeout = <T>(
     promise: Promise<T>,
     timeoutMs: number,
-    errorMessage: string
+    errorMessage: string,
   ): Promise<T> => {
     let timeoutId: NodeJS.Timeout;
     const timeoutPromise = new Promise<T>((_, reject) => {
@@ -1013,7 +1013,7 @@ async function runSingleTestForProfileInBackground(
       if (!profile) return; // Should not happen
 
       const manualTest = profile.manual_tests?.find(
-        (t) => `manual-${t.prompt}` === testId
+        (t) => `manual-${t.prompt}` === testId,
       );
       if (!manualTest) return; // Manual test not found
 
@@ -1072,7 +1072,7 @@ async function runSingleTestForProfileInBackground(
             systemPrompt: systemPrompt,
           }),
           60000,
-          "Test execution timed out after 60 seconds"
+          "Test execution timed out after 60 seconds",
         );
 
         const executionTime = Date.now() - startTime;
@@ -1107,7 +1107,7 @@ async function runSingleTestForProfileInBackground(
           testInfo.prompt,
           expectedResult,
           chatResponse.text.trim(),
-          evaluatorModel
+          evaluatorModel,
         );
 
         // Final update
@@ -1120,7 +1120,7 @@ async function runSingleTestForProfileInBackground(
       } catch (error) {
         console.error(
           `Error processing test ${testId} for model ${selectedModel}:`,
-          error
+          error,
         );
         await updateTestRunResult({
           ...baseResult,
@@ -1150,8 +1150,12 @@ async function runSingleTestForProfileInBackground(
         .where(
           and(
             eq(testRunResults.test_run_id, testRunId),
-            inArray(testRunResults.status, ["Pending", "Running", "Evaluating"])
-          )
+            inArray(testRunResults.status, [
+              "Pending",
+              "Running",
+              "Evaluating",
+            ]),
+          ),
         );
 
       if (pendingResults[0]?.count === 0) {
@@ -1160,5 +1164,129 @@ async function runSingleTestForProfileInBackground(
     }
   } catch (error) {
     console.error("Error in background test execution:", error);
+  }
+}
+
+export async function reEvaluateSessionAction(
+  profileId: number,
+  evaluatorModel: string,
+): Promise<ActionResult> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const isAdmin = await checkRole("admin");
+    if (!isAdmin) {
+      return { success: false, error: "Admin access required" };
+    }
+
+    // 1. Get the latest run for this profile
+    const runs = await db
+      .select({ id: testRuns.id })
+      .from(testRuns)
+      .where(eq(testRuns.profile_id, profileId))
+      .orderBy(desc(testRuns.created_at))
+      .limit(1);
+
+    if (runs.length === 0) {
+      return { success: false, error: "No runs found for this profile" };
+    }
+
+    const testRunId = runs[0].id;
+
+    // 2. Get all results for this run
+    const results = await db
+      .select()
+      .from(testRunResults)
+      .where(eq(testRunResults.test_run_id, testRunId));
+
+    if (results.length === 0) {
+      return {
+        success: false,
+        error: "No results found for the latest test run",
+      };
+    }
+
+    // 3. Re-evaluate each result
+    const evaluationPromises = results.map(async (result) => {
+      // Skip if no output to evaluate
+      if (!result.output) return;
+
+      try {
+        // Need to get the test prompt and expected result
+        let prompt = "";
+        let expectedResult = "";
+
+        if (result.manual_prompt) {
+          prompt = result.manual_prompt;
+          expectedResult = result.manual_expected_result || "";
+        } else if (result.test_id) {
+          const test = await db
+            .select({
+              prompt: testsTable.prompt,
+              expected_result: testsTable.expected_result,
+            })
+            .from(testsTable)
+            .where(eq(testsTable.id, result.test_id))
+            .limit(1);
+
+          if (test[0]) {
+            prompt = test[0].prompt;
+            expectedResult = test[0].expected_result;
+          }
+        }
+
+        if (!prompt) return;
+
+        // Update status to Evaluating
+        await updateTestRunResult({
+          testRunId: result.test_run_id!,
+          testId: result.test_id,
+          manualPrompt: result.manual_prompt || undefined,
+          status: "Evaluating",
+          filterModel: result.model_used!,
+          evaluatorModel,
+        });
+
+        const evaluation = await evaluateTestResponse(
+          prompt,
+          expectedResult,
+          result.output,
+          evaluatorModel,
+        );
+
+        await updateTestRunResult({
+          testRunId: result.test_run_id!,
+          testId: result.test_id,
+          manualPrompt: result.manual_prompt || undefined,
+          status: evaluation.status,
+          explanation: evaluation.explanation,
+          score: evaluation.score,
+          filterModel: result.model_used!,
+          evaluatorModel,
+        });
+      } catch (error) {
+        console.error(`Error re-evaluating result ${result.id}:`, error);
+        await updateTestRunResult({
+          testRunId: result.test_run_id!,
+          testId: result.test_id,
+          manualPrompt: result.manual_prompt || undefined,
+          status: "Failed",
+          explanation: "Re-evaluation failed",
+          filterModel: result.model_used!,
+          evaluatorModel,
+        });
+      }
+    });
+
+    await Promise.all(evaluationPromises);
+
+    revalidatePath("/admin/sessions");
+    return { success: true };
+  } catch (error) {
+    console.error("Error re-evaluating session:", error);
+    return { success: false, error: "Failed to re-evaluate session" };
   }
 }
