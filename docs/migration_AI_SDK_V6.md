@@ -1,6 +1,6 @@
-### Migration AI SDK v5 to v6
+# Migration AI SDK v5 to v6
 
-**breaking changes**
+## Breaking changes
 
 - convertToModelMessages() is async in AI SDK 6 to support async Tool.toModelOutput().
 - the tool name is now derived from the key in the tools object
@@ -14,7 +14,7 @@ import { tool } from "ai";
 export const tools = {
     searchKnowledgeBase: tool({
         name: "searchKnowledgeBase",
-        description: "description"
+        description: "description",
         inputSchema: searchKnowledgeBaseInputSchema,
         outputSchema: searchKnowledgeBaseOutputSchema,
         execute: async ({ query }) => {
@@ -30,7 +30,7 @@ import { tool } from "ai";
 
 export const tools = {
     searchKnowledgeBase: tool({
-        description: "description"
+        description: "description",
         inputSchema: searchKnowledgeBaseInputSchema,
         execute: async ({ query }) => {
             const response = await searchDocuments(query, 5, 0)
@@ -79,40 +79,69 @@ const { output } = await generateText({
 });
 ```
 
-**What's new**
+## What's New
 
-- Agents
-  The Agent class provides a structured way to encapsulate LLM configuration, tools, and behavior into reusable components.
-  agents will allow us to have the same configuration for both the testing and generating while it was difficult to achieve since one needed streaming and the other didn't and agents does both.
+### Agents
 
-- Tool approval
-  Tool approval adds a critical safety layer when tools do actions like deleting files, processing payments or executing scripts but it's not a feature that we need for now.
+The new `Agent` class provides a structured way to encapsulate LLM configuration, tools, and behavior into reusable components.
 
-- Tool Calling with Structured Output
-  generateObject is now deprecated because now generateText does handle structured output by passing an output schema this change will allow tool calling when generating objects.
+Agents allow us to share the same configuration between **generation** and **testing** workflows. Previously, this was difficult because one required streaming while the other did not. Agents now handle both seamlessly.
 
-- DevTools
-  now it is possible to debug the model's behavior by using the devtools by wrapping it with a devTools middleware.
+---
 
-```Typescript
-import { wrapLanguageModel, gateway, generateText  } from 'ai';
-import { devToolsMiddleware } from '@ai-sdk/devtools';
+### Tool Approval
+
+Tool approval introduces an additional safety layer for tools that perform sensitive actions such as deleting files, processing payments, or executing scripts.
+
+While important for high-risk operations, this feature is **not required for our current use cases**.
+
+---
+
+### Tool Calling with Structured Output
+
+`generateObject` is now deprecated.
+
+Structured output is now handled directly by `generateText` by passing an output schema. This change enables **tool calling while generating structured objects**, simplifying the API and reducing duplication.
+
+---
+
+### DevTools
+
+You can now debug model behavior using AI SDK DevTools by wrapping the model with a DevTools middleware.
+
+```ts
+import { wrapLanguageModel, gateway, generateText } from "ai";
+import { devToolsMiddleware } from "@ai-sdk/devtools";
 
 const devToolsEnabledModel = wrapLanguageModel({
-  model: gateway('anthropic/claude-sonnet-4.5'),
+  model: gateway("anthropic/claude-sonnet-4.5"),
   middleware: devToolsMiddleware(),
 });
 
 const result = await generateText({
   model: devToolsEnabledModel,
-  prompt: 'What is love?',
+  prompt: "What is love?",
 });
 ```
-Launch the viewer with `npx @ai-sdk/devtools` and open http://localhost:4983
 
-- Reranking
-  Reranking reorders search results based on their relevance to a specific query, letting you pass only the most relevant documents to the model.
-  now AI SDK have native support for reranking although reranking models are not yet supported on ai gateway but providers like cohere provide a free trial this could improve our RAG results but could also add a little bit of latency.
+Launch the DevTools viewer with:
 
-- Standard JSON Schema
-  AI SDK 6 adds support for any schema library that implements the Standard JSON Schema
+```bash
+npx @ai-sdk/devtools
+```
+
+Then open: http://localhost:4983
+
+---
+
+### Reranking
+
+Reranking reorders search results based on their relevance to a given query, allowing only the most relevant documents to be passed to the model.
+
+AI SDK now provides **native support for reranking**. While reranking models are not yet available via AI Gateway, providers like Cohere offer free trials. This can improve RAG quality, with a small trade-off in added latency.
+
+---
+
+### Standard JSON Schema Support
+
+AI SDK 6 now supports **any schema library** that implements the Standard JSON Schema specification, improving flexibility and interoperability.
