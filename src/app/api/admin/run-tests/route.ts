@@ -12,6 +12,7 @@ import {
   evaluateTestResponse,
   type TestWithUser,
 } from "@/services/testsService";
+import { getModelByStringId } from "@/services/modelsService";
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
     if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized - Please sign in" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
     if (!isAdmin) {
       return NextResponse.json(
         { error: "Unauthorized: Admin access required" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -40,9 +41,19 @@ export async function POST(req: NextRequest) {
     if (!selectedModel || !selectedEvaluatorModel) {
       return NextResponse.json(
         { error: "Both model and evaluator model selections are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
+
+    // Resolve model ID
+    const model = await getModelByStringId(selectedModel);
+    if (!model) {
+      return NextResponse.json(
+        { error: "Invalid model selected" },
+        { status: 400 },
+      );
+    }
+    const modelId = model.id;
 
     // Create a new test run
     const testRun = await createTestRun(userId);
@@ -69,8 +80,9 @@ export async function POST(req: NextRequest) {
       testRun.id,
       allTests,
       selectedModel,
+      modelId,
       selectedEvaluatorModel,
-      systemPrompt
+      systemPrompt,
     );
 
     return NextResponse.json({
@@ -89,14 +101,15 @@ async function runTestsInBackground(
   testRunId: number,
   tests: TestWithUser[],
   selectedModel: string,
+  modelId: number,
   selectedEvaluatorModel: string,
-  systemPrompt?: string
+  systemPrompt?: string,
 ) {
   // Timeout helper
   const withTimeout = <T>(
     promise: Promise<T>,
     timeoutMs: number,
-    errorMessage: string
+    errorMessage: string,
   ): Promise<T> => {
     let timeoutId: NodeJS.Timeout;
     const timeoutPromise = new Promise<T>((_, reject) => {
@@ -122,14 +135,14 @@ async function runTestsInBackground(
         const currentStatus = await getTestRunStatus(testRunId);
         if (currentStatus === "Stopped") {
           console.log(
-            `🛑 Test run ${testRunId} was stopped. Skipping test ${test.id}.`
+            `🛑 Test run ${testRunId} was stopped. Skipping test ${test.id}.`,
           );
           await updateTestRunResult({
             testRunId,
             testId: test.id,
             status: "Failed",
             output: "Test run was stopped",
-            modelUsed: selectedModel,
+            modelId,
             systemPrompt,
           });
           return { testId: test.id, status: "Stopped" };
@@ -168,7 +181,7 @@ async function runTestsInBackground(
             systemPrompt: systemPrompt,
           }),
           60000, // 1 minute timeout for generation
-          "Test execution timed out after 60 seconds"
+          "Test execution timed out after 60 seconds",
         );
 
         const executionTime = Date.now() - startTime;
@@ -181,14 +194,14 @@ async function runTestsInBackground(
         const statusBeforeEval = await getTestRunStatus(testRunId);
         if (statusBeforeEval === "Stopped") {
           console.log(
-            `🛑 Test run ${testRunId} was stopped during test ${test.id}. Marking as stopped.`
+            `🛑 Test run ${testRunId} was stopped during test ${test.id}. Marking as stopped.`,
           );
           await updateTestRunResult({
             testRunId,
             testId: test.id,
             status: "Failed",
             output: "Test run was stopped during execution",
-            modelUsed: selectedModel,
+            modelId,
             systemPrompt,
           });
           return { testId: test.id, status: "Stopped" };
@@ -200,10 +213,10 @@ async function runTestsInBackground(
             test.prompt,
             test.expected_result,
             chatResponse.text.trim(),
-            selectedEvaluatorModel
+            selectedEvaluatorModel,
           ),
           60000, // 1 minute timeout for evaluation
-          "Evaluation timed out after 1 minute"
+          "Evaluation timed out after 1 minute",
         );
 
         const finalResult = chatResponse.text.trim();
@@ -218,7 +231,7 @@ async function runTestsInBackground(
           output: finalResult,
           explanation: evaluation.explanation,
           toolCalls: chatResponse.toolCalls,
-          modelUsed: selectedModel,
+          modelId,
           systemPrompt,
           tokensCost: costInDollars ?? 0,
           executionTimeMs: executionTime,
@@ -227,7 +240,7 @@ async function runTestsInBackground(
 
         const statusEmoji = evaluation.status === "Success" ? "✅" : "❌";
         console.log(
-          `${statusEmoji} Test ${test.id} completed with result: ${evaluation.status}`
+          `${statusEmoji} Test ${test.id} completed with result: ${evaluation.status}`,
         );
 
         return { testId: test.id, status: testStatus };
@@ -244,7 +257,7 @@ async function runTestsInBackground(
           testId: test.id,
           status: "Failed",
           output: errorMessage,
-          modelUsed: selectedModel,
+          modelId, // Use modelId here
           systemPrompt,
         });
         return { testId: test.id, status: "Failed", error: errorMessage };
@@ -258,27 +271,27 @@ async function runTestsInBackground(
     // Check final status and log results
     const successCount = results.filter(
       (result) =>
-        result.status === "fulfilled" && result.value.status === "Success"
+        result.status === "fulfilled" && result.value.status === "Success",
     ).length;
     const failedCount = results.filter(
       (result) =>
         result.status === "rejected" ||
-        (result.status === "fulfilled" && result.value.status === "Failed")
+        (result.status === "fulfilled" && result.value.status === "Failed"),
     ).length;
     const stoppedCount = results.filter(
       (result) =>
-        result.status === "fulfilled" && result.value.status === "Stopped"
+        result.status === "fulfilled" && result.value.status === "Stopped",
     ).length;
 
     console.log(
-      `📊 Test run ${testRunId} completed: ${successCount} passed, ${failedCount} failed, ${stoppedCount} stopped`
+      `📊 Test run ${testRunId} completed: ${successCount} passed, ${failedCount} failed, ${stoppedCount} stopped`,
     );
 
     // Mark the entire test run as done
     await updateTestRunStatus(testRunId, "Done");
 
     console.log(
-      `🎉 Test run ${testRunId} completed with ${tests.length} tests`
+      `🎉 Test run ${testRunId} completed with ${tests.length} tests`,
     );
   } catch (error) {
     console.error("💥 Error in background test execution:", error);
