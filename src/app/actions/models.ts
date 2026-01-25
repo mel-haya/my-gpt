@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { checkUserSubscription } from "@/lib/subscriptionUtils";
+import { getAvailableModelsFromDb } from "@/services/modelsService";
 
 export interface ModelOption {
   id: string;
@@ -11,43 +11,32 @@ export interface ModelOption {
 
 export async function getAvailableModels(): Promise<ModelOption[]> {
   try {
-    // Get the authenticated user ID from Clerk
     const { userId } = await auth();
 
-    const basicModels: ModelOption[] = [
-      // { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
-      { id: "openai/gpt-5-nano", name: "GPT-5 Nano" },
-      { id: "google/gemini-3-flash", name: "Gemini 3 Flash" },
-      { id: "anthropic/claude-haiku-3.5", name: "Claude Haiku 3.5" },
-    ];
+    // Fetch models from DB
+    const dbModels = await getAvailableModelsFromDb();
+
+    // Convert to ModelOption format
+    // Note: We're mapping model_id to id for compatibility with existing frontend
+    const models: ModelOption[] = dbModels.map((m) => ({
+      id: m.model_id,
+      name: m.name,
+      // premium field is removed from DB schema but kept in interface for compatibility if needed elsewhere
+    }));
+
     if (!userId) {
-      // Return basic models for unauthenticated users
-      return basicModels
+      // Return all enabled models even for unauthenticated users if that's desired,
+      // or filter based on some logic. For now returning all enabled models.
+      return models;
     }
 
-    // Check if user has an active subscription
-    const isSubscribed = await checkUserSubscription(userId);
-
-    // Basic models available to all authenticated users
-
-    // Premium models for subscribed users
-    const premiumModels: ModelOption[] = [
-      { id: "openai/gpt-4o", name: "GPT-4o", premium: true },
-      { id: "anthropic/claude-haiku-4.5", name: "Claude Haiku 4.5", premium: true },
-      { id: "xai/grok-4-fast-non-reasoning", name: "Grok 4 Fast", premium: true },
-    ];
-
-    if (isSubscribed) {
-      return [...basicModels, ...premiumModels];
-    }
-
-    return basicModels;
+    return models;
   } catch (error) {
     console.error("Error in getAvailableModels action:", error);
-    // Return fallback models in case of error
+    // Return fallback models in case of error (database down etc)
     return [
+      { id: "openai/gpt-5-nano", name: "GPT-5 Nano" },
       { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
-      { id: "google/gemini-1.5-flash", name: "Gemini 1.5 Flash" },
     ];
   }
 }

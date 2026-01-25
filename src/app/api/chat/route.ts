@@ -17,7 +17,7 @@ import { uploadImageToImageKit } from "./imageKit";
 import { auth } from "@clerk/nextjs/server";
 import { renameConversationAI } from "./renameConversationAI";
 
-import { getAvailableModels } from "@/app/actions/models";
+import { getDefaultModel } from "@/services/modelsService";
 
 export async function POST(req: Request) {
   try {
@@ -49,8 +49,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { messages, conversation, model, webSearch, trigger } =
-      await req.json();
+    const { messages, conversation, webSearch, trigger } = await req.json();
 
     const lastMessage = messages[messages.length - 1];
     for (const part of lastMessage.parts) {
@@ -61,12 +60,8 @@ export async function POST(req: Request) {
 
     const modelMessages = await convertToModelMessages(messages);
 
-    const availableModels = await getAvailableModels();
-    const supportedIds = availableModels.map((m) => m.id);
-
-    const selectedmodel = supportedIds.includes(model)
-      ? model
-      : "openai/gpt-5-nano";
+    const defaultModel = await getDefaultModel();
+    const selectedmodel = defaultModel?.model_id || "openai/gpt-5-nano";
 
     // Count user messages to determine if we should rename
     const userMessageCount = messages.filter(
@@ -101,6 +96,10 @@ export async function POST(req: Request) {
     // Get configurable system prompt
     const systemPrompt = await getSystemPrompt();
     console.log("Model", selectedmodel);
+    
+
+
+
     const response = streamText({
       messages: modelMessages,
       model: selectedmodel,

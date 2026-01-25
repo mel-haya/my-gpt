@@ -212,7 +212,9 @@ export const testRunResults = pgTable(
     explanation: text("explanation"),
     score: integer("score"), // Added score field for evaluation scores (1-10)
     tool_calls: jsonb("tool_calls"),
-    model_used: text("model_used"),
+    model_id: integer("model_id").references(() => models.id, {
+      onDelete: "set null",
+    }),
     system_prompt: text("system_prompt"),
     manual_prompt: text("manual_prompt"),
     manual_expected_result: text("manual_expected_result"),
@@ -228,6 +230,7 @@ export const testRunResults = pgTable(
     index("test_run_results_test_run_id_index").on(table.test_run_id),
     index("test_run_results_test_id_index").on(table.test_id),
     index("test_run_results_status_index").on(table.status),
+    index("test_run_results_model_id_index").on(table.model_id),
   ],
 );
 
@@ -350,6 +353,20 @@ export const activities = pgTable(
   ],
 );
 
+export const models = pgTable(
+  "models",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    model_id: text("model_id").notNull().unique(),
+    default: boolean("default").notNull().default(false),
+    enabled: boolean("enabled").notNull().default(true),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("models_model_id_index").on(table.model_id)],
+);
+
 export type InsertDocument = typeof documents.$inferInsert;
 export type SelectDocument = typeof documents.$inferSelect;
 export type InsertConversation = typeof conversations.$inferInsert;
@@ -393,3 +410,5 @@ export type InsertFeedback = typeof feedback.$inferInsert;
 export type SelectFeedback = typeof feedback.$inferSelect;
 export type InsertActivity = typeof activities.$inferInsert;
 export type SelectActivity = typeof activities.$inferSelect;
+export type InsertModel = typeof models.$inferInsert;
+export type SelectModel = typeof models.$inferSelect;

@@ -1,24 +1,17 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState } from "react";
 // import Message from "./message";
 import { ChatMessage } from "@/types/chatMessage";
 import ActivitySuggestionCard, {
   Activity,
 } from "@/components/ActivitySuggestionCard"; // [NEW] Import custom card component
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from "@/components/ai-elements/tool";
 import PromptInput from "./PromptInput";
 import {
   ChatRequestOptions,
   FileUIPart,
   ChatStatus,
-  isToolUIPart ,
+  isToolUIPart,
   getToolName,
 } from "ai";
 import {
@@ -81,8 +74,6 @@ export default function ConversationWrapper({
   regenerate: (options?: ChatRequestOptions) => Promise<void>;
   conversationId?: number;
 }) {
-  const [selectedModel, setSelectedModel] =
-    useState<string>("openai/gpt-5-nano");
   const { usage } = useTokenUsage();
   const { isSubscribed, loading: subscriptionLoading } = useSubscription();
   const [showRibbon, setShowRibbon] = useState(true);
@@ -92,40 +83,16 @@ export default function ConversationWrapper({
   >({});
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [testDialogQuestion, setTestDialogQuestion] = useState("");
+  // Track previous conversation ID to reset state during render
+  const [prevConversationId, setPrevConversationId] = useState(conversationId);
 
   const isAdmin = user?.publicMetadata?.role === "admin";
 
   // Reset local feedback when conversation changes
-  useEffect(() => {
+  if (conversationId !== prevConversationId) {
+    setPrevConversationId(conversationId);
     setLocalFeedback({});
-  }, [conversationId]);
-
-  // Load models and set default to gpt-4o if available
-  useEffect(() => {
-    const setDefaultModel = async () => {
-      try {
-        const { getAvailableModels } = await import("@/app/actions/models");
-        const availableModels = await getAvailableModels();
-
-        // Check if gpt-4o is available and set it as default
-        const gpt4oModel = availableModels.find(
-          (model) => model.id === "openai/gpt-4o",
-        );
-        if (gpt4oModel) {
-          setSelectedModel("openai/gpt-4o");
-        }
-      } catch (error) {
-        console.error("Failed to load models for default selection:", error);
-      }
-    };
-
-    setDefaultModel();
-  }, [isSubscribed]); // Re-run when subscription status changes
-
-  // Memoize the model change callback to prevent unnecessary rerenders
-  const handleModelChange = useCallback((model: string) => {
-    setSelectedModel(model);
-  }, []);
+  }
 
   const displayMessages = useMemo(() => {
     return messages.map((message) => {
@@ -153,9 +120,7 @@ export default function ConversationWrapper({
         //     part.type === "tool-generateImage" &&
         //     part.state === "output-available"
         // );
-        const toolParts = parts.filter((part) =>
-          isToolUIPart(part),
-        );
+        const toolParts = parts.filter((part) => isToolUIPart(part));
         return {
           key: id,
           role,
@@ -245,8 +210,6 @@ export default function ConversationWrapper({
               sendMessage={sendMessage}
               status={status}
               stop={stop}
-              selectedModel={selectedModel}
-              onModelChange={handleModelChange}
             />
             <div className="flex flex-col md:flex-row gap-2">
               {promptExamples.map((p, index) => {
@@ -413,9 +376,7 @@ export default function ConversationWrapper({
                         {isLastUserMessage && (
                           <MessageAction
                             className="cursor-pointer"
-                            onClick={() =>
-                              regenerate({ body: { model: selectedModel } })
-                            }
+                            onClick={() => regenerate()}
                             label="Retry"
                           >
                             <RefreshCcw className="size-4" />
@@ -489,13 +450,7 @@ export default function ConversationWrapper({
             </ConversationContent>
             <ConversationScrollButton />
           </Conversation>
-          <PromptInput
-            sendMessage={sendMessage}
-            status={status}
-            stop={stop}
-            selectedModel={selectedModel}
-            onModelChange={handleModelChange}
-          />
+          <PromptInput sendMessage={sendMessage} status={status} stop={stop} />
         </>
       )}
       {/* Admin Test Dialog */}

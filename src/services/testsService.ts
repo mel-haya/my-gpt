@@ -29,13 +29,13 @@ export interface UpdateTestRunResultParams {
   output?: string;
   explanation?: string;
   toolCalls?: unknown;
-  modelUsed?: string;
+  modelId?: number;
   systemPrompt?: string;
   tokensCost?: number;
   tokenCount?: number;
   executionTimeMs?: number;
   score?: number;
-  filterModel?: string;
+  filterModelId?: number;
   evaluatorModel?: string;
 }
 
@@ -63,7 +63,7 @@ export interface IndividualTestResult {
   explanation: string | null;
   score: number | null;
   tool_calls: unknown;
-  model_used?: string | null;
+  model_id?: number | null;
   evaluator_model?: string | null;
   system_prompt?: string | null;
   tokens_cost: number | null;
@@ -124,7 +124,7 @@ export async function getTestsWithPagination(
   searchQuery?: string,
   category?: string,
   limit: number = 10,
-  page: number = 1
+  page: number = 1,
 ): Promise<TestsResult> {
   const offset = (page - 1) * limit;
 
@@ -180,7 +180,7 @@ export async function getTestsWithPagination(
     .leftJoin(userTable, eq(tests.user_id, userTable.id))
     .leftJoin(
       latestResultsSubquery,
-      eq(tests.id, latestResultsSubquery.test_id)
+      eq(tests.id, latestResultsSubquery.test_id),
     )
     .where(baseConditions);
 
@@ -239,7 +239,7 @@ export async function updateTest(
     prompt?: string;
     expected_result?: string;
     category?: string;
-  }
+  },
 ) {
   const [updatedTest] = await db
     .update(tests)
@@ -290,7 +290,7 @@ export async function getTestById(id: number): Promise<TestWithUser | null> {
 }
 
 export async function getTestRunsForTest(
-  testId: number
+  testId: number,
 ): Promise<TestRunWithResults[]> {
   try {
     // Get all test runs and their results in a single query using joins
@@ -313,7 +313,7 @@ export async function getTestRunsForTest(
         result_explanation: testRunResults.explanation,
         result_score: testRunResults.score,
         result_tool_calls: testRunResults.tool_calls,
-        result_model_used: testRunResults.model_used,
+        result_model_id: testRunResults.model_id,
         result_system_prompt: testRunResults.system_prompt,
         result_manual_prompt: testRunResults.manual_prompt,
         result_manual_expected_result: testRunResults.manual_expected_result,
@@ -363,7 +363,7 @@ export async function getTestRunsForTest(
         explanation: row.result_explanation,
         score: row.result_score,
         tool_calls: row.result_tool_calls,
-        model_used: row.result_model_used,
+        model_id: row.result_model_id,
         system_prompt: row.result_system_prompt,
         tokens_cost: row.result_tokens_cost,
         token_count: row.result_token_count,
@@ -385,7 +385,7 @@ export async function getTestRunsForTest(
 }
 
 async function getLatestIndividualTestResult(
-  testId: number
+  testId: number,
 ): Promise<IndividualTestResult | null> {
   try {
     const result = await db
@@ -399,7 +399,7 @@ async function getLatestIndividualTestResult(
         explanation: testRunResults.explanation,
         score: testRunResults.score,
         tool_calls: testRunResults.tool_calls,
-        model_used: testRunResults.model_used,
+        model_id: testRunResults.model_id,
         evaluator_model: testRunResults.evaluator_model,
         tokens_cost: testRunResults.tokens_cost,
         token_count: testRunResults.token_count,
@@ -412,8 +412,8 @@ async function getLatestIndividualTestResult(
       .where(
         and(
           eq(testRunResults.test_id, testId),
-          isNull(testRunResults.test_run_id)
-        )
+          isNull(testRunResults.test_run_id),
+        ),
       )
       .orderBy(desc(testRunResults.created_at), desc(testRunResults.id))
       .limit(1);
@@ -426,7 +426,7 @@ async function getLatestIndividualTestResult(
 }
 
 export async function getTestDetails(
-  testId: number
+  testId: number,
 ): Promise<TestDetails | null> {
   try {
     // Get the test details
@@ -596,7 +596,7 @@ export async function getAllTests(): Promise<TestWithUser[]> {
 
 export async function createAllTestRunResults(
   testRunId: number,
-  testIds: number[]
+  testIds: number[],
 ) {
   const values = testIds.map((testId) => ({
     test_run_id: testRunId,
@@ -619,18 +619,18 @@ export async function updateTestRunResult({
   output,
   explanation,
   toolCalls,
-  modelUsed,
+  modelId,
   systemPrompt,
   tokensCost,
   tokenCount,
   executionTimeMs,
   score,
-  filterModel,
+  filterModelId,
   evaluatorModel,
 }: UpdateTestRunResultParams) {
   const whereConditions = [
     eq(testRunResults.test_run_id, testRunId),
-    filterModel ? eq(testRunResults.model_used, filterModel) : undefined,
+    filterModelId ? eq(testRunResults.model_id, filterModelId) : undefined,
   ];
 
   if (testId !== undefined && testId !== null) {
@@ -647,7 +647,7 @@ export async function updateTestRunResult({
       explanation: explanation,
       score: score,
       tool_calls: toolCalls,
-      model_used: modelUsed,
+      model_id: modelId,
       system_prompt: systemPrompt,
       tokens_cost: tokensCost,
       token_count: tokenCount,
@@ -662,7 +662,7 @@ export async function updateTestRunResult({
 
 export async function updateTestRunStatus(
   testRunId: number,
-  status: "Running" | "Failed" | "Done" | "Stopped"
+  status: "Running" | "Failed" | "Done" | "Stopped",
 ) {
   const [updatedRun] = await db
     .update(testRuns)
@@ -690,7 +690,7 @@ export async function evaluateTestResponse(
   originalPrompt: string,
   expectedResult: string,
   aiResponse: string,
-  evaluatorModel: string = "openai/gpt-4o"
+  evaluatorModel: string = "openai/gpt-4o",
 ): Promise<{
   status: "Success" | "Failed";
   explanation: string;
@@ -703,7 +703,7 @@ export async function evaluateTestResponse(
       .min(1)
       .max(10)
       .describe(
-        "Score from 1 to 10: 1 = misleading and inaccurate, 10 = helpful and has all information from expected response"
+        "Score from 1 to 10: 1 = misleading and inaccurate, 10 = helpful and has all information from expected response",
       ),
     explanation: z
       .string()
@@ -742,7 +742,7 @@ Expected Response: "${expectedResult}"
 AI Response: "${aiResponse}"
 
 Score this response from 1 to 10 based on accuracy, completeness, and helpfulness.`,
-    output: Output.object({schema: evaluationSchema}),
+    output: Output.object({ schema: evaluationSchema }),
   });
 
   // Set status based on evaluation score (7+ is Success, below 7 is Failed)
@@ -754,7 +754,7 @@ Score this response from 1 to 10 based on accuracy, completeness, and helpfulnes
 
 export async function runSingleTest(
   testId: number,
-  evaluatorModel: string = "openai/gpt-4o"
+  evaluatorModel: string = "openai/gpt-4o",
 ): Promise<{
   id: number;
   output: string;
@@ -813,7 +813,7 @@ export async function runSingleTest(
       testData.prompt,
       testData.expected_result,
       output.trim(),
-      evaluatorModel
+      evaluatorModel,
     );
 
     status = evaluation.status;

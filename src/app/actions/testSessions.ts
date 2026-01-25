@@ -4,7 +4,12 @@ import { auth } from "@clerk/nextjs/server";
 import { checkRole } from "@/lib/checkRole";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db-config";
-import { testRuns, testRunResults, tests as testsTable } from "@/lib/db-schema";
+import {
+  testRuns,
+  testRunResults,
+  tests as testsTable,
+  models,
+} from "@/lib/db-schema";
 import { eq, desc, and, inArray, count } from "drizzle-orm";
 import {
   updateTestRunResult,
@@ -65,6 +70,19 @@ export async function runTestSessionAction(
       return { success: false, error: "No models configured for this profile" };
     }
 
+    // Lookup model IDs from the models table
+    const modelNames = profile.models.map((m) => m.model_name);
+    const modelRecords = await db
+      .select({ id: models.id, model_id: models.model_id })
+      .from(models)
+      .where(inArray(models.model_id, modelNames));
+
+    // Create a map from model_id string to integer id
+    const modelIdMap = new Map<string, number>();
+    for (const m of modelRecords) {
+      modelIdMap.set(m.model_id, m.id);
+    }
+
     // Create a new test run with profile reference
     const testRun = await db
       .insert(testRuns)
@@ -86,12 +104,15 @@ export async function runTestSessionAction(
 
     for (const test of profile.tests) {
       for (const model of profile.models) {
+        const modelId = modelIdMap.get(model.model_name);
+        if (!modelId) continue; // Skip if model not found in models table
+
         if (typeof test.test_id === "number") {
           testRunResultsData.push({
             test_run_id: testRunId,
             test_id: test.test_id,
             status: "Pending" as const,
-            model_used: model.model_name,
+            model_id: modelId,
             evaluator_model: evaluatorModel,
           });
         } else if (typeof test.test_id === "string" && test.is_manual) {
@@ -101,7 +122,7 @@ export async function runTestSessionAction(
             manual_prompt: test.test_prompt,
             manual_expected_result: test.expected_result,
             status: "Pending" as const,
-            model_used: model.model_name,
+            model_id: modelId,
             evaluator_model: evaluatorModel,
           });
         }
@@ -120,6 +141,7 @@ export async function runTestSessionAction(
         is_manual: t.is_manual,
       })),
       profile.models,
+      modelIdMap,
       profile.system_prompt ?? "",
       evaluatorModel,
     ).catch(console.error);
@@ -308,6 +330,7 @@ async function runTestsInBackground(
     model_name: string;
     created_at: Date;
   }[],
+  modelIdMap: Map<string, number>,
   systemPrompt: string,
   evaluatorModel = "openai/gpt-4o",
 ) {
@@ -337,6 +360,11 @@ async function runTestsInBackground(
     // Run tests for all models concurrently
     const modelPromises = models.map(async (model) => {
       const selectedModel = model.model_name;
+      const modelIntId = modelIdMap.get(selectedModel);
+      if (!modelIntId) {
+        console.error(`Model ${selectedModel} not found in models table`);
+        return;
+      }
 
       // Run tests concurrently for this model
       const testPromises = tests.map(async (test) => {
@@ -350,8 +378,7 @@ async function runTestsInBackground(
               manualPrompt: test.is_manual ? test.test_prompt : undefined,
               status: "Failed",
               output: "Test execution stopped by user",
-              modelUsed: selectedModel,
-              filterModel: selectedModel,
+              filterModelId: modelIntId,
             });
             return;
           }
@@ -362,8 +389,7 @@ async function runTestsInBackground(
             testId: test.test_id,
             manualPrompt: test.is_manual ? test.test_prompt : undefined,
             status: "Running",
-            modelUsed: selectedModel,
-            filterModel: selectedModel,
+            filterModelId: modelIntId,
           });
 
           const startTime = Date.now();
@@ -405,12 +431,12 @@ async function runTestsInBackground(
             status: "Evaluating",
             output: chatResponse.text,
             toolCalls: chatResponse.toolCalls,
-            modelUsed: selectedModel,
+            modelId: modelIntId,
             systemPrompt,
             tokensCost: chatResponse.cost,
             tokenCount: chatResponse.usage?.totalTokens,
             executionTimeMs: executionTime,
-            filterModel: selectedModel,
+            filterModelId: modelIntId,
           });
 
           // Get the expected result for evaluation
@@ -446,13 +472,13 @@ async function runTestsInBackground(
             output: chatResponse.text,
             explanation: evaluation.explanation,
             toolCalls: chatResponse.toolCalls,
-            modelUsed: selectedModel,
+            modelId: modelIntId,
             systemPrompt,
             tokensCost: chatResponse.cost,
             tokenCount: chatResponse.usage?.totalTokens,
             executionTimeMs: executionTime,
             score: evaluation.score,
-            filterModel: selectedModel,
+            filterModelId: modelIntId,
           });
         } catch (error) {
           console.error(
@@ -469,8 +495,7 @@ async function runTestsInBackground(
             output: `Test execution failed: ${
               error instanceof Error ? error.message : "Unknown error"
             }`,
-            modelUsed: selectedModel,
-            filterModel: selectedModel,
+            filterModelId: modelIntId,
           });
         }
       });
@@ -586,10 +611,10 @@ export async function reEvaluateTestResultAction(
       .orderBy(desc(testRunResults.created_at));
 
     // Filter to get latest per model
-    const latestResultsMap = new Map<string, (typeof allResults)[0]>();
+    const latestResultsMap = new Map<number, (typeof allResults)[0]>();
     for (const result of allResults) {
-      if (result.model_used && !latestResultsMap.has(result.model_used)) {
-        latestResultsMap.set(result.model_used, result);
+      if (result.model_id && !latestResultsMap.has(result.model_id)) {
+        latestResultsMap.set(result.model_id, result);
       }
     }
 
@@ -610,7 +635,7 @@ export async function reEvaluateTestResultAction(
           testId: result.test_id,
           manualPrompt: result.manual_prompt || undefined,
           status: "Evaluating",
-          filterModel: result.model_used!,
+          filterModelId: result.model_id!,
           evaluatorModel,
         });
 
@@ -628,7 +653,7 @@ export async function reEvaluateTestResultAction(
           status: evaluation.status,
           explanation: evaluation.explanation,
           score: evaluation.score,
-          filterModel: result.model_used!,
+          filterModelId: result.model_id!,
           evaluatorModel,
         });
       } catch (error) {
@@ -641,7 +666,7 @@ export async function reEvaluateTestResultAction(
           manualPrompt: result.manual_prompt || undefined,
           status: "Failed",
           explanation: "Re-evaluation failed",
-          filterModel: result.model_used!,
+          filterModelId: result.model_id!,
           evaluatorModel,
         });
       }
@@ -757,7 +782,7 @@ export async function getTestInProfileDetailsAction(
       .select({
         runId: testRunResults.test_run_id,
         runDate: testRunResults.created_at,
-        model: testRunResults.model_used,
+        model_id: testRunResults.model_id,
         tool_calls: testRunResults.tool_calls,
         status: testRunResults.status,
         score: testRunResults.score,
@@ -773,18 +798,33 @@ export async function getTestInProfileDetailsAction(
       .orderBy(desc(testRunResults.created_at));
 
     // 4. Filter to get only the latest result per model
-    const latestResultsMap = new Map<string, (typeof allResults)[0]>();
+    const latestResultsMap = new Map<number, (typeof allResults)[0]>();
 
     for (const result of allResults) {
-      if (result.model && !latestResultsMap.has(result.model)) {
-        latestResultsMap.set(result.model, result);
+      if (result.model_id && !latestResultsMap.has(result.model_id)) {
+        latestResultsMap.set(result.model_id, result);
       }
+    }
+
+    // Look up model names from model IDs
+    const modelIds = Array.from(latestResultsMap.keys());
+    const modelRecords =
+      modelIds.length > 0
+        ? await db
+            .select({ id: models.id, model_id: models.model_id })
+            .from(models)
+            .where(inArray(models.id, modelIds))
+        : [];
+
+    const modelNameMap = new Map<number, string>();
+    for (const m of modelRecords) {
+      modelNameMap.set(m.id, m.model_id);
     }
 
     const results = Array.from(latestResultsMap.values()).map((res) => ({
       runId: res.runId!,
       runDate: res.runDate,
-      model: res.model!,
+      model: modelNameMap.get(res.model_id!) || `Model #${res.model_id}`,
       status: res.status,
       score: res.score,
       explanation: res.explanation,
@@ -910,19 +950,35 @@ export async function regenerateTestResultAction(
       return { success: false, error: "No models configured for this profile" };
     }
 
+    // Lookup model IDs from the models table
+    const modelNames = modelsToRun.map((m) => m.model_name);
+    const modelRecords = await db
+      .select({ id: models.id, model_id: models.model_id })
+      .from(models)
+      .where(inArray(models.model_id, modelNames));
+
+    // Create a map from model_id string to integer id
+    const modelIdMap = new Map<string, number>();
+    for (const m of modelRecords) {
+      modelIdMap.set(m.model_id, m.id);
+    }
+
     // 4. Ensure test run results exist for all models (or create/update them)
     // We want to "add or replace"
     for (const model of modelsToRun) {
+      const modelIntId = modelIdMap.get(model.model_name);
+      if (!modelIntId) continue; // Skip if model not found in models table
+
       const whereConditions = testInfo.is_manual
         ? and(
             eq(testRunResults.test_run_id, testRunId),
             eq(testRunResults.manual_prompt, testInfo.test_prompt),
-            eq(testRunResults.model_used, model.model_name),
+            eq(testRunResults.model_id, modelIntId),
           )
         : and(
             eq(testRunResults.test_run_id, testRunId),
             eq(testRunResults.test_id, testInfo.test_id as number),
-            eq(testRunResults.model_used, model.model_name),
+            eq(testRunResults.model_id, modelIntId),
           );
 
       const existingResult = await db
@@ -939,7 +995,7 @@ export async function regenerateTestResultAction(
           manual_expected_result: testInfo.is_manual
             ? testInfo.expected_result
             : null,
-          model_used: model.model_name,
+          model_id: modelIntId,
           status: "Pending",
         });
       } else {
@@ -1246,7 +1302,7 @@ export async function reEvaluateSessionAction(
           testId: result.test_id,
           manualPrompt: result.manual_prompt || undefined,
           status: "Evaluating",
-          filterModel: result.model_used!,
+          filterModelId: result.model_id!,
           evaluatorModel,
         });
 
@@ -1264,7 +1320,7 @@ export async function reEvaluateSessionAction(
           status: evaluation.status,
           explanation: evaluation.explanation,
           score: evaluation.score,
-          filterModel: result.model_used!,
+          filterModelId: result.model_id!,
           evaluatorModel,
         });
       } catch (error) {
@@ -1275,7 +1331,7 @@ export async function reEvaluateSessionAction(
           manualPrompt: result.manual_prompt || undefined,
           status: "Failed",
           explanation: "Re-evaluation failed",
-          filterModel: result.model_used!,
+          filterModelId: result.model_id!,
           evaluatorModel,
         });
       }

@@ -8,6 +8,7 @@ import {
   users,
   testRuns,
   testRunResults,
+  models,
 } from "@/lib/db-schema";
 import type {
   SelectTestProfile,
@@ -151,26 +152,28 @@ export async function getTestProfiles(options?: {
       INNER JOIN users u ON tp.user_id = u.id
       LEFT JOIN LATERAL (
         WITH deduped AS (
-          SELECT DISTINCT ON (COALESCE(test_id::text, manual_prompt), model_used)
+          SELECT DISTINCT ON (COALESCE(test_id::text, manual_prompt), trr.model_id)
             trr.tokens_cost,
             trr.token_count,
             trr.score,
-            trr.model_used,
+            m.model_id as model_name,
+            trr.model_id as model_pk,
             trr.id
           FROM test_runs tr
           JOIN test_run_results trr ON tr.id = trr.test_run_id
+          LEFT JOIN models m ON trr.model_id = m.id
           WHERE tr.profile_id = tp.id
-          ORDER BY COALESCE(test_id::text, manual_prompt), model_used, trr.created_at DESC
+          ORDER BY COALESCE(test_id::text, manual_prompt), trr.model_id, trr.created_at DESC
         )
         SELECT 
           SUM(tokens_cost) as total_tokens_cost,
           SUM(token_count) as total_tokens,
           AVG(score) as average_score,
           (
-            SELECT model_used
+            SELECT model_name
             FROM deduped
             WHERE score IS NOT NULL
-            GROUP BY model_used
+            GROUP BY model_name
             ORDER BY AVG(score) DESC
             LIMIT 1
           ) as best_model
@@ -375,6 +378,13 @@ export async function updateTestProfile(
 
     // 5. If models were removed, delete their test run results
     if (removedModels.length > 0) {
+      // Lookup model IDs for removed models
+      const modelsToDelete = await db
+        .select({ id: models.id })
+        .from(models)
+        .where(inArray(models.model_id, removedModels));
+      const modelIdsToDelete = modelsToDelete.map((m) => m.id);
+
       const profileRuns = await db
         .select({ id: testRuns.id })
         .from(testRuns)
@@ -382,13 +392,13 @@ export async function updateTestProfile(
 
       const runIds = profileRuns.map((r) => r.id);
 
-      if (runIds.length > 0) {
+      if (runIds.length > 0 && modelIdsToDelete.length > 0) {
         await db
           .delete(testRunResults)
           .where(
             and(
               inArray(testRunResults.test_run_id, runIds),
-              inArray(testRunResults.model_used, removedModels),
+              inArray(testRunResults.model_id, modelIdsToDelete),
             ),
           );
       }
@@ -485,7 +495,7 @@ export async function getTestProfileWithDetails(
   const allResults = await db
     .select({
       test_id: testRunResults.test_id,
-      model_name: testRunResults.model_used,
+      model_name: models.model_id,
       score: testRunResults.score,
       created_at: testRunResults.created_at,
       tokens_cost: testRunResults.tokens_cost,
@@ -494,6 +504,7 @@ export async function getTestProfileWithDetails(
     })
     .from(testRuns)
     .innerJoin(testRunResults, eq(testRuns.id, testRunResults.test_run_id))
+    .leftJoin(models, eq(testRunResults.model_id, models.id))
     .where(eq(testRuns.profile_id, id))
     .orderBy(sql`${testRunResults.created_at} DESC`);
 
