@@ -11,6 +11,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@ai-sdk/cohere": "^3.0.11",
     "@ai-sdk/openai": "^3.0.14",
     "@ai-sdk/react": "^3.0.46",
     "@clerk/nextjs": "^6.34.5",
