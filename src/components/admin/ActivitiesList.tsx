@@ -29,9 +29,6 @@ export function ActivitiesList({
   onEdit,
   onDelete,
 }: ActivitiesListProps) {
-  const [selectedActivity, setSelectedActivity] =
-    useState<SelectActivity | null>(null);
-
   if (activities.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -49,9 +46,6 @@ export function ActivitiesList({
             activity={activity}
             onEdit={() => onEdit(activity)}
             onDelete={() => onDelete(activity)}
-            onViewEmbeddedText={() => {
-              setSelectedActivity(activity);
-            }}
           />
         ))}
       </div>
@@ -62,13 +56,11 @@ export function ActivitiesList({
 function ActivityCard({
   activity,
   onEdit,
-  onDelete,
-  onViewEmbeddedText,
+  onDelete
 }: {
   activity: SelectActivity;
   onEdit: () => void;
   onDelete: () => void;
-  onViewEmbeddedText: () => void;
 }) {
   return (
     <div className="flex flex-col p-4 border rounded-xl hover:shadow-md transition-shadow bg-card h-full">

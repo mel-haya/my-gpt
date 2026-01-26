@@ -2,8 +2,23 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Plus, Star } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Star,
+  Trophy,
+  Zap,
+  DollarSign,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +32,10 @@ import { updateModelAction } from "@/app/actions/modelsAdmin";
 import ModelDialog from "./ModelDialog";
 import DeleteModelDialog from "./DeleteModelDialog";
 import ModelsList from "./ModelsList";
-import type { SelectModelWithStats } from "@/services/modelsService";
+import type {
+  SelectModelWithStats,
+  TopModelStats,
+} from "@/services/modelsService";
 
 interface ModelsDashboardProps {
   initialData: {
@@ -31,11 +49,13 @@ interface ModelsDashboardProps {
     };
   };
   searchQuery: string;
+  topStats: TopModelStats | null;
 }
 
 export default function ModelsDashboard({
   initialData,
   searchQuery,
+  topStats,
 }: ModelsDashboardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -227,6 +247,88 @@ export default function ModelsDashboard({
           </Button>
         </div>
       </div>
+
+      {/* Stats Cards */}
+      {topStats && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Highest Score Card */}
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-500/20 to-transparent rounded-bl-full" />
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-2 text-xs uppercase tracking-wide">
+                <Trophy className="h-4 w-4 text-amber-500" />
+                Highest Score
+              </CardDescription>
+              <CardTitle
+                className="text-xl truncate"
+                title={topStats.highestScore?.name}
+              >
+                {topStats.highestScore?.name ?? "—"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-amber-500">
+                {topStats.highestScore?.score?.toFixed(1) ?? "—"}
+                <span className="text-sm font-normal text-muted-foreground ml-1">
+                  /10
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Fastest Card */}
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-500/20 to-transparent rounded-bl-full" />
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-2 text-xs uppercase tracking-wide">
+                <Zap className="h-4 w-4 text-blue-500" />
+                Fastest
+              </CardDescription>
+              <CardTitle
+                className="text-xl truncate"
+                title={topStats.fastest?.name}
+              >
+                {topStats.fastest?.name ?? "—"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-500">
+                {topStats.fastest?.avgExecutionTimeMs
+                  ? `${(topStats.fastest.avgExecutionTimeMs / 1000).toFixed(2)}s`
+                  : "—"}
+                <span className="text-sm font-normal text-muted-foreground ml-1">
+                  avg
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cheapest Card */}
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-green-500/20 to-transparent rounded-bl-full" />
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-2 text-xs uppercase tracking-wide">
+                <DollarSign className="h-4 w-4 text-green-500" />
+                Cheapest
+              </CardDescription>
+              <CardTitle
+                className="text-xl truncate"
+                title={topStats.cheapest?.name}
+              >
+                {topStats.cheapest?.name ?? "—"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-500">
+                ${topStats.cheapest?.costPerTest?.toFixed(4) ?? "—"}
+                <span className="text-sm font-normal text-muted-foreground ml-1">
+                  /test
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Table */}
       <ModelsList

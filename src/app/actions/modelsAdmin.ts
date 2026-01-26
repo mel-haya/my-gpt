@@ -7,7 +7,9 @@ import {
   updateModel,
   deleteModel,
   bulkDeleteModels,
+  getTopModelStats,
   SelectModelWithStats,
+  TopModelStats,
 } from "@/services/modelsService";
 import type { InsertModel } from "@/lib/db-schema";
 import { auth } from "@clerk/nextjs/server";
@@ -128,5 +130,22 @@ export async function bulkDeleteModelsAction(
   } catch (error) {
     console.error("Error bulk deleting models:", error);
     return { success: false, error: "Failed to delete models" };
+  }
+}
+
+export async function getTopModelStatsAction(): Promise<
+  ActionResponse<TopModelStats>
+> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const stats = await getTopModelStats();
+    return { success: true, data: stats };
+  } catch (error) {
+    console.error("Error fetching top model stats:", error);
+    return { success: false, error: "Failed to fetch top model stats" };
   }
 }

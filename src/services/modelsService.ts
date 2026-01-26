@@ -1,5 +1,5 @@
 import { db } from "@/lib/db-config";
-import { models, testRunResults, testRuns } from "@/lib/db-schema";
+import { models, testRunResults } from "@/lib/db-schema";
 import { eq, and, desc, asc, count, ilike, inArray, sql } from "drizzle-orm";
 import type { SelectModel, InsertModel } from "@/lib/db-schema";
 
@@ -220,4 +220,76 @@ export async function getAvailableModelsFromDb(): Promise<SelectModel[]> {
     .orderBy(desc(models.default)); // Put default model first
 
   return availableModels;
+}
+
+export interface TopModelStats {
+  highestScore: { name: string; score: number } | null;
+  fastest: { name: string; avgExecutionTimeMs: number } | null;
+  cheapest: { name: string; costPerTest: number } | null;
+}
+
+export async function getTopModelStats(): Promise<TopModelStats> {
+  // Highest scoring model (by avg score)
+  const highestScoreResult = await db
+    .select({
+      name: models.name,
+      score: sql<number>`avg(${testRunResults.score})`.mapWith(Number),
+    })
+    .from(models)
+    .innerJoin(testRunResults, eq(models.id, testRunResults.model_id))
+    .where(sql`${testRunResults.score} IS NOT NULL`)
+    .groupBy(models.id, models.name)
+    .orderBy(desc(sql`avg(${testRunResults.score})`))
+    .limit(1);
+
+  // Fastest model (by avg execution time)
+  const fastestResult = await db
+    .select({
+      name: models.name,
+      avgExecutionTimeMs:
+        sql<number>`avg(${testRunResults.execution_time_ms})`.mapWith(Number),
+    })
+    .from(models)
+    .innerJoin(testRunResults, eq(models.id, testRunResults.model_id))
+    .where(sql`${testRunResults.execution_time_ms} IS NOT NULL`)
+    .groupBy(models.id, models.name)
+    .orderBy(asc(sql`avg(${testRunResults.execution_time_ms})`))
+    .limit(1);
+
+  // Cheapest model (by cost per test = total cost / count of tests)
+  const cheapestResult = await db
+    .select({
+      name: models.name,
+      costPerTest:
+        sql<number>`sum(${testRunResults.tokens_cost}) / count(*)`.mapWith(
+          Number,
+        ),
+    })
+    .from(models)
+    .innerJoin(testRunResults, eq(models.id, testRunResults.model_id))
+    .where(sql`${testRunResults.tokens_cost} IS NOT NULL`)
+    .groupBy(models.id, models.name)
+    .orderBy(asc(sql`sum(${testRunResults.tokens_cost}) / count(*)`))
+    .limit(1);
+
+  return {
+    highestScore: highestScoreResult[0]
+      ? {
+          name: highestScoreResult[0].name,
+          score: highestScoreResult[0].score,
+        }
+      : null,
+    fastest: fastestResult[0]
+      ? {
+          name: fastestResult[0].name,
+          avgExecutionTimeMs: fastestResult[0].avgExecutionTimeMs,
+        }
+      : null,
+    cheapest: cheapestResult[0]
+      ? {
+          name: cheapestResult[0].name,
+          costPerTest: cheapestResult[0].costPerTest,
+        }
+      : null,
+  };
 }
