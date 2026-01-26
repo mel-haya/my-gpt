@@ -197,14 +197,6 @@ function ActivityCard({
               </Button>
             )}
           </div>
-          <Button
-            variant="link"
-            size="sm"
-            onClick={onViewEmbeddedText}
-            className="text-[10px] p-0 h-auto uppercase tracking-widest text-muted-foreground hover:text-foreground"
-          >
-            View embedded text
-          </Button>
         </div>
       </div>
     </div>

@@ -79,7 +79,6 @@ export const tools = {
     }),
     execute: async ({ query }) => {
       try {
-        // const results = await searchActivitiesForSuggestion(query);
         const results = (await getActivities("", "", 100)).activities;
         const input = results.map(
           (activity) =>
