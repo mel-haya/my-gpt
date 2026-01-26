@@ -16,7 +16,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 
 import { useState } from "react";
-import ViewEmbeddedTextDialog from "./ViewEmbeddedTextDialog";
+
 
 interface ActivitiesListProps {
   activities: SelectActivity[];
@@ -31,7 +31,6 @@ export function ActivitiesList({
 }: ActivitiesListProps) {
   const [selectedActivity, setSelectedActivity] =
     useState<SelectActivity | null>(null);
-  const [isViewEmbeddedTextOpen, setIsViewEmbeddedTextOpen] = useState(false);
 
   if (activities.length === 0) {
     return (
@@ -52,18 +51,10 @@ export function ActivitiesList({
             onDelete={() => onDelete(activity)}
             onViewEmbeddedText={() => {
               setSelectedActivity(activity);
-              setIsViewEmbeddedTextOpen(true);
             }}
           />
         ))}
       </div>
-
-      <ViewEmbeddedTextDialog
-        open={isViewEmbeddedTextOpen}
-        onOpenChange={setIsViewEmbeddedTextOpen}
-        text={selectedActivity?.embedded_text || null}
-        activityName={selectedActivity?.name || ""}
-      />
     </>
   );
 }
