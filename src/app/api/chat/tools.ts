@@ -96,7 +96,6 @@ export const tools = {
           ...results[a.originalIndex],
           image: results[a.originalIndex].image_url,
         }));
-        console.log(ranking)
         return {
           success: true,
           activities: output,
