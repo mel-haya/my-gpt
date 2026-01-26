@@ -20,11 +20,7 @@ import {
   Trash2,
   Search,
   Star,
-  Sparkles,
   Bot,
-  BrainCircuit,
-  Cpu,
-  Flame,
 } from "lucide-react";
 import type { SelectModelWithStats } from "@/services/modelsService";
 
@@ -51,19 +47,19 @@ const getProviderIcon = (modelId: string) => {
   const lowerId = modelId.toLowerCase();
 
   if (lowerId.includes("openai") || lowerId.includes("gpt")) {
-    return <Sparkles className="h-4 w-4 text-green-600" />;
+    return <i className="fa-brands fa-openai text-[#c9c9c9]" />;
   }
   if (lowerId.includes("anthropic") || lowerId.includes("claude")) {
-    return <BrainCircuit className="h-4 w-4 text-orange-600" />;
+    return <i className="fa-solid fa-a text-[#d4a27f]" />;
   }
   if (lowerId.includes("google") || lowerId.includes("gemini")) {
-    return <Bot className="h-4 w-4 text-blue-600" />;
+    return <i className="fa-brands fa-google text-[#4285f4]" />;
   }
   if (lowerId.includes("meta") || lowerId.includes("llama")) {
-    return <Cpu className="h-4 w-4 text-blue-500" />;
+    return <i className="fa-brands fa-meta text-[#0082fb]" />;
   }
   if (lowerId.includes("mistral")) {
-    return <Flame className="h-4 w-4 text-yellow-500" />;
+    return <i className="fa-solid fa-wind text-[#ff7000]" />;
   }
 
   return <Bot className="h-4 w-4 text-muted-foreground" />;
