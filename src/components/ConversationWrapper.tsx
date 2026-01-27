@@ -358,8 +358,8 @@ export default function ConversationWrapper({
                                     <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-950/40 border border-emerald-800/50">
                                       <CheckCircle className="size-5 text-emerald-400" />
                                       <span className="text-emerald-100">
-                                        Your request has been submitted to the
-                                        staff.
+                                        {requestData.userMessage ||
+                                          "Your request has been submitted to the staff."}
                                       </span>
                                     </div>
                                   </div>

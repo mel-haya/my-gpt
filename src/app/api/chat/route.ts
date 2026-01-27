@@ -95,8 +95,7 @@ export async function POST(req: Request) {
 
     // Get configurable system prompt
     const systemPrompt = await getSystemPrompt();
-    console.log("Model", selectedmodel);
-    
+
 
 
 

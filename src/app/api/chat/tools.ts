@@ -131,6 +131,11 @@ export const tools = {
         .describe(
           "Guest's room number if applicable (can be null for general requests)",
         ),
+      userMessage: z
+        .string()
+        .describe(
+          "A short, generic confirmation message like 'Your request has been submitted to the staff.' - Do NOT include specific details (room number, request type, etc.). MUST be in the same language as the conversation.",
+        ),
     }),
     execute: async (input) => {
       try {
@@ -148,6 +153,7 @@ export const tools = {
           success: true,
           message: `Staff request created successfully. ID: ${result.id}`,
           request: result,
+          userMessage: input.userMessage,
         };
       } catch (error) {
         console.error("Error creating staff request:", error);
