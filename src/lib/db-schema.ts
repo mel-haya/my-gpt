@@ -399,6 +399,7 @@ export const models = pgTable(
     model_id: text("model_id").notNull().unique(),
     default: boolean("default").notNull().default(false),
     enabled: boolean("enabled").notNull().default(true),
+    victories: integer("victories").notNull().default(0),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },

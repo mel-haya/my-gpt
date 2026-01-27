@@ -1,0 +1,1 @@
+ALTER TABLE "models" ADD COLUMN "victories" integer DEFAULT 0 NOT NULL;

@@ -38,7 +38,16 @@ interface ModelsListProps {
   isPending: boolean;
   sortBy: string;
   sortOrder: "asc" | "desc";
-  onSort: (column: "name" | "created_at" | "score" | "cost" | "tokens") => void;
+  onSort: (
+    column:
+      | "name"
+      | "created_at"
+      | "score"
+      | "cost"
+      | "latency"
+      | "responses"
+      | "victories",
+  ) => void;
   selectAll: boolean;
   onSelectAll: (checked: boolean) => void;
 }
@@ -163,12 +172,30 @@ export default function ModelsList({
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted/50 w-[150px]"
-                onClick={() => onSort("tokens")}
+                className="cursor-pointer hover:bg-muted/50 w-[120px]"
+                onClick={() => onSort("latency")}
               >
                 <div className="flex items-center">
-                  Tokens
-                  {renderSortIcon("tokens")}
+                  Latency
+                  {renderSortIcon("latency")}
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted/50 w-[100px]"
+                onClick={() => onSort("victories")}
+              >
+                <div className="flex items-center">
+                  Victories
+                  {renderSortIcon("victories")}
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted/50 w-[120px]"
+                onClick={() => onSort("responses")}
+              >
+                <div className="flex items-center">
+                  Responses
+                  {renderSortIcon("responses")}
                 </div>
               </TableHead>
               <TableHead className="w-[100px]">Status</TableHead>
@@ -178,7 +205,7 @@ export default function ModelsList({
           <TableBody>
             {models.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   No models found.
                 </TableCell>
               </TableRow>
@@ -238,12 +265,21 @@ export default function ModelsList({
                     </TableCell>
                     <TableCell>
                       <div className="font-mono text-xs">
-                        {model.tokens
-                          ? new Intl.NumberFormat("en-US", {
-                              notation: "compact",
-                              compactDisplay: "short",
-                            }).format(model.tokens)
-                          : "0"}
+                        {model.latency
+                          ? `${(model.latency / 1000).toFixed(2)}s`
+                          : "-"}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-mono text-xs">
+                        {model.victories ?? 0}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-mono text-xs">
+                        {model.responses
+                          ? `${model.responses.correct}/${model.responses.total}`
+                          : "-"}
                       </div>
                     </TableCell>
                     <TableCell>

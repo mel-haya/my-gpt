@@ -62,7 +62,13 @@ export default function ModelsDashboard({
   const [isPending, startTransition] = useTransition();
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
   const [sortBy, setSortBy] = useState<
-    "name" | "created_at" | "score" | "cost" | "tokens"
+    | "name"
+    | "created_at"
+    | "score"
+    | "cost"
+    | "latency"
+    | "responses"
+    | "victories"
   >("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -118,7 +124,14 @@ export default function ModelsDashboard({
   };
 
   const handleSort = (
-    column: "name" | "created_at" | "score" | "cost" | "tokens",
+    column:
+      | "name"
+      | "created_at"
+      | "score"
+      | "cost"
+      | "latency"
+      | "responses"
+      | "victories",
   ) => {
     const newOrder = sortBy === column && sortOrder === "desc" ? "asc" : "desc";
     setSortBy(column);

@@ -16,6 +16,7 @@ import {
   updateTestRunStatus,
   getTestRunStatus,
   evaluateTestResponse,
+  awardVictoriesForTestRun,
 } from "@/services/testsService";
 import {
   getTestProfileWithDetails,
@@ -521,6 +522,8 @@ async function runTestsInBackground(
       const finalStatus = await getTestRunStatus(testRunId);
       if (finalStatus !== "Stopped") {
         await updateTestRunStatus(testRunId, "Done");
+        // Award victories to winning models for each test
+        await awardVictoriesForTestRun(testRunId);
       }
     }
   } catch (error) {

@@ -27,7 +27,9 @@ export default async function ModelsPage({ searchParams }: ModelsPageProps) {
       | "created_at"
       | "score"
       | "cost"
-      | "tokens") || "created_at";
+      | "latency"
+      | "responses"
+      | "victories") || "created_at";
   const sortOrder =
     (resolvedSearchParams?.sortOrder as "asc" | "desc") || "desc";
   const itemsPerPage = 10;

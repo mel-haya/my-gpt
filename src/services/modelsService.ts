@@ -6,7 +6,9 @@ import type { SelectModel, InsertModel } from "@/lib/db-schema";
 export type SelectModelWithStats = SelectModel & {
   score?: number | null;
   cost?: number | null;
-  tokens?: number | null;
+  latency?: number | null;
+  responses?: { correct: number; total: number } | null;
+  victories?: number | null;
 };
 
 export interface ModelsResponse {
@@ -25,7 +27,14 @@ export async function getModels(
     search?: string;
     page?: number;
     limit?: number;
-    sortBy?: "name" | "created_at" | "score" | "cost" | "tokens";
+    sortBy?:
+      | "name"
+      | "created_at"
+      | "score"
+      | "cost"
+      | "latency"
+      | "responses"
+      | "victories";
     sortOrder?: "asc" | "desc";
   } = {},
 ): Promise<ModelsResponse> {
@@ -49,9 +58,11 @@ export async function getModels(
     whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0];
 
   // Define aggregations
-  const scoreSql = sql<number>`avg(${testRunResults.score})`; // Removed mapWith(Number) here because Drizzle's ordering might not like the mapped object as much as the SQL chunk, or handle it differently. But actually mapWith is fine for selection. For ordering, I should reuse the standard sql chunk or the selection field.
+  const scoreSql = sql<number>`avg(${testRunResults.score})`;
   const costSql = sql<number>`sum(${testRunResults.tokens_cost})`;
-  const tokensSql = sql<number>`sum(${testRunResults.token_count})`;
+  const latencySql = sql<number>`avg(${testRunResults.execution_time_ms})`;
+  const correctCountSql = sql<number>`count(case when ${testRunResults.score} >= 8 then 1 end)`;
+  const totalCountSql = sql<number>`count(${testRunResults.id})`;
 
   let orderByClause;
   const direction = sortOrder === "asc" ? asc : desc;
@@ -63,8 +74,14 @@ export async function getModels(
     case "cost":
       orderByClause = direction(costSql);
       break;
-    case "tokens":
-      orderByClause = direction(tokensSql);
+    case "latency":
+      orderByClause = direction(latencySql);
+      break;
+    case "responses":
+      orderByClause = direction(correctCountSql);
+      break;
+    case "victories":
+      orderByClause = direction(models.victories);
       break;
     case "name":
       orderByClause = direction(models.name);
@@ -82,11 +99,14 @@ export async function getModels(
         model_id: models.model_id,
         default: models.default,
         enabled: models.enabled,
+        victories: models.victories,
         created_at: models.created_at,
         updated_at: models.updated_at,
         score: scoreSql.mapWith(Number),
         cost: costSql.mapWith(Number),
-        tokens: tokensSql.mapWith(Number),
+        latency: latencySql.mapWith(Number),
+        correctCount: correctCountSql.mapWith(Number),
+        totalCount: totalCountSql.mapWith(Number),
       })
       .from(models)
       .leftJoin(testRunResults, eq(models.id, testRunResults.model_id))
@@ -102,8 +122,17 @@ export async function getModels(
   const totalCount = totalCountData[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / limit);
 
+  // Transform the data to match SelectModelWithStats type
+  const transformedModels: SelectModelWithStats[] = modelsData.map((m) => ({
+    ...m,
+    responses:
+      m.totalCount > 0
+        ? { correct: m.correctCount, total: m.totalCount }
+        : null,
+  }));
+
   return {
-    models: modelsData,
+    models: transformedModels,
     pagination: {
       currentPage: page,
       totalPages,
@@ -292,4 +321,14 @@ export async function getTopModelStats(): Promise<TopModelStats> {
         }
       : null,
   };
+}
+
+export async function incrementModelVictory(modelId: number): Promise<void> {
+  await db
+    .update(models)
+    .set({
+      victories: sql`${models.victories} + 1`,
+      updated_at: new Date(),
+    })
+    .where(eq(models.id, modelId));
 }

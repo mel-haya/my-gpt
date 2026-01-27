@@ -24,7 +24,14 @@ export async function getModelsAction(
   search?: string,
   limit?: number,
   page?: number,
-  sortBy?: "name" | "created_at" | "score" | "cost" | "tokens",
+  sortBy?:
+    | "name"
+    | "created_at"
+    | "score"
+    | "cost"
+    | "latency"
+    | "responses"
+    | "victories",
   sortOrder?: "asc" | "desc",
 ): Promise<
   ActionResponse<{

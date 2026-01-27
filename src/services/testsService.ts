@@ -856,3 +856,85 @@ export async function runSingleTest(
     explanation: result[0].explanation || undefined,
   };
 }
+
+/**
+ * Awards victories for all tests in a completed test run.
+ * For each unique test (test_id or manual_prompt), finds all models that scored ≥8,
+ * then determines the winner by: best score → lowest cost → fastest execution time.
+ * The winner's victories count is incremented.
+ */
+export async function awardVictoriesForTestRun(
+  testRunId: number,
+): Promise<void> {
+  try {
+    // Get all results for this test run with score >= 8
+    const results = await db
+      .select({
+        id: testRunResults.id,
+        test_id: testRunResults.test_id,
+        manual_prompt: testRunResults.manual_prompt,
+        model_id: testRunResults.model_id,
+        score: testRunResults.score,
+        tokens_cost: testRunResults.tokens_cost,
+        execution_time_ms: testRunResults.execution_time_ms,
+      })
+      .from(testRunResults)
+      .where(
+        and(
+          eq(testRunResults.test_run_id, testRunId),
+          sql`${testRunResults.score} >= 8`,
+        ),
+      );
+
+    if (results.length === 0) {
+      return; // No qualifying results
+    }
+
+    // Group results by test (test_id or manual_prompt)
+    const testGroups = new Map<string, typeof results>();
+
+    for (const result of results) {
+      const key =
+        result.test_id !== null
+          ? `test_${result.test_id}`
+          : `manual_${result.manual_prompt}`;
+
+      if (!testGroups.has(key)) {
+        testGroups.set(key, []);
+      }
+      testGroups.get(key)!.push(result);
+    }
+
+    // For each test, determine the winner and award victory
+    const { incrementModelVictory } = await import("@/services/modelsService");
+
+    for (const [, competitors] of testGroups) {
+      if (competitors.length === 0) continue;
+
+      // Sort by: score DESC, cost ASC, execution_time ASC
+      competitors.sort((a, b) => {
+        // Higher score wins
+        const scoreDiff = (b.score ?? 0) - (a.score ?? 0);
+        if (scoreDiff !== 0) return scoreDiff;
+
+        // Lower cost wins
+        const costDiff =
+          (a.tokens_cost ?? Infinity) - (b.tokens_cost ?? Infinity);
+        if (costDiff !== 0) return costDiff;
+
+        // Lower execution time wins
+        return (
+          (a.execution_time_ms ?? Infinity) - (b.execution_time_ms ?? Infinity)
+        );
+      });
+
+      const winner = competitors[0];
+      if (winner.model_id) {
+        await incrementModelVictory(winner.model_id);
+      }
+    }
+  } catch (error) {
+    console.error("Error awarding victories for test run:", error);
+    // Don't throw - victory calculation failure shouldn't fail the test run
+  }
+}
