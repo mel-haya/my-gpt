@@ -4,6 +4,8 @@ import {
   getStaffRequestStats,
 } from "@/services/staffRequestsService";
 
+export const dynamic = "force-dynamic";
+
 export default async function StaffRequestsPage() {
   // Fetch initial data and stats in parallel
   const [{ requests, pagination }, stats] = await Promise.all([
