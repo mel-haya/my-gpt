@@ -36,6 +36,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   FlaskConical,
+  CheckCircle,
 } from "lucide-react";
 import TestDialog from "@/components/admin/TestDialog";
 import Styles from "@/assets/styles/customScrollbar.module.css";
@@ -321,6 +322,46 @@ export default function ConversationWrapper({
                                         activity={activity}
                                       />
                                     ))}
+                                  </div>
+                                );
+                              }
+                            }
+
+                            // Handle createStaffRequest tool
+                            if (
+                              toolName === "createStaffRequest" &&
+                              tool.state === "output-available" &&
+                              tool.output
+                            ) {
+                              let requestData = null;
+                              try {
+                                const outputData =
+                                  typeof tool.output === "string"
+                                    ? JSON.parse(tool.output)
+                                    : tool.output;
+                                if (outputData.success) {
+                                  requestData = outputData;
+                                }
+                              } catch (e) {
+                                console.error(
+                                  "Error parsing staff request output:",
+                                  e,
+                                );
+                              }
+
+                              if (requestData) {
+                                return (
+                                  <div
+                                    key={`${message.key}-tool-${index}`}
+                                    className="my-4"
+                                  >
+                                    <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-950/40 border border-emerald-800/50">
+                                      <CheckCircle className="size-5 text-emerald-400" />
+                                      <span className="text-emerald-100">
+                                        Your request has been submitted to the
+                                        staff.
+                                      </span>
+                                    </div>
                                   </div>
                                 );
                               }
