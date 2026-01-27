@@ -147,3 +147,45 @@ export async function completeStaffRequest(
   return updatedRequest;
 }
 
+export type StaffRequestStats = {
+  totalRequests: number;
+  pendingRequests: number;
+  completedRequests: number;
+  avgResponseTimeMinutes: number | null;
+};
+
+export async function getStaffRequestStats(): Promise<StaffRequestStats> {
+  const [totalResult] = await db.select({ count: count() }).from(staffRequests);
+
+  const [pendingResult] = await db
+    .select({ count: count() })
+    .from(staffRequests)
+    .where(eq(staffRequests.status, "pending"));
+
+  const [completedResult] = await db
+    .select({ count: count() })
+    .from(staffRequests)
+    .where(eq(staffRequests.status, "done"));
+
+  // Calculate average response time for completed requests (in minutes)
+  const avgTimeResult = await db
+    .select({
+      avgTime: sql<number>`AVG(EXTRACT(EPOCH FROM (${staffRequests.completed_at} - ${staffRequests.created_at})) / 60)`,
+    })
+    .from(staffRequests)
+    .where(
+      and(
+        eq(staffRequests.status, "done"),
+        sql`${staffRequests.completed_at} IS NOT NULL`,
+      ),
+    );
+
+  return {
+    totalRequests: Number(totalResult?.count || 0),
+    pendingRequests: Number(pendingResult?.count || 0),
+    completedRequests: Number(completedResult?.count || 0),
+    avgResponseTimeMinutes: avgTimeResult[0]?.avgTime
+      ? Math.round(avgTimeResult[0].avgTime)
+      : null,
+  };
+}

@@ -4,7 +4,9 @@ import {
   getStaffRequests,
   createStaffRequest,
   completeStaffRequest,
+  getStaffRequestStats,
   PaginatedStaffRequests,
+  StaffRequestStats,
 } from "@/services/staffRequestsService";
 import { InsertStaffRequest, SelectStaffRequest } from "@/lib/db-schema";
 import { revalidatePath } from "next/cache";
@@ -35,4 +37,8 @@ export async function completeStaffRequestAction(
   const request = await completeStaffRequest(id, userId, note);
   revalidatePath("/admin/requests");
   return request;
+}
+
+export async function getStaffRequestStatsAction(): Promise<StaffRequestStats> {
+  return await getStaffRequestStats();
 }

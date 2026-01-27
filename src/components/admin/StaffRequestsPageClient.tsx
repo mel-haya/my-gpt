@@ -5,6 +5,7 @@ import { SelectStaffRequest, InsertStaffRequest } from "@/lib/db-schema";
 import { StaffRequestsList } from "./StaffRequestsList";
 import { CompleteRequestDialog } from "./CompleteRequestDialog";
 import { StaffRequestDialog } from "./StaffRequestDialog";
+import { StaffRequestsStats } from "./StaffRequestsStats";
 import {
   completeStaffRequestAction,
   createStaffRequestAction,
@@ -22,13 +23,17 @@ import {
 import { Plus, Search, Filter } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "react-toastify";
-import { StaffRequestWithCompleter } from "@/services/staffRequestsService";
+import {
+  StaffRequestWithCompleter,
+  StaffRequestStats,
+} from "@/services/staffRequestsService";
 
 interface StaffRequestsPageClientProps {
   initialRequests: StaffRequestWithCompleter[];
   totalCount: number;
   initialPage: number;
   totalPages: number;
+  stats: StaffRequestStats;
 }
 
 export function StaffRequestsPageClient({
@@ -36,6 +41,7 @@ export function StaffRequestsPageClient({
   totalCount,
   initialPage,
   totalPages,
+  stats,
 }: StaffRequestsPageClientProps) {
   const { userId } = useAuth();
   const [requests, setRequests] =
@@ -129,6 +135,8 @@ export function StaffRequestsPageClient({
           <Plus className="mr-2 h-4 w-4" /> New Request
         </Button>
       </div>
+
+      <StaffRequestsStats stats={stats} />
 
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
