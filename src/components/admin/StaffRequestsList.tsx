@@ -1,0 +1,136 @@
+"use client";
+
+import { SelectStaffRequest } from "@/lib/db-schema";
+import { formatDistanceToNow } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, Clock, AlertTriangle, AlertCircle } from "lucide-react";
+
+interface StaffRequestsListProps {
+  requests: (SelectStaffRequest & { completer_name: string | null })[];
+  onComplete: (request: SelectStaffRequest) => void;
+}
+
+export function StaffRequestsList({
+  requests,
+  onComplete,
+}: StaffRequestsListProps) {
+  if (requests.length === 0) {
+    return (
+      <div className="text-center py-10 text-muted-foreground">
+        No requests found matching your criteria.
+      </div>
+    );
+  }
+
+  const getUrgencyIcon = (urgency: string) => {
+    switch (urgency) {
+      case "critical":
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case "high":
+        return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+      case "medium":
+        return <Clock className="h-4 w-4 text-yellow-500" />;
+      case "low":
+        return <Clock className="h-4 w-4 text-gray-500" />;
+      default:
+        return null;
+    }
+  };
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case "critical":
+        return "bg-red-100 text-red-800 hover:bg-red-200 border-red-200";
+      case "high":
+        return "bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200";
+      case "low":
+        return "bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-200";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "done":
+        return "bg-green-100 text-green-800 hover:bg-green-200 border-green-200";
+      case "in_progress":
+        return "bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200";
+      default:
+        return "bg-secondary text-secondary-foreground hover:bg-secondary/80";
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {requests.map((request) => (
+        <div
+          key={request.id}
+          className="bg-card text-card-foreground rounded-lg border shadow-sm p-4 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center transition-all hover:shadow-md"
+        >
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge
+                variant="outline"
+                className={`flex items-center gap-1.5 ${getUrgencyColor(
+                  request.urgency,
+                )}`}
+              >
+                {getUrgencyIcon(request.urgency)}
+                <span className="capitalize">{request.urgency}</span>
+              </Badge>
+              <Badge
+                variant="outline"
+                className={getStatusColor(request.status)}
+              >
+                {request.status.replace("_", " ")}
+              </Badge>
+              <Badge variant="secondary" className="font-mono">
+                {request.category.replace("_", " ")}
+              </Badge>
+              {!!request.room_number && (
+                <Badge variant="outline">Room {request.room_number}</Badge>
+              )}
+              <span className="text-xs text-muted-foreground ml-auto md:ml-2">
+                Created {formatDistanceToNow(new Date(request.created_at))} ago
+              </span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">{request.title}</h3>
+              <p className="text-muted-foreground text-sm mt-1">
+                {request.description}
+              </p>
+            </div>
+            {(request.completion_note || request.completed_at) && (
+              <div className="bg-muted/50 p-3 rounded-md text-sm mt-2 border">
+                <div className="font-medium flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  Completed by {request.completer_name || "staff"}
+                  {request.completed_at && (
+                    <span className="text-muted-foreground font-normal text-xs">
+                      •{" "}
+                      {formatDistanceToNow(new Date(request.completed_at), {
+                        addSuffix: true,
+                      })}
+                    </span>
+                  )}
+                </div>
+                {request.completion_note && (
+                  <p className="text-muted-foreground mt-1 ml-6">
+                    &quot;{request.completion_note}&quot;
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          {request.status !== "done" && (
+            <Button onClick={() => onComplete(request)}>Complete</Button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}

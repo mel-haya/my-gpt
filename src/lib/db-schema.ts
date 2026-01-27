@@ -57,6 +57,55 @@ export const priceIndicatorEnum = pgEnum("price_indicator", [
   "$$$",
   "$$$$",
 ]);
+
+export const staffRequestCategoryEnum = pgEnum("staff_request_category", [
+  "reservation",
+  "room_issue",
+  "room_service",
+  "housekeeping",
+  "maintenance",
+  "concierge",
+  "other",
+]);
+
+export const staffRequestUrgencyEnum = pgEnum("staff_request_urgency", [
+  "low",
+  "medium",
+  "high",
+  "critical",
+]);
+
+export const staffRequestStatusEnum = pgEnum("staff_request_status", [
+  "pending",
+  "in_progress",
+  "done",
+]);
+
+export const staffRequests = pgTable(
+  "staff_requests",
+  {
+    id: serial("id").primaryKey(),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    category: staffRequestCategoryEnum("category").notNull(),
+    urgency: staffRequestUrgencyEnum("urgency").notNull().default("medium"),
+    room_number: integer("room_number"),
+    status: staffRequestStatusEnum("status").notNull().default("pending"),
+    completed_by: text("completed_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    completion_note: text("completion_note"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+    completed_at: timestamp("completed_at"),
+  },
+  (table) => [
+    index("staff_requests_status_index").on(table.status),
+    index("staff_requests_urgency_index").on(table.urgency),
+    index("staff_requests_created_at_index").on(table.created_at),
+  ],
+);
+
 export const documents = pgTable(
   "documents",
   {
@@ -401,3 +450,5 @@ export type InsertActivity = typeof activities.$inferInsert;
 export type SelectActivity = typeof activities.$inferSelect;
 export type InsertModel = typeof models.$inferInsert;
 export type SelectModel = typeof models.$inferSelect;
+export type InsertStaffRequest = typeof staffRequests.$inferInsert;
+export type SelectStaffRequest = typeof staffRequests.$inferSelect;

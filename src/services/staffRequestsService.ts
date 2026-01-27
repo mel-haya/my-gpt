@@ -1,0 +1,149 @@
+import {
+  staffRequests,
+  InsertStaffRequest,
+  SelectStaffRequest,
+  users,
+} from "@/lib/db-schema";
+import { db } from "@/lib/db-config";
+import {
+  eq,
+  and,
+  asc,
+  ilike,
+  or,
+  count,
+  sql,
+  getTableColumns,
+} from "drizzle-orm";
+
+export type StaffRequestWithCompleter = SelectStaffRequest & {
+  completer_name: string | null;
+};
+
+export type PaginatedStaffRequests = {
+  requests: StaffRequestWithCompleter[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalCount: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+};
+
+export async function getStaffRequests(
+  searchQuery?: string,
+  category?: string,
+  status?: string,
+  limit: number = 10,
+  page: number = 1,
+): Promise<PaginatedStaffRequests> {
+  const offset = (page - 1) * limit;
+
+  let whereClause = undefined;
+  const conditions = [];
+
+  if (searchQuery) {
+    conditions.push(
+      or(
+        ilike(staffRequests.title, `%${searchQuery}%`),
+        ilike(staffRequests.description, `%${searchQuery}%`),
+      ),
+    );
+  }
+
+  if (category && category !== "all") {
+    conditions.push(
+      eq(
+        staffRequests.category,
+        category as
+          | "reservation"
+          | "room_issue"
+          | "room_service"
+          | "housekeeping"
+          | "maintenance"
+          | "concierge"
+          | "other",
+      ),
+    );
+  }
+
+  if (status && status !== "all") {
+    conditions.push(
+      eq(staffRequests.status, status as "pending" | "in_progress" | "done"),
+    );
+  }
+
+  if (conditions.length > 0) {
+    whereClause = and(...conditions);
+  }
+
+  const totalCountResult = await db
+    .select({ count: count() })
+    .from(staffRequests)
+    .where(whereClause);
+
+  const totalCount = Number(totalCountResult[0]?.count || 0);
+
+  // Sorting: Critical (0), High (1), Medium (2), Low (3)
+  // Within urgency: Oldest created_at first
+  const result = await db
+    .select({
+      ...getTableColumns(staffRequests),
+      completer_name: users.username,
+    })
+    .from(staffRequests)
+    .leftJoin(users, eq(staffRequests.completed_by, users.id))
+    .where(whereClause)
+    .orderBy(
+      sql`CASE ${staffRequests.urgency}
+        WHEN 'critical' THEN 0
+        WHEN 'high' THEN 1
+        WHEN 'medium' THEN 2
+        WHEN 'low' THEN 3
+      END`,
+      asc(staffRequests.created_at),
+    )
+    .limit(limit)
+    .offset(offset);
+
+  const totalPages = Math.ceil(totalCount / limit);
+
+  return {
+    requests: result,
+    pagination: {
+      currentPage: page,
+      totalPages,
+      totalCount,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  };
+}
+
+export async function createStaffRequest(
+  data: InsertStaffRequest,
+): Promise<SelectStaffRequest> {
+  const [newRequest] = await db.insert(staffRequests).values(data).returning();
+  return newRequest;
+}
+
+export async function completeStaffRequest(
+  id: number,
+  completedByUserId: string,
+  note?: string,
+): Promise<SelectStaffRequest> {
+  const [updatedRequest] = await db
+    .update(staffRequests)
+    .set({
+      status: "done",
+      completed_by: completedByUserId,
+      completion_note: note,
+      completed_at: new Date(),
+      updated_at: new Date(),
+    })
+    .where(eq(staffRequests.id, id))
+    .returning();
+  return updatedRequest;
+}
+

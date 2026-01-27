@@ -1,10 +1,8 @@
-import { tool, rerank  } from "ai";
+import { tool, rerank } from "ai";
 import { z } from "zod";
 import { openai as originalOpenAI } from "@ai-sdk/openai";
 import { searchDocuments } from "@/lib/search";
-import {
-  getActivities,
-} from "@/services/activitiesService";
+import { getActivities } from "@/services/activitiesService";
 import { cohere } from "@ai-sdk/cohere";
 
 const searchKnowledgeBaseInputSchema = z.object({
@@ -83,16 +81,16 @@ export const tools = {
         const input = results.map(
           (activity) =>
             `activity name: ${activity.name}, activity description: ${activity.description}, activity category: ${activity.category}, activity location: ${activity.location}`,
-        )
+        );
         let { ranking } = await rerank({
           model: cohere.reranking(process.env.RERANKING_MODEL || "rerank-v3.5"),
-          documents:input,
+          documents: input,
           query,
           topN: 5,
         });
-        ranking = ranking.filter(a => {
-          return a.score > 0.1
-        })
+        ranking = ranking.filter((a) => {
+          return a.score > 0.1;
+        });
 
         const output = ranking.map((a) => ({
           ...results[a.originalIndex],
@@ -105,6 +103,58 @@ export const tools = {
       } catch (error) {
         console.error("Error suggesting activities:", error);
         return { success: false, activities: [] };
+      }
+    },
+  }),
+  createStaffRequest: tool({
+    description:
+      "Creates a staff request for guest services (room service, housekeeping, maintenance, etc.) or issues.",
+    inputSchema: z.object({
+      title: z.string().describe("Brief title of the request"),
+      description: z.string().describe("Detailed description of the request"),
+      category: z.enum([
+        "reservation",
+        "room_issue",
+        "room_service",
+        "housekeeping",
+        "maintenance",
+        "concierge",
+        "other",
+      ]),
+      urgency: z
+        .enum(["low", "medium", "high", "critical"])
+        .default("medium")
+        .describe("Urgency level of the request"),
+      room_number: z
+        .number()
+        .optional()
+        .describe(
+          "Guest's room number if applicable (can be null for general requests)",
+        ),
+    }),
+    execute: async (input) => {
+      try {
+        const { createStaffRequest } =
+          await import("@/services/staffRequestsService");
+        const result = await createStaffRequest({
+          title: input.title,
+          description: input.description,
+          category: input.category,
+          urgency: input.urgency,
+          room_number: input.room_number,
+          status: "pending",
+        });
+        return {
+          success: true,
+          message: `Staff request created successfully. ID: ${result.id}`,
+          request: result,
+        };
+      } catch (error) {
+        console.error("Error creating staff request:", error);
+        return {
+          success: false,
+          message: "Failed to create staff request.",
+        };
       }
     },
   }),
