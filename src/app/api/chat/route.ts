@@ -96,9 +96,6 @@ export async function POST(req: Request) {
     // Get configurable system prompt
     const systemPrompt = await getSystemPrompt();
 
-
-
-
     const response = streamText({
       messages: modelMessages,
       model: selectedmodel,
@@ -114,19 +111,18 @@ export async function POST(req: Request) {
       },
     });
 
+    // Handle background task errors without blocking
+    backgroundTasks.then((results) => {
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(`Background task ${index} failed:`, result.reason);
+        }
+      });
+    });
+
     return response.toUIMessageStreamResponse({
       onFinish: async ({ responseMessage }) => {
         try {
-          // Wait for background tasks to complete
-          const results = await backgroundTasks;
-
-          // Log any failures but don't fail the response
-          results.forEach((result, index) => {
-            if (result.status === "rejected") {
-              console.error(`Background task ${index} failed:`, result.reason);
-            }
-          });
-
           // Handle regenerate-message trigger
           if (trigger === "regenerate-message") {
             const latestMessage = await getLatestMessageByConversationId(

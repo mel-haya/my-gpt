@@ -168,7 +168,7 @@ export default function ConversationWrapper({
   };
 
   return (
-    <div className="flex flex-col grow h-screen relative items-center">
+    <div className="flex flex-col grow h-screen relative items-center pt-6">
       {/* Upgrade Ribbon */}
       {/* Upgrade Ribbon (not full width, dismissible with transition) - Hidden for subscribed users */}
       {!isSubscribed && !subscriptionLoading && user && (

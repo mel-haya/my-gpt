@@ -82,11 +82,14 @@ export default function Home() {
     // },
     onFinish() {
       userMessageCountRef.current++;
-      // Refresh conversations and usage in background (don't block status transition)
-      Promise.allSettled([
-        userMessageCountRef.current <= 3 ? refetch() : Promise.resolve(),
-        refreshUsage(),
-      ]).catch(console.error);
+      // Refresh usage immediately
+      refreshUsage().catch(console.error);
+      // Delay conversation refresh to allow background rename to complete
+      if (userMessageCountRef.current <= 3) {
+        setTimeout(() => {
+          refetch().catch(console.error);
+        }, 4000);
+      }
     },
   });
 
