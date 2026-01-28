@@ -4,12 +4,14 @@ import { useState } from "react";
 import { SelectStaffRequest, InsertStaffRequest } from "@/lib/db-schema";
 import { StaffRequestsList } from "./StaffRequestsList";
 import { CompleteRequestDialog } from "./CompleteRequestDialog";
+import { DeleteRequestDialog } from "./DeleteRequestDialog";
 import { StaffRequestDialog } from "./StaffRequestDialog";
 import { StaffRequestsStats } from "./StaffRequestsStats";
 import {
   completeStaffRequestAction,
   createStaffRequestAction,
   getStaffRequestsAction,
+  deleteStaffRequestAction,
 } from "@/app/actions/staff-requests";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +56,7 @@ export function StaffRequestsPageClient({
   const [statusFilter, setStatusFilter] = useState("pending");
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] =
     useState<SelectStaffRequest | null>(null);
 
@@ -126,6 +129,22 @@ export function StaffRequestsPageClient({
     }
   };
 
+  const handleDeleteClick = (request: SelectStaffRequest) => {
+    setSelectedRequest(request);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async (id: number) => {
+    try {
+      await deleteStaffRequestAction(id);
+      toast.success("Request deleted successfully");
+      fetchRequests(page);
+    } catch (error) {
+      console.error("Failed to delete request", error);
+      toast.error("Failed to delete request");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -184,7 +203,11 @@ export function StaffRequestsPageClient({
         </Select>
       </div>
 
-      <StaffRequestsList requests={requests} onComplete={handleCompleteClick} />
+      <StaffRequestsList
+        requests={requests}
+        onComplete={handleCompleteClick}
+        onDelete={handleDeleteClick}
+      />
 
       {/* Pagination */}
       {pages > 1 && (
@@ -229,6 +252,13 @@ export function StaffRequestsPageClient({
         isOpen={isCreateDialogOpen}
         onClose={() => setIsCreateDialogOpen(false)}
         onConfirm={handleConfirmCreate}
+      />
+
+      <DeleteRequestDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        request={selectedRequest}
       />
     </div>
   );

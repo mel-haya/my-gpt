@@ -45,7 +45,7 @@ export async function getAllConversationsAction(
     }
 
     if (conditions.length > 0) {
-      query.where(and(...(conditions as any)));
+      query.where(and(...(conditions)));
     }
 
     const result = await query;
@@ -57,7 +57,7 @@ export async function getAllConversationsAction(
     return {
       success: true,
       data: {
-        data: data as any,
+        data: data,
         hasMore,
         nextCursor,
       }

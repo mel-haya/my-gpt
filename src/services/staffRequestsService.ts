@@ -147,6 +147,10 @@ export async function completeStaffRequest(
   return updatedRequest;
 }
 
+export async function deleteStaffRequest(id: number): Promise<void> {
+  await db.delete(staffRequests).where(eq(staffRequests.id, id));
+}
+
 export type StaffRequestStats = {
   totalRequests: number;
   pendingRequests: number;

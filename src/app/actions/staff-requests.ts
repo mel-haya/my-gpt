@@ -4,6 +4,7 @@ import {
   getStaffRequests,
   createStaffRequest,
   completeStaffRequest,
+  deleteStaffRequest,
   getStaffRequestStats,
   PaginatedStaffRequests,
   StaffRequestStats,
@@ -41,4 +42,9 @@ export async function completeStaffRequestAction(
 
 export async function getStaffRequestStatsAction(): Promise<StaffRequestStats> {
   return await getStaffRequestStats();
+}
+
+export async function deleteStaffRequestAction(id: number): Promise<void> {
+  await deleteStaffRequest(id);
+  revalidatePath("/admin/requests");
 }
