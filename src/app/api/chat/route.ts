@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { messages, conversation, webSearch, trigger } = await req.json();
+    const { messages, conversation, webSearch, trigger, userLanguage } = await req.json();
 
     const lastMessage = messages[messages.length - 1];
     for (const part of lastMessage.parts) {
@@ -95,12 +95,17 @@ export async function POST(req: Request) {
 
     // Get configurable system prompt
     const systemPrompt = await getSystemPrompt();
+    
+    // Modify system prompt to include language preference if detected
+    const finalSystemPrompt = userLanguage 
+      ? `${systemPrompt}\n\nIMPORTANT: Please respond in ${userLanguage} language.`
+      : systemPrompt;
 
     const response = streamText({
       messages: modelMessages,
       model: selectedmodel,
       tools: toolsToUse,
-      system: systemPrompt,
+      system: finalSystemPrompt,
       stopWhen: stepCountIs(5),
       onFinish: async ({ usage }) => {
         streamUsage = {

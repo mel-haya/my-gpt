@@ -14,6 +14,7 @@ import { useTokenUsage } from "@/hooks/useTokenUsage";
 import { useConversations } from "@/hooks/useConversations";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SelectConversation } from "@/lib/db-schema";
+import {franc} from 'franc'
 
 export default function Home() {
   const { isSignedIn } = useAuth();
@@ -21,6 +22,7 @@ export default function Home() {
     useState<SelectConversation | null>(null);
   const [showSignInPopup, setShowSignInPopup] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [userLanguage, setUserLanguage] = useState<string>("");
   const { usage, refreshUsage } = useTokenUsage();
   const {
     data: conversationsData,
@@ -152,7 +154,26 @@ export default function Home() {
       if (!conversation) {
         conversation = await initConversation();
       }
-      const body = { conversation, ...options?.body };
+      let detectedLang = "";
+      if (!userLanguage) {
+        const langCode = franc(message.text);
+        if (langCode && langCode !== 'und') {
+          try {
+            const languageName = new Intl.DisplayNames(["en"], { type: "language" }).of(langCode);
+            detectedLang = languageName || "";
+          } catch (e) {
+            console.error(`Could not find language name for code: ${langCode}`, e);
+            detectedLang = langCode; // Fallback to code
+          }
+        }
+      }
+      console.log("Detected language:", detectedLang);
+      setUserLanguage(detectedLang);
+      const body = { 
+        conversation, 
+        userLanguage: userLanguage || detectedLang,
+        ...options?.body 
+      };
       await sendMessage(message, { body });
       // Refresh usage immediately after sending (in addition to onFinish)
       await refreshUsage();
