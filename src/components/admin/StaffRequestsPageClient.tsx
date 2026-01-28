@@ -111,6 +111,7 @@ export function StaffRequestsPageClient({
     try {
       await completeStaffRequestAction(id, userId, note);
       toast.success("Request completed successfully");
+      window.dispatchEvent(new Event("staffRequestsUpdated"));
       fetchRequests(page);
     } catch (error) {
       console.error("Failed to complete request", error);
@@ -122,6 +123,7 @@ export function StaffRequestsPageClient({
     try {
       await createStaffRequestAction(data);
       toast.success("Request created successfully");
+      window.dispatchEvent(new Event("staffRequestsUpdated"));
       fetchRequests(1); // Go back to first page to see new request
     } catch (error) {
       console.error("Failed to create request", error);
@@ -138,6 +140,7 @@ export function StaffRequestsPageClient({
     try {
       await deleteStaffRequestAction(id);
       toast.success("Request deleted successfully");
+      window.dispatchEvent(new Event("staffRequestsUpdated"));
       fetchRequests(page);
     } catch (error) {
       console.error("Failed to delete request", error);

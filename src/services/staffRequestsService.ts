@@ -193,3 +193,11 @@ export async function getStaffRequestStats(): Promise<StaffRequestStats> {
       : null,
   };
 }
+
+export async function getPendingRequestsCount(): Promise<number> {
+  const [result] = await db
+    .select({ count: count() })
+    .from(staffRequests)
+    .where(eq(staffRequests.status, "pending"));
+  return Number(result?.count || 0);
+}

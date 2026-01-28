@@ -6,6 +6,7 @@ import {
   completeStaffRequest,
   deleteStaffRequest,
   getStaffRequestStats,
+  getPendingRequestsCount,
   PaginatedStaffRequests,
   StaffRequestStats,
 } from "@/services/staffRequestsService";
@@ -47,4 +48,8 @@ export async function getStaffRequestStatsAction(): Promise<StaffRequestStats> {
 export async function deleteStaffRequestAction(id: number): Promise<void> {
   await deleteStaffRequest(id);
   revalidatePath("/admin/requests");
+}
+
+export async function getPendingRequestsCountAction(): Promise<number> {
+  return await getPendingRequestsCount();
 }

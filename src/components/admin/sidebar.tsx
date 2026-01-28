@@ -1,8 +1,9 @@
+"use client";
+
 import { UserAvatar, useUser } from "@clerk/nextjs";
 import {
   UsersIcon,
   FilesIcon,
-  SettingsIcon,
   HistoryIcon,
   HomeIcon,
   FlaskConicalIcon,
@@ -10,34 +11,68 @@ import {
   BookOpenText,
   MessageSquareCode,
   ThumbsUp,
-  Compass,
   ClipboardList,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getPendingRequestsCountAction } from "@/app/actions/staff-requests";
 
 export default function SidebarAdmin() {
   const { user } = useUser();
   const router = useRouter();
   const pathname = usePathname();
+  const [pendingCount, setPendingCount] = useState(0);
 
-  const navItems = [
-    { label: "Home", path: "/", icon: HomeIcon },
-    { label: "Users", path: "/admin/users", icon: UsersIcon },
-    { label: "Files", path: "/admin/files", icon: FilesIcon },
-    // { label: "Tests", path: "/admin/tests", icon: FlaskConicalIcon },
-    { label: "Test Sessions", path: "/admin/sessions", icon: FlaskConicalIcon },
-    { label: "Questions", path: "/admin/questions", icon: BookOpenText },
+  useEffect(() => {
+    const fetchCount = () => {
+      getPendingRequestsCountAction().then(setPendingCount);
+    };
+
+    fetchCount();
+
+    // Listen for custom event when requests are updated
+    window.addEventListener("staffRequestsUpdated", fetchCount);
+    return () => {
+      window.removeEventListener("staffRequestsUpdated", fetchCount);
+    };
+  }, [pathname]);
+
+  const navSections = [
     {
-      label: "System Prompts",
-      path: "/admin/system-prompts",
-      icon: MessageSquareCode,
+      items: [{ label: "Home", path: "/", icon: HomeIcon }],
     },
-    { label: "Models", path: "/admin/models", icon: AtomIcon },
-    { label: "Feedback", path: "/admin/feedback", icon: ThumbsUp },
-    { label: "Activities", path: "/admin/activities", icon: Compass },
-    { label: "Requests", path: "/admin/requests", icon: ClipboardList },
-    { label: "History", path: "/admin/history", icon: HistoryIcon },
-    // { label: "Settings", path: "/admin/settings", icon: SettingsIcon },
+    {
+      category: "Management",
+      items: [
+        { label: "Users", path: "/admin/users", icon: UsersIcon },
+        { label: "Files", path: "/admin/files", icon: FilesIcon },
+        { label: "Models", path: "/admin/models", icon: AtomIcon },
+        {
+          label: "System Prompts",
+          path: "/admin/system-prompts",
+          icon: MessageSquareCode,
+        },
+      ],
+    },
+    {
+      category: "Testing",
+      items: [
+        {
+          label: "Test Sessions",
+          path: "/admin/sessions",
+          icon: FlaskConicalIcon,
+        },
+        { label: "Questions", path: "/admin/questions", icon: BookOpenText },
+      ],
+    },
+    {
+      category: "Operations",
+      items: [
+        { label: "Requests", path: "/admin/requests", icon: ClipboardList },
+        { label: "Feedback", path: "/admin/feedback", icon: ThumbsUp },
+        { label: "History", path: "/admin/history", icon: HistoryIcon },
+      ],
+    },
   ];
 
   return (
@@ -66,24 +101,43 @@ export default function SidebarAdmin() {
           )}
         </div>
       </div>
-      <ul className="flex flex-col mt-2">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.path;
-          return (
-            <li
-              key={item.path}
-              className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${
-                isActive ? "bg-gray-300 dark:bg-neutral-700" : ""
-              }`}
-              onClick={() => router.push(item.path)}
-            >
-              <Icon size={20} />
-              {item.label}
-            </li>
-          );
-        })}
-      </ul>
+      <nav className="flex flex-col mt-2 overflow-y-auto">
+        {navSections.map((section, sectionIdx) => (
+          <div key={section.category ?? sectionIdx}>
+            {section.category && (
+              <div className="px-4 pt-4 pb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-neutral-500">
+                  {section.category}
+                </span>
+              </div>
+            )}
+            <ul className="flex flex-col">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.path;
+                const isRequests = item.path === "/admin/requests";
+                return (
+                  <li
+                    key={item.path}
+                    className={`w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center ${
+                      isActive ? "bg-gray-300 dark:bg-neutral-700" : ""
+                    }`}
+                    onClick={() => router.push(item.path)}
+                  >
+                    <Icon size={20} />
+                    <span className="flex-1">{item.label}</span>
+                    {isRequests && pendingCount > 0 && (
+                      <span className="bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                        {pendingCount}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
     </div>
   );
 }
