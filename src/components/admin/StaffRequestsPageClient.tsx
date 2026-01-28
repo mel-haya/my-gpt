@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "react-toastify";
 import {
@@ -47,6 +47,8 @@ export function StaffRequestsPageClient({
   const [requests, setRequests] =
     useState<StaffRequestWithCompleter[]>(initialRequests);
   const [page, setPage] = useState(initialPage);
+  const [pages, setPages] = useState(totalPages);
+  const [count, setCount] = useState(totalCount);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("pending");
@@ -71,6 +73,8 @@ export function StaffRequestsPageClient({
       );
       setRequests(result.requests);
       setPage(p);
+      setPages(result.pagination.totalPages);
+      setCount(result.pagination.totalCount);
     } catch (error) {
       console.error("Failed to fetch requests", error);
       toast.error("Failed to fetch requests");
@@ -181,6 +185,38 @@ export function StaffRequestsPageClient({
       </div>
 
       <StaffRequestsList requests={requests} onComplete={handleCompleteClick} />
+
+      {/* Pagination */}
+      {pages > 1 && (
+        <div className="flex items-center justify-between border-t pt-4">
+          <p className="text-sm text-muted-foreground">
+            Showing {requests.length} of {count} requests
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchRequests(page - 1)}
+              disabled={page <= 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <span className="text-sm font-medium px-2">
+              Page {page} of {pages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchRequests(page + 1)}
+              disabled={page >= pages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <CompleteRequestDialog
         isOpen={isCompleteDialogOpen}
