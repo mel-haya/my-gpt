@@ -80,7 +80,7 @@ export default function SystemPromptDialog({
         toast.success(
           isEdit
             ? "System prompt updated successfully"
-            : "System prompt created successfully"
+            : "System prompt created successfully",
         );
 
         onSuccess();
@@ -116,8 +116,8 @@ export default function SystemPromptDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="p-6 border-b">
           <DialogTitle>
             {isEdit ? "Edit System Prompt" : "Create New System Prompt"}
           </DialogTitle>
@@ -128,36 +128,44 @@ export default function SystemPromptDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="name">Name *</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter a descriptive name for this prompt"
-              disabled={isLoading}
-              required
-            />
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 flex flex-col overflow-hidden"
+        >
+          <div className="flex-1 flex flex-col p-6 space-y-6 min-h-0">
+            <div className="space-y-2 shrink-0">
+              <Label htmlFor="name">Name *</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter a descriptive name for this prompt"
+                disabled={isLoading}
+                required
+              />
+            </div>
+
+            <div className="flex-1 flex flex-col space-y-2 min-h-0 max-h-[300px]">
+              <Label htmlFor="prompt" className="shrink-0">
+                System Prompt *
+              </Label>
+              <Textarea
+                id="prompt"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Enter the system prompt text..."
+                className="flex-1 min-h-0 font-mono resize-none overflow-y-auto"
+                disabled={isLoading}
+                required
+              />
+              <p className="shrink-0 text-xs text-muted-foreground">
+                This prompt will be used as the system message when testing the
+                chatbot.
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="prompt">System Prompt *</Label>
-            <Textarea
-              id="prompt"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Enter the system prompt text..."
-              className="min-h-[200px] font-mono"
-              disabled={isLoading}
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              This prompt will be used as the system message when testing the
-              chatbot.
-            </p>
-          </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0 p-6 border-t bg-muted/30">
             <Button
               type="button"
               variant="outline"
@@ -172,8 +180,8 @@ export default function SystemPromptDialog({
                   ? "Updating..."
                   : "Creating..."
                 : isEdit
-                ? "Update"
-                : "Create"}
+                  ? "Update"
+                  : "Create"}
             </Button>
           </DialogFooter>
         </form>
