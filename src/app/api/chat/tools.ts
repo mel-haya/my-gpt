@@ -1,6 +1,5 @@
 import { tool, rerank } from "ai";
 import { z } from "zod";
-import { openai as originalOpenAI } from "@ai-sdk/openai";
 import { searchDocuments } from "@/lib/search";
 import { getActivities } from "@/services/activitiesService";
 import { cohere } from "@ai-sdk/cohere";
@@ -166,6 +165,3 @@ export const tools = {
   }),
 };
 
-export const webSearchTool = originalOpenAI.tools.webSearch({
-  searchContextSize: "medium",
-});

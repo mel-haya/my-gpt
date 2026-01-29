@@ -1,5 +1,5 @@
 import { streamText, convertToModelMessages, stepCountIs } from "ai";
-import { tools, webSearchTool } from "./tools";
+import { tools } from "./tools";
 import { ChatMessage } from "@/types/chatMessage";
 import {
   saveMessage,
@@ -12,7 +12,6 @@ import {
   recordUsage,
 } from "@/services/tokenUsageService";
 import { getSystemPrompt } from "@/services/settingsService";
-import { Tools } from "@/types/Tools";
 import { uploadImageToImageKit } from "./imageKit";
 import { auth } from "@clerk/nextjs/server";
 import { renameConversationAI } from "./renameConversationAI";
@@ -49,7 +48,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { messages, conversation, webSearch, trigger, userLanguage } = await req.json();
+    const { messages, conversation, trigger } = await req.json();
 
     const lastMessage = messages[messages.length - 1];
     for (const part of lastMessage.parts) {
@@ -82,9 +81,6 @@ export async function POST(req: Request) {
       ].filter(Boolean),
     );
 
-    const toolsToUse: Tools = { ...tools };
-
-    if (webSearch) toolsToUse.webSearch = webSearchTool;
 
     // Variable to store token usage from streamText
     let streamUsage: {
@@ -95,17 +91,12 @@ export async function POST(req: Request) {
 
     // Get configurable system prompt
     const systemPrompt = await getSystemPrompt();
-    
-    // Modify system prompt to include language preference if detected
-    const finalSystemPrompt = userLanguage 
-      ? `${systemPrompt}\n\nIMPORTANT: Please respond in ${userLanguage} language.`
-      : systemPrompt;
 
     const response = streamText({
       messages: modelMessages,
       model: selectedmodel,
-      tools: toolsToUse,
-      system: finalSystemPrompt,
+      tools: tools,
+      system: systemPrompt,
       stopWhen: stepCountIs(5),
       onFinish: async ({ usage }) => {
         streamUsage = {

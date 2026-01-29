@@ -14,7 +14,6 @@ import { useTokenUsage } from "@/hooks/useTokenUsage";
 import { useConversations } from "@/hooks/useConversations";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SelectConversation } from "@/lib/db-schema";
-import {franc} from 'franc'
 
 export default function Home() {
   const { isSignedIn } = useAuth();
@@ -22,7 +21,6 @@ export default function Home() {
     useState<SelectConversation | null>(null);
   const [showSignInPopup, setShowSignInPopup] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [userLanguage, setUserLanguage] = useState<string>("");
   const { usage, refreshUsage } = useTokenUsage();
   const {
     data: conversationsData,
@@ -43,45 +41,6 @@ export default function Home() {
     setMessages,
   } = useChat<ChatMessage>({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-    // async onToolCall({ toolCall }) {
-    //   if (toolCall.dynamic) return;
-    //   switch (toolCall.toolName) {
-    //     case "changeBackground":
-    //       {
-    //         const { imageUrl, background } = toolCall.input;
-
-    //         const transformation = `e-changebg-prompt-${background}`;
-    //         const transformedUrl = buildTransformationUrl(
-    //           imageUrl,
-    //           transformation
-    //         );
-
-    //         addToolOutput({
-    //           tool: "changeBackground",
-    //           toolCallId: toolCall.toolCallId,
-    //           output: transformedUrl,
-    //         });
-    //       }
-    //       break;
-    //     case "removeBackground":
-    //       {
-    //         const { imageUrl } = toolCall.input;
-
-    //         const transformation = `e-bgremove`;
-    //         const transformedUrl = buildTransformationUrl(
-    //           imageUrl,
-    //           transformation
-    //         );
-
-    //         addToolOutput({
-    //           tool: "removeBackground",
-    //           toolCallId: toolCall.toolCallId,
-    //           output: transformedUrl,
-    //         });
-    //       }
-    //       break;
-    //   }
-    // },
     onFinish() {
       userMessageCountRef.current++;
       // Refresh usage immediately
@@ -154,24 +113,8 @@ export default function Home() {
       if (!conversation) {
         conversation = await initConversation();
       }
-      let detectedLang = "";
-      if (!userLanguage) {
-        const langCode = franc(message.text);
-        if (langCode && langCode !== 'und') {
-          try {
-            const languageName = new Intl.DisplayNames(["en"], { type: "language" }).of(langCode);
-            detectedLang = languageName || "";
-          } catch (e) {
-            console.error(`Could not find language name for code: ${langCode}`, e);
-            detectedLang = langCode; // Fallback to code
-          }
-        }
-      }
-      console.log("Detected language:", detectedLang);
-      setUserLanguage(detectedLang);
       const body = { 
-        conversation, 
-        userLanguage: userLanguage || detectedLang,
+        conversation,
         ...options?.body 
       };
       await sendMessage(message, { body });
