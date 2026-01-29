@@ -413,6 +413,7 @@ async function runTestsInBackground(
               model: selectedModel,
               webSearch: false,
               systemPrompt: systemPrompt,
+              useTestTools: true, // Use mocked tools that don't create actual DB entries
             }),
             60000, // 1 minute timeout for generation
             "Test execution timed out after 60 seconds",

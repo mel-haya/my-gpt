@@ -696,14 +696,15 @@ export async function evaluateTestResponse(
   explanation: string;
   score: number;
 }> {
-  // Define evaluation schema with score from 1-10
+  // Define evaluation schema with score restricted to 0, 5, or 10
   const evaluationSchema = z.object({
     score: z
       .number()
-      .min(1)
-      .max(10)
+      .refine((val) => val === 0 || val === 5 || val === 10, {
+        message: "Score must be exactly 0, 5, or 10",
+      })
       .describe(
-        "Score from 1 to 10: 1 = misleading and inaccurate, 10 = helpful and has all information from expected response",
+        "Score must be ONLY 0, 5, or 10: 0 = failed/misleading, 5 = partial/some issues, 10 = success/comprehensive",
       ),
     explanation: z
       .string()
@@ -713,14 +714,12 @@ export async function evaluateTestResponse(
   // Evaluate the response using generateObject with system prompt
   const { output: evaluation } = await generateText({
     model: evaluatorModel,
-    system: `You are an AI response evaluator. Your job is to score the AI's response on a scale from 1 to 10:
+    system: `You are an AI response evaluator. Your job is to score the AI's response using ONLY these three values: 0, 5, or 10.
 
 **Scoring Guidelines:**
-- **1-2 (Very Poor):** Misleading, inaccurate, or completely wrong information. Harmful or confusing response.
-- **3-4 (Poor):** Major inaccuracies or missing critical information. Not helpful to the user.
-- **5-6 (Average):** Some correct information but missing key details or has minor inaccuracies. Partially helpful.
-- **7-8 (Good):** Contains most of the essential information from the expected response. Generally helpful and accurate.
-- **9-10 (Excellent):** Comprehensive, accurate, and contains all the information from the expected response. Highly helpful.
+- **0 (Failed):** Misleading, inaccurate, completely wrong information, or major inaccuracies. Not helpful to the user.
+- **5 (Partial):** Some correct information but missing key details or has minor inaccuracies. Partially helpful.
+- **10 (Success):** Contains most or all of the essential information from the expected response. Comprehensive, accurate, and highly helpful.
 
 **Evaluation Criteria:**
 1. **Accuracy:** How correct is the information compared to the expected response?
@@ -732,7 +731,8 @@ export async function evaluateTestResponse(
 - Paraphrasing and alternative wording are acceptable if the meaning is preserved
 - Minor additional clarifications are acceptable and can even improve the score
 - Focus on whether the user gets the essential information they need
-- Consider both what's included and what's missing`,
+- Consider both what's included and what's missing
+- Remember: Your final score MUST be exactly 0, 5, or 10`,
     prompt: `Evaluate this AI response:
 
 Original Test Prompt: "${originalPrompt}"
@@ -741,12 +741,12 @@ Expected Response: "${expectedResult}"
 
 AI Response: "${aiResponse}"
 
-Score this response from 1 to 10 based on accuracy, completeness, and helpfulness.`,
+Score this response using ONLY 0, 5, or 10 based on accuracy, completeness, and helpfulness.`,
     output: Output.object({ schema: evaluationSchema }),
   });
 
-  // Set status based on evaluation score (7+ is Success, below 7 is Failed)
-  const status = evaluation.score >= 7 ? "Success" : "Failed";
+  // Set status based on evaluation score (10 is Success, 0 or 5 is Failed)
+  const status = evaluation.score === 10 ? "Success" : "Failed";
   const explanation = `Score: ${evaluation.score}/10\nExplanation: ${evaluation.explanation}`;
 
   return { status, explanation, score: evaluation.score };
@@ -859,7 +859,7 @@ export async function runSingleTest(
 
 /**
  * Awards victories for all tests in a completed test run.
- * For each unique test (test_id or manual_prompt), finds all models that scored ≥8,
+ * For each unique test (test_id or manual_prompt), finds all models that scored 10,
  * then determines the winner by: best score → lowest cost → fastest execution time.
  * The winner's victories count is incremented.
  */
@@ -867,7 +867,7 @@ export async function awardVictoriesForTestRun(
   testRunId: number,
 ): Promise<void> {
   try {
-    // Get all results for this test run with score >= 8
+    // Get all results for this test run with score == 10
     const results = await db
       .select({
         id: testRunResults.id,
@@ -882,7 +882,7 @@ export async function awardVictoriesForTestRun(
       .where(
         and(
           eq(testRunResults.test_run_id, testRunId),
-          sql`${testRunResults.score} >= 8`,
+          sql`${testRunResults.score} = 10`,
         ),
       );
 

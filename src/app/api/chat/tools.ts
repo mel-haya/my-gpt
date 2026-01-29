@@ -3,6 +3,7 @@ import { z } from "zod";
 import { searchDocuments } from "@/lib/search";
 import { getActivities } from "@/services/activitiesService";
 import { cohere } from "@ai-sdk/cohere";
+import { createStaffRequest } from "@/services/staffRequestsService";
 
 const searchKnowledgeBaseInputSchema = z.object({
   query: z
@@ -138,8 +139,6 @@ export const tools = {
     }),
     execute: async (input) => {
       try {
-        const { createStaffRequest } =
-          await import("@/services/staffRequestsService");
         const result = await createStaffRequest({
           title: input.title,
           description: input.description,
@@ -165,3 +164,56 @@ export const tools = {
   }),
 };
 
+// Test tools with mocked createStaffRequest (doesn't create actual DB entries)
+export const testTools = {
+  ...tools,
+  createStaffRequest: tool({
+    description:
+      "Creates a staff request for guest services (room service, housekeeping, maintenance, etc.) or issues.",
+    inputSchema: z.object({
+      title: z.string().describe("Brief title of the request"),
+      description: z.string().describe("Detailed description of the request"),
+      category: z.enum([
+        "reservation",
+        "room_issue",
+        "room_service",
+        "housekeeping",
+        "maintenance",
+        "concierge",
+        "other",
+      ]),
+      urgency: z
+        .enum(["low", "medium", "high", "critical"])
+        .default("medium")
+        .describe("Urgency level of the request"),
+      room_number: z
+        .number()
+        .optional()
+        .describe(
+          "Guest's room number if applicable (can be null for general requests)",
+        ),
+      userMessage: z
+        .string()
+        .describe(
+          "A short, generic confirmation message like 'Your request has been submitted to the staff.' - Do NOT include specific details (room number, request type, etc.). MUST be in the same language as the conversation.",
+        ),
+    }),
+    execute: async (input) => {
+      // Return a mocked successful response without creating a database entry
+      return {
+        success: true,
+        message: `Staff request created successfully. ID: test-${Date.now()}`,
+        request: {
+          id: `test-${Date.now()}`,
+          title: input.title,
+          description: input.description,
+          category: input.category,
+          urgency: input.urgency,
+          room_number: input.room_number,
+          status: "pending",
+        },
+        userMessage: input.userMessage,
+      };
+    },
+  }),
+};

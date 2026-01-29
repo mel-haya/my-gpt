@@ -1,7 +1,11 @@
 import { generateText, convertToModelMessages, stepCountIs } from "ai";
 import { ChatMessage } from "@/types/chatMessage";
 import { getSystemPrompt } from "@/services/settingsService";
-import { tools, SearchKnowledgeBaseResult} from "@/app/api/chat/tools";
+import {
+  tools,
+  testTools,
+  SearchKnowledgeBaseResult,
+} from "@/app/api/chat/tools";
 import { metadata } from "@/app/layout";
 
 const supportedModels = [
@@ -16,6 +20,7 @@ export interface ChatRequest {
   model: string;
   webSearch?: boolean;
   systemPrompt?: string;
+  useTestTools?: boolean; // Use mocked tools that don't create actual DB entries
 }
 
 export interface ChatResponse {
@@ -39,7 +44,7 @@ export interface ChatResponse {
  * This bypasses the API route authentication and is intended for internal use like testing
  */
 export async function generateChatCompletion(
-  request: ChatRequest
+  request: ChatRequest,
 ): Promise<string> {
   const response = await generateChatCompletionWithToolCalls(request);
   return response.text;
@@ -50,7 +55,7 @@ export async function generateChatCompletion(
  * Returns both the text response and tool call information
  */
 export async function generateChatCompletionWithToolCalls(
-  request: ChatRequest
+  request: ChatRequest,
 ): Promise<ChatResponse> {
   try {
     const { messages, model, systemPrompt: customSystemPrompt } = request;
@@ -73,18 +78,21 @@ export async function generateChatCompletionWithToolCalls(
       }
     }
 
+    // Use test tools if requested (mocked createStaffRequest that doesn't create DB entries)
+    const activeTools = request.useTestTools ? testTools : tools;
+
     const result = await generateText({
       messages: modelMessages,
       model: selectedModel,
       system: systemPrompt,
-      tools,
+      tools: activeTools,
       stopWhen: stepCountIs(5),
     });
 
     // The result should contain the final text after tool execution
     if (!result.text || result.text.trim() === "") {
       throw new Error(
-        `No text content generated from AI model ${selectedModel}`
+        `No text content generated from AI model ${selectedModel}`,
       );
     }
 
@@ -96,7 +104,7 @@ export async function generateChatCompletionWithToolCalls(
           return step.toolCalls.map((toolCall) => {
             // Find the corresponding tool result
             const toolResult = step.toolResults?.find(
-              (r) => r.toolCallId === toolCall.toolCallId
+              (r) => r.toolCallId === toolCall.toolCallId,
             );
 
             // Extract args - handle both static and dynamic tool calls
@@ -113,7 +121,7 @@ export async function generateChatCompletionWithToolCalls(
                 result?: SearchKnowledgeBaseResult;
                 content?: unknown;
               };
-              
+
               if (wrappedResult.result !== undefined) {
                 resultData = wrappedResult.result;
               } else if (wrappedResult.content !== undefined) {
@@ -136,11 +144,13 @@ export async function generateChatCompletionWithToolCalls(
     return {
       text: result.text.trim(),
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-      usage: result.usage ? {
-        promptTokens: result.usage.inputTokens || 0,
-        completionTokens: result.usage.outputTokens || 0,
-        totalTokens: result.usage.totalTokens || 0,
-      } : undefined,
+      usage: result.usage
+        ? {
+            promptTokens: result.usage.inputTokens || 0,
+            completionTokens: result.usage.outputTokens || 0,
+            totalTokens: result.usage.totalTokens || 0,
+          }
+        : undefined,
       cost: result.providerMetadata?.gateway?.cost as number,
     };
   } catch (error) {
@@ -161,7 +171,7 @@ export async function generateChatCompletionWithToolCalls(
     throw new Error(
       `Failed to generate chat completion: ${
         error instanceof Error ? error.message : "Unknown error"
-      }`
+      }`,
     );
   }
 }
