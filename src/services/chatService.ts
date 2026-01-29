@@ -2,8 +2,8 @@ import { generateText, convertToModelMessages, stepCountIs } from "ai";
 import { ChatMessage } from "@/types/chatMessage";
 import { getSystemPrompt } from "@/services/settingsService";
 import {
-  tools,
-  testTools,
+  getTools,
+  getTestTools,
   SearchKnowledgeBaseResult,
 } from "@/app/api/chat/tools";
 import { metadata } from "@/app/layout";
@@ -79,7 +79,9 @@ export async function generateChatCompletionWithToolCalls(
     }
 
     // Use test tools if requested (mocked createStaffRequest that doesn't create DB entries)
-    const activeTools = request.useTestTools ? testTools : tools;
+    const activeTools = request.useTestTools
+      ? await getTestTools()
+      : await getTools();
 
     const result = await generateText({
       messages: modelMessages,
@@ -160,7 +162,6 @@ export async function generateChatCompletionWithToolCalls(
       message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
       model: request.model,
-      hasTools: !!tools,
     });
     if (process.env.NODE_ENV === "development") {
       return {

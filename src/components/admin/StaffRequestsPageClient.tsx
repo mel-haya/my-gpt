@@ -5,6 +5,7 @@ import { SelectStaffRequest, InsertStaffRequest } from "@/lib/db-schema";
 import { StaffRequestsList } from "./StaffRequestsList";
 import { CompleteRequestDialog } from "./CompleteRequestDialog";
 import { DeleteRequestDialog } from "./DeleteRequestDialog";
+import { StaffSettingsDialog } from "./StaffSettingsDialog";
 import { StaffRequestDialog } from "./StaffRequestDialog";
 import { StaffRequestsStats } from "./StaffRequestsStats";
 import {
@@ -22,7 +23,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+} from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "react-toastify";
 import {
@@ -57,6 +65,7 @@ export function StaffRequestsPageClient({
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] =
     useState<SelectStaffRequest | null>(null);
 
@@ -157,9 +166,18 @@ export function StaffRequestsPageClient({
             Manage guest requests and hotel operations.
           </p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> New Request
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsSettingsDialogOpen(true)}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" /> New Request
+          </Button>
+        </div>
       </div>
 
       <StaffRequestsStats stats={stats} />
@@ -262,6 +280,11 @@ export function StaffRequestsPageClient({
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleConfirmDelete}
         request={selectedRequest}
+      />
+
+      <StaffSettingsDialog
+        isOpen={isSettingsDialogOpen}
+        onClose={() => setIsSettingsDialogOpen(false)}
       />
     </div>
   );

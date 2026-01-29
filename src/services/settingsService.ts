@@ -1,6 +1,48 @@
 import { db } from "@/lib/db-config";
-import { systemPrompts } from "@/lib/db-schema";
+import { settings, systemPrompts } from "@/lib/db-schema";
 import { eq } from "drizzle-orm";
+
+export async function getSetting(
+  key: string,
+  defaultValue: string,
+): Promise<string> {
+  try {
+    const result = await db
+      .select({ value: settings.value })
+      .from(settings)
+      .where(eq(settings.key, key))
+      .limit(1);
+
+    return result[0]?.value ?? defaultValue;
+  } catch (error) {
+    console.error(`Error fetching setting '${key}':`, error);
+    return defaultValue;
+  }
+}
+
+export async function upsertSetting(key: string, value: string): Promise<void> {
+  try {
+    // Try to update first
+    const updateResult = await db
+      .update(settings)
+      .set({
+        value: value,
+        updated_at: new Date(),
+      })
+      .where(eq(settings.key, key));
+
+    // If no rows were updated, insert a new one
+    if (updateResult.rowCount === 0) {
+      await db.insert(settings).values({
+        key: key,
+        value: value,
+      });
+    }
+  } catch (error) {
+    console.error(`Error upserting setting '${key}':`, error);
+    throw error;
+  }
+}
 
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful assistant with access to a knowledge base. 
 When users ask questions, search the knowledge base for relevant information.

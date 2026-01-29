@@ -1,5 +1,5 @@
 import { streamText, convertToModelMessages, stepCountIs } from "ai";
-import { tools } from "./tools";
+import { getTools } from "./tools";
 import { ChatMessage } from "@/types/chatMessage";
 import {
   saveMessage,
@@ -81,7 +81,6 @@ export async function POST(req: Request) {
       ].filter(Boolean),
     );
 
-
     // Variable to store token usage from streamText
     let streamUsage: {
       inputTokens: number;
@@ -91,6 +90,9 @@ export async function POST(req: Request) {
 
     // Get configurable system prompt
     const systemPrompt = await getSystemPrompt();
+
+    // Get tools with dynamic staff language
+    const tools = await getTools();
 
     const response = streamText({
       messages: modelMessages,
