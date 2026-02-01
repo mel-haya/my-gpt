@@ -1,0 +1,174 @@
+import { db } from "@/lib/db-config";
+import {
+  hotels,
+  hotelStaff,
+  users,
+  type InsertHotel,
+  type SelectHotel,
+  type SelectUser,
+} from "@/lib/db-schema";
+import {
+  eq,
+  ilike,
+  and,
+  desc,
+  count,
+  sql,
+  notInArray,
+  getTableColumns,
+} from "drizzle-orm";
+
+export type HotelWithStaffCount = SelectHotel & {
+  staffCount: number;
+};
+
+export type PaginatedHotels = {
+  hotels: HotelWithStaffCount[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalCount: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+};
+
+export async function getHotels(
+  searchQuery?: string,
+  limit: number = 10,
+  page: number = 1,
+): Promise<PaginatedHotels> {
+  const offset = (page - 1) * limit;
+  let whereClause = undefined;
+
+  if (searchQuery) {
+    whereClause = ilike(hotels.name, `%${searchQuery}%`);
+  }
+
+  // Get total count
+  const [totalCountResult] = await db
+    .select({ count: count() })
+    .from(hotels)
+    .where(whereClause);
+
+  const totalCount = Number(totalCountResult?.count || 0);
+
+  // Get hotels with staff count
+  const result = await db
+    .select({
+      ...getTableColumns(hotels),
+      staffCount: count(hotelStaff.id),
+    })
+    .from(hotels)
+    .leftJoin(hotelStaff, eq(hotels.id, hotelStaff.hotel_id))
+    .where(whereClause)
+    .groupBy(hotels.id)
+    .orderBy(desc(hotels.created_at))
+    .limit(limit)
+    .offset(offset);
+
+  const totalPages = Math.ceil(totalCount / limit);
+
+  return {
+    hotels: result.map((h) => ({
+      ...h,
+      staffCount: Number(h.staffCount),
+    })),
+    pagination: {
+      currentPage: page,
+      totalPages,
+      totalCount,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  };
+}
+
+export async function getHotelById(
+  id: number,
+): Promise<SelectHotel | undefined> {
+  const [hotel] = await db.select().from(hotels).where(eq(hotels.id, id));
+  return hotel;
+}
+
+export async function createHotel(data: InsertHotel): Promise<SelectHotel> {
+  const [newHotel] = await db.insert(hotels).values(data).returning();
+  return newHotel;
+}
+
+export async function updateHotel(
+  id: number,
+  data: Partial<InsertHotel>,
+): Promise<SelectHotel> {
+  const [updatedHotel] = await db
+    .update(hotels)
+    .set({ ...data, updated_at: new Date() })
+    .where(eq(hotels.id, id))
+    .returning();
+  return updatedHotel;
+}
+
+export async function deleteHotel(id: number): Promise<void> {
+  await db.delete(hotels).where(eq(hotels.id, id));
+}
+
+// Staff Management
+
+export async function getHotelStaff(hotelId: number): Promise<SelectUser[]> {
+  const staff = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      email: users.email,
+      role: users.role,
+      created_at: users.created_at,
+      updated_at: users.updated_at,
+    })
+    .from(hotelStaff)
+    .innerJoin(users, eq(hotelStaff.user_id, users.id))
+    .where(eq(hotelStaff.hotel_id, hotelId));
+
+  return staff;
+}
+
+export async function assignStaffToHotel(
+  hotelId: number,
+  userId: string,
+): Promise<void> {
+  await db.insert(hotelStaff).values({
+    hotel_id: hotelId,
+    user_id: userId,
+  });
+}
+
+export async function removeStaffFromHotel(
+  hotelId: number,
+  userId: string,
+): Promise<void> {
+  await db
+    .delete(hotelStaff)
+    .where(
+      and(eq(hotelStaff.hotel_id, hotelId), eq(hotelStaff.user_id, userId)),
+    );
+}
+
+export async function getAvailableStaffForHotel(
+  hotelId: number,
+): Promise<SelectUser[]> {
+  // Get IDs of users already assigned to this hotel
+  const assignedStaff = await db
+    .select({ user_id: hotelStaff.user_id })
+    .from(hotelStaff)
+    .where(eq(hotelStaff.hotel_id, hotelId));
+
+  const assignedUserIds = assignedStaff.map((s) => s.user_id);
+
+  let whereClause = undefined;
+  if (assignedUserIds.length > 0) {
+    whereClause = notInArray(users.id, assignedUserIds);
+  }
+
+  const availableUsers = await db.select().from(users).where(whereClause);
+
+  return availableUsers;
+}

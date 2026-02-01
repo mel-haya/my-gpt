@@ -108,6 +108,38 @@ export const staffRequests = pgTable(
   ],
 );
 
+export const hotels = pgTable(
+  "hotels",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    image: text("image"),
+    location: text("location").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [index("hotels_name_index").on(table.name)],
+);
+
+export const hotelStaff = pgTable(
+  "hotel_staff",
+  {
+    id: serial("id").primaryKey(),
+    hotel_id: integer("hotel_id")
+      .notNull()
+      .references(() => hotels.id, { onDelete: "cascade" }),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("hotel_staff_hotel_id_index").on(table.hotel_id),
+    index("hotel_staff_user_id_index").on(table.user_id),
+    uniqueIndex("hotel_staff_unique").on(table.hotel_id, table.user_id),
+  ],
+);
+
 export const documents = pgTable(
   "documents",
   {
@@ -456,3 +488,7 @@ export type InsertModel = typeof models.$inferInsert;
 export type SelectModel = typeof models.$inferSelect;
 export type InsertStaffRequest = typeof staffRequests.$inferInsert;
 export type SelectStaffRequest = typeof staffRequests.$inferSelect;
+export type InsertHotel = typeof hotels.$inferInsert;
+export type SelectHotel = typeof hotels.$inferSelect;
+export type InsertHotelStaff = typeof hotelStaff.$inferInsert;
+export type SelectHotelStaff = typeof hotelStaff.$inferSelect;

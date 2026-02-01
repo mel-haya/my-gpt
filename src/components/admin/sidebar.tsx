@@ -12,6 +12,7 @@ import {
   MessageSquareCode,
   ThumbsUp,
   ClipboardList,
+  Building,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -45,6 +46,7 @@ export default function SidebarAdmin() {
       category: "Management",
       items: [
         { label: "Users", path: "/admin/users", icon: UsersIcon },
+        { label: "Hotels", path: "/admin/hotels", icon: Building },
         { label: "Files", path: "/admin/files", icon: FilesIcon },
         { label: "Models", path: "/admin/models", icon: AtomIcon },
         {
