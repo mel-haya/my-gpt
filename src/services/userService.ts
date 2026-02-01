@@ -1,5 +1,10 @@
 import { db } from "@/lib/db-config";
-import { users, userTokenUsage, type InsertUser, type SelectUser } from "@/lib/db-schema";
+import {
+  users,
+  userTokenUsage,
+  type InsertUser,
+  type SelectUser,
+} from "@/lib/db-schema";
 import { eq, or, sql, desc, count } from "drizzle-orm";
 
 export async function createUser(userData: {
@@ -34,9 +39,11 @@ export async function createUserIfNotExists(userData: {
       .from(users)
       .where(or(eq(users.id, userData.id), eq(users.email, userData.email)))
       .limit(1);
-    
+
     if (existingUser.length > 0) {
-      console.log(`User with ID ${userData.id} or email ${userData.email} already exists, skipping creation`);
+      console.log(
+        `User with ID ${userData.id} or email ${userData.email} already exists, skipping creation`,
+      );
       return existingUser[0];
     }
 
@@ -58,10 +65,13 @@ export async function getUserById(id: string) {
   }
 }
 
-export async function updateUser(id: string, userData: {
-  username?: string;
-  email?: string;
-}) {
+export async function updateUser(
+  id: string,
+  userData: {
+    username?: string;
+    email?: string;
+  },
+) {
   try {
     const updateData = {
       ...userData,
@@ -73,7 +83,7 @@ export async function updateUser(id: string, userData: {
       .set(updateData)
       .where(eq(users.id, id))
       .returning();
-    
+
     return result[0] || null;
   } catch (error) {
     console.error("Error updating user:", error);
@@ -92,14 +102,13 @@ export async function deleteUser(id: string) {
 }
 
 export interface UserWithTokenUsage extends SelectUser {
-  totalTokensUsed: number;
-  totalMessagesCount: number;
+  role: "admin" | "user";
 }
 
 export async function getUsersWithTokenUsage(
   searchQuery?: string,
   limit: number = 10,
-  page: number = 1
+  page: number = 1,
 ): Promise<{
   users: UserWithTokenUsage[];
   pagination: {
@@ -126,21 +135,18 @@ export async function getUsersWithTokenUsage(
       `;
     }
 
-    // Get users with token usage aggregation
+    // Get users
     const usersWithUsage = await db
       .select({
         id: users.id,
         username: users.username,
         email: users.email,
+        role: users.role,
         created_at: users.created_at,
         updated_at: users.updated_at,
-        totalTokensUsed: sql<number>`COALESCE(SUM(${userTokenUsage.tokens_used}), 0)`.as('totalTokensUsed'),
-        totalMessagesCount: sql<number>`COALESCE(SUM(${userTokenUsage.messages_sent}), 0)`.as('totalMessagesCount'),
       })
       .from(users)
-      .leftJoin(userTokenUsage, eq(users.id, userTokenUsage.user_id))
       .where(whereCondition)
-      .groupBy(users.id, users.username, users.email, users.created_at, users.updated_at)
       .orderBy(desc(users.created_at))
       .limit(limit)
       .offset(offset);
@@ -148,7 +154,7 @@ export async function getUsersWithTokenUsage(
     // Get total count for pagination
     const [totalCountResult] = await db
       .select({
-        count: count()
+        count: count(),
       })
       .from(users)
       .where(whereCondition);
@@ -166,11 +172,7 @@ export async function getUsersWithTokenUsage(
       .leftJoin(userTokenUsage, eq(users.id, userTokenUsage.user_id));
 
     return {
-      users: usersWithUsage.map(user => ({
-        ...user,
-        totalTokensUsed: Number(user.totalTokensUsed) || 0,
-        totalMessagesCount: Number(user.totalMessagesCount) || 0,
-      })),
+      users: usersWithUsage,
       pagination: {
         currentPage: page,
         totalPages,
@@ -186,5 +188,23 @@ export async function getUsersWithTokenUsage(
   } catch (error) {
     console.error("Error getting users with token usage:", error);
     throw new Error("Failed to fetch users data");
+  }
+}
+
+export async function updateUserRole(id: string, role: "admin" | "user") {
+  try {
+    const result = await db
+      .update(users)
+      .set({
+        role,
+        updated_at: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+
+    return result[0] || null;
+  } catch (error) {
+    console.error("Error updating user role:", error);
+    throw new Error("Failed to update user role");
   }
 }

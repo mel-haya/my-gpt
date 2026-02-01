@@ -6,7 +6,15 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { UserWithTokenUsage } from "@/services/userService";
+import { updateUserRoleAction } from "@/app/actions/users";
 
 interface UsersTableProps {
   users: UserWithTokenUsage[];
@@ -20,30 +28,55 @@ interface UsersTableProps {
   searchQuery: string;
 }
 
-const formatNumber = (num: number): string => {
-  return num.toLocaleString();
-};
-
 const formatDate = (date: Date): string => {
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(date));
 };
 
-const getColumns = (handleRefresh: () => void): ColumnDef<UserWithTokenUsage>[] => [
-  {
-    accessorKey: "id",
-    header: "User ID",
-    cell: ({ row }) => (
-      <div className="font-medium text-xs text-neutral-600 dark:text-neutral-400">
-        {(row.getValue("id") as string).slice(0, 8)}...
-      </div>
-    ),
-  },
+function RoleCell({
+  userId,
+  currentRole,
+}: {
+  userId: string;
+  currentRole: "admin" | "user";
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  const handleRoleChange = (newRole: "admin" | "user") => {
+    startTransition(async () => {
+      try {
+        await updateUserRoleAction(userId, newRole);
+      } catch (error) {
+        console.error("Failed to update role:", error);
+      }
+    });
+  };
+
+  return (
+    <Select
+      value={currentRole}
+      onValueChange={handleRoleChange}
+      disabled={isPending}
+    >
+      <SelectTrigger className="w-24 h-8">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="user">User</SelectItem>
+        <SelectItem value="admin">Admin</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
+const getColumns = (
+  handleRefresh: () => void,
+): ColumnDef<UserWithTokenUsage>[] => [
   {
     accessorKey: "username",
     header: "Username",
@@ -61,32 +94,14 @@ const getColumns = (handleRefresh: () => void): ColumnDef<UserWithTokenUsage>[] 
     ),
   },
   {
-    accessorKey: "totalTokensUsed",
-    header: "Tokens Used",
-    cell: ({ row }) => {
-      const tokens = row.getValue("totalTokensUsed") as number;
-      return (
-        <div className="font-medium text-center">
-          <span className="inline-flex items-center justify-center px-2 py-1 text-sm font-bold bg-green-100 text-green-800 rounded-full dark:bg-green-900/20 dark:text-green-300">
-            {formatNumber(tokens)}
-          </span>
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "totalMessagesCount",
-    header: "Messages Sent",
-    cell: ({ row }) => {
-      const messages = row.getValue("totalMessagesCount") as number;
-      return (
-        <div className="font-medium text-center">
-          <span className="inline-flex items-center justify-center px-2 py-1 text-sm font-bold bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900/20 dark:text-blue-300">
-            {formatNumber(messages)}
-          </span>
-        </div>
-      );
-    },
+    accessorKey: "role",
+    header: "Role",
+    cell: ({ row }) => (
+      <RoleCell
+        userId={row.original.id}
+        currentRole={row.getValue("role") as "admin" | "user"}
+      />
+    ),
   },
   {
     accessorKey: "created_at",
@@ -102,10 +117,10 @@ const getColumns = (handleRefresh: () => void): ColumnDef<UserWithTokenUsage>[] 
   },
 ];
 
-export default function UsersTable({ 
-  users, 
-  pagination, 
-  searchQuery 
+export default function UsersTable({
+  users,
+  pagination,
+  searchQuery,
 }: UsersTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,11 +130,11 @@ export default function UsersTable({
   const handlePageChange = (page: number) => {
     startTransition(() => {
       const params = new URLSearchParams(searchParams.toString());
-      params.set('page', page.toString());
+      params.set("page", page.toString());
       if (searchQuery) {
-        params.set('search', searchQuery);
+        params.set("search", searchQuery);
       } else {
-        params.delete('search');
+        params.delete("search");
       }
       router.push(`?${params.toString()}`);
     });
@@ -129,9 +144,9 @@ export default function UsersTable({
     e.preventDefault();
     startTransition(() => {
       const params = new URLSearchParams();
-      params.set('page', '1');
+      params.set("page", "1");
       if (searchInput.trim()) {
-        params.set('search', searchInput.trim());
+        params.set("search", searchInput.trim());
       }
       router.push(`?${params.toString()}`);
     });
@@ -169,8 +184,8 @@ export default function UsersTable({
                   setSearchInput("");
                   startTransition(() => {
                     const params = new URLSearchParams(searchParams.toString());
-                    params.delete('search');
-                    params.set('page', '1');
+                    params.delete("search");
+                    params.set("page", "1");
                     router.push(`?${params.toString()}`);
                   });
                 }}
@@ -179,28 +194,35 @@ export default function UsersTable({
               </Button>
             )}
           </form>
-          <Button 
+          <Button
             onClick={handleRefresh}
             disabled={isPending}
             variant="outline"
             size="sm"
           >
-            {isPending ? 'Loading...' : 'Refresh'}
+            {isPending ? "Loading..." : "Refresh"}
           </Button>
         </div>
       </div>
-      
-      <DataTable columns={getColumns(handleRefresh)} data={users} emptyMessage="No users found."/>
-      
+
+      <DataTable
+        columns={getColumns(handleRefresh)}
+        data={users}
+        emptyMessage="No users found."
+      />
+
       {/* Pagination Controls */}
       <div className="flex items-center justify-between space-x-2 py-4">
         <div className="flex-1 text-sm text-neutral-500 dark:text-neutral-400">
           Showing {users.length} of {pagination.totalCount} users
           {pagination.totalPages > 1 && (
-            <span> (Page {pagination.currentPage} of {pagination.totalPages})</span>
+            <span>
+              {" "}
+              (Page {pagination.currentPage} of {pagination.totalPages})
+            </span>
           )}
         </div>
-        
+
         {pagination.totalPages > 1 && (
           <div className="flex items-center space-x-2">
             <Button
@@ -211,34 +233,41 @@ export default function UsersTable({
             >
               Previous
             </Button>
-            
+
             <div className="flex items-center space-x-1">
-              {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
-                let pageNum;
-                if (pagination.totalPages <= 5) {
-                  pageNum = i + 1;
-                } else {
-                  const start = Math.max(1, pagination.currentPage - 2);
-                  const end = Math.min(pagination.totalPages, start + 4);
-                  const adjustedStart = Math.max(1, end - 4);
-                  pageNum = adjustedStart + i;
-                }
-                
-                return (
-                  <Button
-                    key={pageNum}
-                    onClick={() => handlePageChange(pageNum)}
-                    disabled={isPending}
-                    variant={pagination.currentPage === pageNum ? "default" : "outline"}
-                    size="sm"
-                    className="w-8 h-8 p-0"
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
+              {Array.from(
+                { length: Math.min(pagination.totalPages, 5) },
+                (_, i) => {
+                  let pageNum;
+                  if (pagination.totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else {
+                    const start = Math.max(1, pagination.currentPage - 2);
+                    const end = Math.min(pagination.totalPages, start + 4);
+                    const adjustedStart = Math.max(1, end - 4);
+                    pageNum = adjustedStart + i;
+                  }
+
+                  return (
+                    <Button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      disabled={isPending}
+                      variant={
+                        pagination.currentPage === pageNum
+                          ? "default"
+                          : "outline"
+                      }
+                      size="sm"
+                      className="w-8 h-8 p-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                },
+              )}
             </div>
-            
+
             <Button
               onClick={() => handlePageChange(pagination.currentPage + 1)}
               disabled={!pagination.hasNextPage || isPending}

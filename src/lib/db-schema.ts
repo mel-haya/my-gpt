@@ -81,6 +81,8 @@ export const staffRequestStatusEnum = pgEnum("staff_request_status", [
   "done",
 ]);
 
+export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
+
 export const staffRequests = pgTable(
   "staff_requests",
   {
@@ -182,6 +184,7 @@ export const users = pgTable(
     id: text("id").primaryKey(), // Clerk user ID as string
     username: text("username").notNull(),
     email: text("email").notNull(),
+    role: userRoleEnum("role").notNull().default("user"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
