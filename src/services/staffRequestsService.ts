@@ -8,7 +8,7 @@ import { db } from "@/lib/db-config";
 import {
   eq,
   and,
-  asc,
+  desc,
   ilike,
   or,
   count,
@@ -95,15 +95,7 @@ export async function getStaffRequests(
     .from(staffRequests)
     .leftJoin(users, eq(staffRequests.completed_by, users.id))
     .where(whereClause)
-    .orderBy(
-      sql`CASE ${staffRequests.urgency}
-        WHEN 'critical' THEN 0
-        WHEN 'high' THEN 1
-        WHEN 'medium' THEN 2
-        WHEN 'low' THEN 3
-      END`,
-      asc(staffRequests.created_at),
-    )
+    .orderBy(desc(staffRequests.created_at))
     .limit(limit)
     .offset(offset);
 
