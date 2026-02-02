@@ -15,7 +15,7 @@ import { useConversations } from "@/hooks/useConversations";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SelectConversation } from "@/lib/db-schema";
 
-export default function Home() {
+export default function Home({ hotelName }: { hotelName?: string }) {
   const { isSignedIn } = useAuth();
   const [currentConversation, setCurrentConversation] =
     useState<SelectConversation | null>(null);
@@ -113,9 +113,10 @@ export default function Home() {
       if (!conversation) {
         conversation = await initConversation();
       }
-      const body = { 
+      const body = {
         conversation,
-        ...options?.body 
+        hotelName, // Include hotelName in request body
+        ...options?.body,
       };
       await sendMessage(message, { body });
       // Refresh usage immediately after sending (in addition to onFinish)

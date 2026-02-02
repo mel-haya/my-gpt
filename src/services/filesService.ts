@@ -30,7 +30,7 @@ export type PaginatedUploadedFiles = {
 export async function getUploadedFiles(
   searchQuery?: string,
   limit: number = 10,
-  page: number = 1
+  page: number = 1,
 ): Promise<PaginatedUploadedFiles> {
   if (searchQuery) {
     // Get total count for search results
@@ -56,10 +56,11 @@ export async function getUploadedFiles(
         user_id: uploadedFiles.user_id,
         active: uploadedFiles.active,
         downloadUrl: uploadedFiles.downloadUrl,
+        hotel_id: uploadedFiles.hotel_id,
         username: users.username,
         documentCount: db.$count(
           documents,
-          eq(documents.uploaded_file_id, uploadedFiles.id)
+          eq(documents.uploaded_file_id, uploadedFiles.id),
         ),
       })
       .from(uploadedFiles)
@@ -113,10 +114,11 @@ export async function getUploadedFiles(
       user_id: uploadedFiles.user_id,
       active: uploadedFiles.active,
       downloadUrl: uploadedFiles.downloadUrl,
+      hotel_id: uploadedFiles.hotel_id,
       username: users.username,
       documentCount: db.$count(
         documents,
-        eq(documents.uploaded_file_id, uploadedFiles.id)
+        eq(documents.uploaded_file_id, uploadedFiles.id),
       ),
     })
     .from(uploadedFiles)
@@ -163,7 +165,7 @@ export async function deleteFile(fileId: number): Promise<void> {
 
 export async function toggleFileActive(
   fileId: number,
-  active: boolean
+  active: boolean,
 ): Promise<void> {
   await db
     .update(uploadedFiles)

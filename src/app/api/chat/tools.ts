@@ -31,40 +31,42 @@ export type SearchKnowledgeBaseResult = z.infer<
   typeof searchKnowledgeBaseOutputSchema
 >;
 
-const searchKnowledgeBaseTool = tool({
-  description:
-    "Searches the knowledge base for relevant information based on a query.",
-  inputSchema: searchKnowledgeBaseInputSchema,
-  execute: async ({ query }) => {
-    try {
-      const response = await searchDocuments(query, 5, 0);
-      if (response.length === 0) {
-        console.log("No relevant documents found.");
+function searchKnowledgeBaseTool(hotelName?: string) {
+  return tool({
+    description:
+      "Searches the knowledge base for relevant information based on a query.",
+    inputSchema: searchKnowledgeBaseInputSchema,
+    execute: async ({ query }) => {
+      try {
+        const response = await searchDocuments(query, 5, 0, hotelName);
+        if (response.length === 0) {
+          console.log("No relevant documents found.");
+          return {
+            success: false,
+            message: "No relevant information found in the knowledge base.",
+            results: [],
+          };
+        }
+        return {
+          success: true,
+          message: `Found ${response.length} relevant documents in the knowledge base.`,
+          results: response.map((doc) => ({
+            id: doc.id,
+            content: doc.content,
+            similarity: Number(doc.similarity.toFixed(3)),
+          })),
+        };
+      } catch (error) {
+        console.error("Error searching knowledge base:", error);
         return {
           success: false,
-          message: "No relevant information found in the knowledge base.",
+          message: "An error occurred while searching the knowledge base.",
           results: [],
         };
       }
-      return {
-        success: true,
-        message: `Found ${response.length} relevant documents in the knowledge base.`,
-        results: response.map((doc) => ({
-          id: doc.id,
-          content: doc.content,
-          similarity: Number(doc.similarity.toFixed(3)),
-        })),
-      };
-    } catch (error) {
-      console.error("Error searching knowledge base:", error);
-      return {
-        success: false,
-        message: "An error occurred while searching the knowledge base.",
-        results: [],
-      };
-    }
-  },
-});
+    },
+  });
+}
 
 const suggestActivitiesTool = tool({
   description:
@@ -229,21 +231,21 @@ function createMockedStaffRequestTool(staffLanguage: string) {
   });
 }
 
-export async function getTools() {
+export async function getTools(hotelName?: string) {
   const staffLanguage = await getSetting("staff_preferred_language", "english");
 
   return {
-    searchKnowledgeBase: searchKnowledgeBaseTool,
+    searchKnowledgeBase: searchKnowledgeBaseTool(hotelName),
     suggestActivities: suggestActivitiesTool,
     createStaffRequest: createStaffRequestTool(staffLanguage),
   };
 }
 
-export async function getTestTools() {
+export async function getTestTools(hotelName?: string) {
   const staffLanguage = await getSetting("staff_preferred_language", "english");
 
   return {
-    searchKnowledgeBase: searchKnowledgeBaseTool,
+    searchKnowledgeBase: searchKnowledgeBaseTool(hotelName),
     suggestActivities: suggestActivitiesTool,
     createStaffRequest: createMockedStaffRequestTool(staffLanguage),
   };

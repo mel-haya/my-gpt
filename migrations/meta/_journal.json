@@ -337,6 +337,13 @@
       "when": 1769779462339,
       "tag": "0047_bouncy_wild_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1770038677299,
+      "tag": "0048_clammy_rafael_vega",
+      "breakpoints": true
     }
   ]
 }

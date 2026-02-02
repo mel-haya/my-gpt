@@ -118,7 +118,10 @@ export const hotels = pgTable(
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [index("hotels_name_index").on(table.name)],
+  (table) => [
+    index("hotels_name_index").on(table.name),
+    uniqueIndex("hotels_name_unique").on(table.name),
+  ],
 );
 
 export const hotelStaff = pgTable(
@@ -188,8 +191,14 @@ export const uploadedFiles = pgTable(
       .references(() => users.id),
     active: boolean("active").notNull().default(true),
     downloadUrl: text("download_url"),
+    hotel_id: integer("hotel_id").references(() => hotels.id, {
+      onDelete: "set null",
+    }),
   },
-  (table) => [uniqueIndex("file_hash_index").on(table.fileHash)],
+  (table) => [
+    uniqueIndex("file_hash_index").on(table.fileHash),
+    index("uploaded_files_hotel_id_index").on(table.hotel_id),
+  ],
 );
 
 export const userTokenUsage = pgTable(
