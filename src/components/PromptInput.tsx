@@ -8,7 +8,6 @@ import {
   PromptInputAttachment,
   PromptInputAttachments,
   PromptInputBody,
-  PromptInputButton,
   type PromptInputMessage,
   PromptInputSpeechButton,
   PromptInputSubmit,
@@ -18,7 +17,6 @@ import {
   PromptInputHeader,
   PromptInputProvider,
 } from "@/components/ai-elements/prompt-input";
-import { GlobeIcon } from "lucide-react";
 import { useRef, useState, useCallback } from "react";
 import { ChatRequestOptions, FileUIPart, ChatStatus } from "ai";
 
@@ -34,7 +32,7 @@ const InputDemo = ({
   stop: () => void;
 }) => {
   const [text, setText] = useState<string>("");
-  const [useWebSearch, setUseWebSearch] = useState<boolean>(false);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Memoize the submit handler to prevent recreating the function on every render
@@ -50,15 +48,10 @@ const InputDemo = ({
           text: message.text || "Sent with attachments",
           files: message.files,
         },
-        {
-          body: {
-            webSearch: useWebSearch,
-          },
-        },
       );
       setText("");
     },
-    [sendMessage, useWebSearch],
+    [sendMessage],
   );
 
   //   const { messages, status, sendMessage } = useChat();
@@ -96,13 +89,6 @@ const InputDemo = ({
                 onTranscriptionChange={setText}
                 textareaRef={textareaRef}
               />
-              <PromptInputButton
-                onClick={() => setUseWebSearch(!useWebSearch)}
-                variant={useWebSearch ? "default" : "ghost"}
-              >
-                <GlobeIcon size={16} />
-                <span>Search</span>
-              </PromptInputButton>
             </PromptInputTools>
             <PromptInputSubmit disabled={!text && !status} status={status} />
           </PromptInputFooter>

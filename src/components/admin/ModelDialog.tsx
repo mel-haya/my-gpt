@@ -37,7 +37,6 @@ export default function ModelDialog({
   const [formData, setFormData] = useState({
     name: "",
     model_id: "",
-    enabled: true,
     default: false,
   });
 
@@ -46,14 +45,12 @@ export default function ModelDialog({
       setFormData({
         name: model.name,
         model_id: model.model_id,
-        enabled: model.enabled,
         default: model.default,
       });
     } else {
       setFormData({
         name: "",
         model_id: "",
-        enabled: true,
         default: false,
       });
     }
@@ -126,21 +123,6 @@ export default function ModelDialog({
                 Model ID cannot be changed once created.
               </p>
             )}
-          </div>
-          <div className="flex items-center justify-between space-x-2">
-            <label htmlFor="enabled" className="flex flex-col space-y-1">
-              <span>Enabled</span>
-              <span className="font-normal text-xs text-muted-foreground">
-                Available for use in chat
-              </span>
-            </label>
-            <Checkbox
-              id="enabled"
-              checked={formData.enabled}
-              onCheckedChange={(checked) =>
-                setFormData({ ...formData, enabled: checked as boolean })
-              }
-            />
           </div>
           <div className="flex items-center justify-between space-x-2">
             <label htmlFor="default" className="flex flex-col space-y-1">

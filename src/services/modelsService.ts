@@ -98,7 +98,6 @@ export async function getModels(
         name: models.name,
         model_id: models.model_id,
         default: models.default,
-        enabled: models.enabled,
         victories: models.victories,
         created_at: models.created_at,
         updated_at: models.updated_at,
@@ -245,7 +244,6 @@ export async function getAvailableModelsFromDb(): Promise<SelectModel[]> {
   const availableModels = await db
     .select()
     .from(models)
-    .where(eq(models.enabled, true))
     .orderBy(desc(models.default)); // Put default model first
 
   return availableModels;

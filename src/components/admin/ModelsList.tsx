@@ -198,7 +198,6 @@ export default function ModelsList({
                   {renderSortIcon("responses")}
                 </div>
               </TableHead>
-              <TableHead className="w-[100px]">Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -217,10 +216,7 @@ export default function ModelsList({
                   return 0;
                 })
                 .map((model) => (
-                  <TableRow
-                    key={model.id}
-                    className={!model.enabled ? "opacity-60 bg-muted/20" : ""}
-                  >
+                  <TableRow key={model.id}>
                     <TableCell>
                       <Checkbox
                         checked={selectedRows.has(model.id)}
@@ -281,23 +277,6 @@ export default function ModelsList({
                           ? `${model.responses.correct}/${model.responses.total}`
                           : "-"}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {model.enabled ? (
-                        <Badge
-                          variant="outline"
-                          className="bg-green-500/10 text-green-700 hover:bg-green-500/20 border-green-200"
-                        >
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="bg-red-500/10 text-red-700 hover:bg-red-500/20 border-red-200"
-                        >
-                          Disabled
-                        </Badge>
-                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end space-x-2">
