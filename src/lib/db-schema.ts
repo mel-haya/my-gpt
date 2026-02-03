@@ -81,7 +81,12 @@ export const staffRequestStatusEnum = pgEnum("staff_request_status", [
   "done",
 ]);
 
-export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
+export const userRoleEnum = pgEnum("user_role", [
+  "admin",
+
+  "hotel_owner",
+  "hotel_staff",
+]);
 
 export const staffRequests = pgTable(
   "staff_requests",
@@ -97,6 +102,9 @@ export const staffRequests = pgTable(
       onDelete: "set null",
     }),
     completion_note: text("completion_note"),
+    hotel_id: integer("hotel_id").references(() => hotels.id, {
+      onDelete: "set null",
+    }),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     completed_at: timestamp("completed_at"),
@@ -105,6 +113,7 @@ export const staffRequests = pgTable(
     index("staff_requests_status_index").on(table.status),
     index("staff_requests_urgency_index").on(table.urgency),
     index("staff_requests_created_at_index").on(table.created_at),
+    index("staff_requests_hotel_id_index").on(table.hotel_id),
   ],
 );
 
@@ -225,7 +234,7 @@ export const users = pgTable(
     id: text("id").primaryKey(), // Clerk user ID as string
     username: text("username").notNull(),
     email: text("email").notNull(),
-    role: userRoleEnum("role").notNull().default("user"),
+    role: userRoleEnum("role").default("hotel_staff"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },

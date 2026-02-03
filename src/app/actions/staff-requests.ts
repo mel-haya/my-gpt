@@ -19,8 +19,16 @@ export async function getStaffRequestsAction(
   status?: string,
   limit: number = 10,
   page: number = 1,
+  hotelId?: number,
 ): Promise<PaginatedStaffRequests> {
-  return await getStaffRequests(searchQuery, category, status, limit, page);
+  return await getStaffRequests(
+    searchQuery,
+    category,
+    status,
+    limit,
+    page,
+    hotelId,
+  );
 }
 
 export async function createStaffRequestAction(

@@ -26,7 +26,7 @@ export async function getUsersWithStatus(
 
 export async function updateUserRoleAction(
   userId: string,
-  role: "admin" | "user",
+  role: "admin" | "hotel_owner" | "hotel_staff" | null,
 ) {
   try {
     const isAdmin = await checkRole("admin");

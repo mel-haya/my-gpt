@@ -34,16 +34,18 @@ import {
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "react-toastify";
 import {
-  StaffRequestWithCompleter,
+  StaffRequestWithHotel,
   StaffRequestStats,
 } from "@/services/staffRequestsService";
 
 interface StaffRequestsPageClientProps {
-  initialRequests: StaffRequestWithCompleter[];
+  initialRequests: StaffRequestWithHotel[];
   totalCount: number;
   initialPage: number;
   totalPages: number;
   stats: StaffRequestStats;
+  showHotelColumn?: boolean;
+  hotelId?: number;
 }
 
 export function StaffRequestsPageClient({
@@ -52,10 +54,12 @@ export function StaffRequestsPageClient({
   initialPage,
   totalPages,
   stats,
+  showHotelColumn = false,
+  hotelId,
 }: StaffRequestsPageClientProps) {
   const { userId } = useAuth();
   const [requests, setRequests] =
-    useState<StaffRequestWithCompleter[]>(initialRequests);
+    useState<StaffRequestWithHotel[]>(initialRequests);
   const [page, setPage] = useState(initialPage);
   const [pages, setPages] = useState(totalPages);
   const [count, setCount] = useState(totalCount);
@@ -82,6 +86,7 @@ export function StaffRequestsPageClient({
         st === "all" ? undefined : st,
         10,
         p,
+        hotelId,
       );
       setRequests(result.requests);
       setPage(p);
@@ -228,6 +233,7 @@ export function StaffRequestsPageClient({
         requests={requests}
         onComplete={handleCompleteClick}
         onDelete={handleDeleteClick}
+        showHotelColumn={showHotelColumn}
       />
 
       {/* Pagination */}

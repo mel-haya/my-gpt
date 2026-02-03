@@ -5,7 +5,7 @@ import {
   documents,
 } from "@/lib/db-schema";
 import { db } from "@/lib/db-config";
-import { eq, and, desc, ilike, or, count } from "drizzle-orm";
+import { eq, and, desc, ilike, count } from "drizzle-orm";
 
 export type UploadedFileWithUser = SelectUploadedFile & {
   username: string | null;
@@ -31,7 +31,13 @@ export async function getUploadedFiles(
   searchQuery?: string,
   limit: number = 10,
   page: number = 1,
+  hotelId?: number,
 ): Promise<PaginatedUploadedFiles> {
+  // Build base where condition for hotel filtering
+  const hotelCondition = hotelId
+    ? eq(uploadedFiles.hotel_id, hotelId)
+    : undefined;
+
   if (searchQuery) {
     // Get total count for search results
     // const [totalCountResult] = await db
@@ -40,11 +46,16 @@ export async function getUploadedFiles(
     //   .leftJoin(users, eq(uploadedFiles.user_id, users.id))
     //   .where(and(or(ilike(uploadedFiles.fileName, `%${searchQuery}%`))));
 
+    const searchCondition = ilike(uploadedFiles.fileName, `%${searchQuery}%`);
+    const whereCondition = hotelCondition
+      ? and(searchCondition, hotelCondition)
+      : searchCondition;
+
     const totalCount = await db
       .select()
       .from(uploadedFiles)
       .leftJoin(users, eq(uploadedFiles.user_id, users.id))
-      .where(and(or(ilike(uploadedFiles.fileName, `%${searchQuery}%`))));
+      .where(whereCondition);
 
     // Search in both conversation titles and message content
     const uploadedFilesWithMessages = await db
@@ -65,18 +76,21 @@ export async function getUploadedFiles(
       })
       .from(uploadedFiles)
       .leftJoin(users, eq(uploadedFiles.user_id, users.id))
-      .where(and(or(ilike(uploadedFiles.fileName, `%${searchQuery}%`))))
+      .where(whereCondition)
       .limit(limit)
       .offset(limit * (page - 1))
       .orderBy(desc(uploadedFiles.id));
 
     const totalPages = Math.ceil(totalCount.length / limit);
 
-    // Get global statistics
+    // Get statistics (scoped to hotel if applicable)
+    const statsCondition = hotelCondition
+      ? and(eq(uploadedFiles.active, true), hotelCondition)
+      : eq(uploadedFiles.active, true);
     const activeFilesResult = await db
       .select({ count: count() })
       .from(uploadedFiles)
-      .where(eq(uploadedFiles.active, true));
+      .where(statsCondition);
 
     const totalDocumentsResult = await db
       .select({ count: count() })
@@ -98,12 +112,13 @@ export async function getUploadedFiles(
     };
   }
 
-  // If no search query, return all conversations for the user
-  // Get total count for all files
+  // If no search query, return all files
+  // Get total count for all files (scoped to hotel if applicable)
   const totalCountResult = await db
     .select()
     .from(uploadedFiles)
-    .leftJoin(users, eq(uploadedFiles.user_id, users.id));
+    .leftJoin(users, eq(uploadedFiles.user_id, users.id))
+    .where(hotelCondition);
 
   const result = await db
     .select({
@@ -123,6 +138,7 @@ export async function getUploadedFiles(
     })
     .from(uploadedFiles)
     .leftJoin(users, eq(uploadedFiles.user_id, users.id))
+    .where(hotelCondition)
     .orderBy(desc(uploadedFiles.id))
     .limit(limit)
     .offset(limit * (page - 1));
@@ -130,11 +146,14 @@ export async function getUploadedFiles(
   const totalCount = totalCountResult.length;
   const totalPages = Math.ceil(totalCount / limit);
 
-  // Get global statistics
+  // Get statistics (scoped to hotel if applicable)
+  const statsCondition = hotelCondition
+    ? and(eq(uploadedFiles.active, true), hotelCondition)
+    : eq(uploadedFiles.active, true);
   const activeFilesResult = await db
     .select({ count: count() })
     .from(uploadedFiles)
-    .where(eq(uploadedFiles.active, true));
+    .where(statsCondition);
 
   const totalDocumentsResult = await db
     .select({ count: count() })
@@ -156,7 +175,24 @@ export async function getUploadedFiles(
   };
 }
 
-export async function deleteFile(fileId: number): Promise<void> {
+export async function deleteFile(
+  fileId: number,
+  hotelId?: number,
+): Promise<void> {
+  const whereCondition = hotelId
+    ? and(eq(uploadedFiles.id, fileId), eq(uploadedFiles.hotel_id, hotelId))
+    : eq(uploadedFiles.id, fileId);
+
+  // Verify file exists and belongs to hotel if hotelId provided
+  const [file] = await db
+    .select({ id: uploadedFiles.id })
+    .from(uploadedFiles)
+    .where(whereCondition);
+
+  if (!file) {
+    throw new Error("File not found or access denied");
+  }
+
   // First delete all documents associated with this file
   await db.delete(documents).where(eq(documents.uploaded_file_id, fileId));
   // Then delete the file itself
@@ -166,7 +202,22 @@ export async function deleteFile(fileId: number): Promise<void> {
 export async function toggleFileActive(
   fileId: number,
   active: boolean,
+  hotelId?: number,
 ): Promise<void> {
+  const whereCondition = hotelId
+    ? and(eq(uploadedFiles.id, fileId), eq(uploadedFiles.hotel_id, hotelId))
+    : eq(uploadedFiles.id, fileId);
+
+  // Verify file exists and belongs to hotel if hotelId provided
+  const [file] = await db
+    .select({ id: uploadedFiles.id })
+    .from(uploadedFiles)
+    .where(whereCondition);
+
+  if (!file) {
+    throw new Error("File not found or access denied");
+  }
+
   await db
     .update(uploadedFiles)
     .set({ active })

@@ -102,7 +102,7 @@ export async function deleteUser(id: string) {
 }
 
 export interface UserWithTokenUsage extends SelectUser {
-  role: "admin" | "user";
+  role: "admin" | "hotel_owner" | "hotel_staff" | null;
 }
 
 export async function getUsersWithTokenUsage(
@@ -191,7 +191,10 @@ export async function getUsersWithTokenUsage(
   }
 }
 
-export async function updateUserRole(id: string, role: "admin" | "user") {
+export async function updateUserRole(
+  id: string,
+  role: "admin" | "hotel_owner" | "hotel_staff" | null,
+) {
   try {
     const result = await db
       .update(users)

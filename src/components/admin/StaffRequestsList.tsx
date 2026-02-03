@@ -12,16 +12,23 @@ import {
   Trash2,
 } from "lucide-react";
 
+type StaffRequestWithDetails = SelectStaffRequest & {
+  completer_name: string | null;
+  hotel_name: string | null;
+};
+
 interface StaffRequestsListProps {
-  requests: (SelectStaffRequest & { completer_name: string | null })[];
+  requests: StaffRequestWithDetails[];
   onComplete: (request: SelectStaffRequest) => void;
   onDelete: (request: SelectStaffRequest) => void;
+  showHotelColumn?: boolean;
 }
 
 export function StaffRequestsList({
   requests,
   onComplete,
   onDelete,
+  showHotelColumn = false,
 }: StaffRequestsListProps) {
   if (requests.length === 0) {
     return (
@@ -112,6 +119,14 @@ export function StaffRequestsList({
               </Badge>
               {!!request.room_number && (
                 <Badge variant="outline">Room {request.room_number}</Badge>
+              )}
+              {showHotelColumn && (
+                <Badge
+                  variant="secondary"
+                  className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                >
+                  {request.hotel_name || "N/A"}
+                </Badge>
               )}
               <span className="text-xs text-muted-foreground ml-auto md:ml-2">
                 Created {formatDistanceToNow(new Date(request.created_at))} ago

@@ -9,6 +9,7 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { del } from "@vercel/blob";
 import { eq } from "drizzle-orm";
 import mammoth from "mammoth";
+import { getHotelByUserId } from "@/services/hotelService";
 
 function extractOriginalFilename(pathname: string): string {
   // Use regex to match pattern: (filename)-(vercel-code).(extension)
@@ -97,7 +98,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(
       { error: "Missing BLOB_READ_WRITE_TOKEN environment variable." },
-      { status: 500 }
+      { status: 500 },
     );
   }
   const body = (await request.json()) as HandleUploadBody;
@@ -127,7 +128,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         const lastColonIndex = tokenPayload.lastIndexOf(":");
         if (lastColonIndex === -1) {
           console.error(
-            "Invalid tokenPayload format - expected 'userId:fileHash'"
+            "Invalid tokenPayload format - expected 'userId:fileHash'",
           );
           await del(blob.url);
           return;
@@ -139,6 +140,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         try {
           const originalFileName = extractOriginalFilename(blob.pathname);
 
+          // Look up hotel_id for the uploading user
+          const userHotel = await getHotelByUserId(fileUserId);
+          const hotelId = userHotel?.id ?? null;
+
           const [insertedFile] = await db
             .insert(uploadedFiles)
             .values({
@@ -147,6 +152,7 @@ export async function POST(request: Request): Promise<NextResponse> {
               user_id: fileUserId,
               status: "processing",
               downloadUrl: blob.downloadUrl,
+              hotel_id: hotelId,
             })
             .returning();
 
@@ -186,7 +192,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         } catch (error) {
           console.log(
             "File hash already exists or another error occurred, skipping processing:",
-            error as Error
+            error as Error,
           );
         }
       },
@@ -196,7 +202,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch (error) {
     return NextResponse.json(
       { error: (error as Error).message },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }

@@ -21,6 +21,7 @@ export default async function StaffRequestsPage() {
         initialPage={pagination.currentPage}
         totalPages={pagination.totalPages}
         stats={stats}
+        showHotelColumn={true}
       />
     </div>
   );

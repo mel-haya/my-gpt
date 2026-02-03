@@ -3,6 +3,7 @@ import {
   InsertStaffRequest,
   SelectStaffRequest,
   users,
+  hotels,
 } from "@/lib/db-schema";
 import { db } from "@/lib/db-config";
 import {
@@ -12,16 +13,20 @@ import {
   ilike,
   or,
   count,
-  sql,
   getTableColumns,
+  sql,
 } from "drizzle-orm";
 
 export type StaffRequestWithCompleter = SelectStaffRequest & {
   completer_name: string | null;
 };
 
+export type StaffRequestWithHotel = StaffRequestWithCompleter & {
+  hotel_name: string | null;
+};
+
 export type PaginatedStaffRequests = {
-  requests: StaffRequestWithCompleter[];
+  requests: StaffRequestWithHotel[];
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -31,16 +36,27 @@ export type PaginatedStaffRequests = {
   };
 };
 
+export type StaffRequestCategory =
+  | "reservation"
+  | "room_issue"
+  | "room_service"
+  | "housekeeping"
+  | "maintenance"
+  | "concierge"
+  | "other";
+
+export type StaffRequestStatus = "pending" | "in_progress" | "done";
+
 export async function getStaffRequests(
   searchQuery?: string,
   category?: string,
   status?: string,
   limit: number = 10,
   page: number = 1,
+  hotelId?: number,
 ): Promise<PaginatedStaffRequests> {
   const offset = (page - 1) * limit;
 
-  let whereClause = undefined;
   const conditions = [];
 
   if (searchQuery) {
@@ -54,29 +70,19 @@ export async function getStaffRequests(
 
   if (category && category !== "all") {
     conditions.push(
-      eq(
-        staffRequests.category,
-        category as
-          | "reservation"
-          | "room_issue"
-          | "room_service"
-          | "housekeeping"
-          | "maintenance"
-          | "concierge"
-          | "other",
-      ),
+      eq(staffRequests.category, category as StaffRequestCategory),
     );
   }
 
   if (status && status !== "all") {
-    conditions.push(
-      eq(staffRequests.status, status as "pending" | "in_progress" | "done"),
-    );
+    conditions.push(eq(staffRequests.status, status as StaffRequestStatus));
   }
 
-  if (conditions.length > 0) {
-    whereClause = and(...conditions);
+  if (hotelId !== undefined) {
+    conditions.push(eq(staffRequests.hotel_id, hotelId));
   }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const totalCountResult = await db
     .select({ count: count() })
@@ -85,15 +91,15 @@ export async function getStaffRequests(
 
   const totalCount = Number(totalCountResult[0]?.count || 0);
 
-  // Sorting: Critical (0), High (1), Medium (2), Low (3)
-  // Within urgency: Oldest created_at first
   const result = await db
     .select({
       ...getTableColumns(staffRequests),
       completer_name: users.username,
+      hotel_name: hotels.name,
     })
     .from(staffRequests)
     .leftJoin(users, eq(staffRequests.completed_by, users.id))
+    .leftJoin(hotels, eq(staffRequests.hotel_id, hotels.id))
     .where(whereClause)
     .orderBy(desc(staffRequests.created_at))
     .limit(limit)

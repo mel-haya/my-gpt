@@ -13,7 +13,6 @@ import {
   and,
   desc,
   count,
-  sql,
   notInArray,
   getTableColumns,
 } from "drizzle-orm";
@@ -89,6 +88,25 @@ export async function getHotelById(
 ): Promise<SelectHotel | undefined> {
   const [hotel] = await db.select().from(hotels).where(eq(hotels.id, id));
   return hotel;
+}
+
+export async function getHotelByUserId(
+  userId: string,
+): Promise<SelectHotel | undefined> {
+  const [result] = await db
+    .select({
+      id: hotels.id,
+      name: hotels.name,
+      image: hotels.image,
+      location: hotels.location,
+      created_at: hotels.created_at,
+      updated_at: hotels.updated_at,
+    })
+    .from(hotelStaff)
+    .innerJoin(hotels, eq(hotelStaff.hotel_id, hotels.id))
+    .where(eq(hotelStaff.user_id, userId))
+    .limit(1);
+  return result;
 }
 
 export async function createHotel(data: InsertHotel): Promise<SelectHotel> {

@@ -38,19 +38,22 @@ const formatDate = (date: Date): string => {
   }).format(new Date(date));
 };
 
+type RoleType = "admin" | "hotel_owner" | "hotel_staff" | null;
+
 function RoleCell({
   userId,
   currentRole,
 }: {
   userId: string;
-  currentRole: "admin" | "user";
+  currentRole: RoleType;
 }) {
   const [isPending, startTransition] = useTransition();
 
-  const handleRoleChange = (newRole: "admin" | "user") => {
+  const handleRoleChange = (newRole: string) => {
+    const roleValue = newRole === "none" ? null : (newRole as RoleType);
     startTransition(async () => {
       try {
-        await updateUserRoleAction(userId, newRole);
+        await updateUserRoleAction(userId, roleValue);
       } catch (error) {
         console.error("Failed to update role:", error);
       }
@@ -59,16 +62,18 @@ function RoleCell({
 
   return (
     <Select
-      value={currentRole}
+      value={currentRole ?? "none"}
       onValueChange={handleRoleChange}
       disabled={isPending}
     >
-      <SelectTrigger className="w-24 h-8">
+      <SelectTrigger className="w-32 h-8">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="user">User</SelectItem>
+        <SelectItem value="none">No Role</SelectItem>
         <SelectItem value="admin">Admin</SelectItem>
+        <SelectItem value="hotel_owner">Hotel Owner</SelectItem>
+        <SelectItem value="hotel_staff">Hotel Staff</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -99,7 +104,7 @@ const getColumns = (
     cell: ({ row }) => (
       <RoleCell
         userId={row.original.id}
-        currentRole={row.getValue("role") as "admin" | "user"}
+        currentRole={row.getValue("role") as RoleType}
       />
     ),
   },
