@@ -48,7 +48,17 @@ export async function POST(req: Request) {
       );
     }
 
-    const { messages, conversation, trigger, hotelName } = await req.json();
+    const { messages, conversation, trigger, hotelSlug } = await req.json();
+
+    // Resolve hotel slug to name for tools if provided
+    let hotelName = undefined;
+    if (hotelSlug) {
+      const { getHotelBySlug } = await import("@/services/hotelService");
+      const hotel = await getHotelBySlug(hotelSlug);
+      if (hotel) {
+        hotelName = hotel.name;
+      }
+    }
 
     const lastMessage = messages[messages.length - 1];
     for (const part of lastMessage.parts) {

@@ -5,6 +5,7 @@ import { getUserHotelId } from "@/lib/checkRole";
 import { getHotelById } from "@/services/hotelService";
 import { getStaffRequestStats } from "@/services/staffRequestsService";
 import Link from "next/link";
+import SlugEditor from "@/components/dashboard/SlugEditor";
 
 export default async function DashboardOverviewPage() {
   const { userId } = await auth();
@@ -29,8 +30,8 @@ export default async function DashboardOverviewPage() {
   const stats = await getStaffRequestStats();
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
+    <div className="flex flex-col max-w-350 mx-4 2xl:mx-auto my-4 gap-4">
+      <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Dashboard
         </h1>
@@ -39,8 +40,10 @@ export default async function DashboardOverviewPage() {
         </p>
       </div>
 
+      <SlugEditor hotelId={hotelId} initialSlug={hotel?.slug || null} />
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white dark:bg-neutral-800 rounded-lg p-6 shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
             Total Requests

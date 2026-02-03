@@ -8,10 +8,12 @@ import { db } from "@/lib/db-config";
 import { eq, and, desc, ilike, or } from "drizzle-orm";
 
 export async function addConversation(
-  userId: string
+  userId: string,
+  hotelId?: number,
 ): Promise<SelectConversation> {
   const insertConversation: InsertConversation = {
     user_id: userId,
+    hotel_id: hotelId,
   };
   const result = await db
     .insert(conversations)
@@ -23,7 +25,7 @@ export async function addConversation(
 export async function changeConversationTitle(
   userId: string,
   conversationId: number,
-  title: string
+  title: string,
 ): Promise<number> {
   const result = await db
     .update(conversations)
@@ -31,15 +33,15 @@ export async function changeConversationTitle(
     .where(
       and(
         eq(conversations.user_id, userId),
-        eq(conversations.id, conversationId)
-      )
+        eq(conversations.id, conversationId),
+      ),
     );
   return result.rowCount;
 }
 
 export async function getConversationsByUserId(
   userId: string,
-  searchQuery?: string
+  searchQuery?: string,
 ): Promise<SelectConversation[]> {
   if (searchQuery) {
     // Search in both conversation titles and message content
@@ -48,6 +50,7 @@ export async function getConversationsByUserId(
         id: conversations.id,
         user_id: conversations.user_id,
         title: conversations.title,
+        hotel_id: conversations.hotel_id,
       })
       .from(conversations)
       .leftJoin(messages, eq(conversations.id, messages.conversation_id))
@@ -56,12 +59,12 @@ export async function getConversationsByUserId(
           eq(conversations.user_id, userId),
           or(
             ilike(conversations.title, `%${searchQuery}%`),
-            ilike(messages.text_content, `%${searchQuery}%`)
-          )
-        )
+            ilike(messages.text_content, `%${searchQuery}%`),
+          ),
+        ),
       )
       .orderBy(desc(conversations.id));
-    
+
     return conversationsWithMessages;
   }
 
@@ -76,7 +79,7 @@ export async function getConversationsByUserId(
 
 export async function deleteConversationById(
   userId: string,
-  conversationId: number
+  conversationId: number,
 ) {
   await db.delete(messages).where(eq(messages.conversation_id, conversationId));
   const result = await db
@@ -84,8 +87,8 @@ export async function deleteConversationById(
     .where(
       and(
         eq(conversations.user_id, userId),
-        eq(conversations.id, conversationId)
-      )
+        eq(conversations.id, conversationId),
+      ),
     );
   return result.rowCount;
 }

@@ -126,6 +126,7 @@ export const hotels = pgTable(
     location: text("location").notNull(),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
+    slug: text("slug").unique(),
   },
   (table) => [
     index("hotels_name_index").on(table.name),
@@ -174,6 +175,9 @@ export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
   user_id: text("user_id").notNull(),
   title: text("title"),
+  hotel_id: integer("hotel_id").references(() => hotels.id, {
+    onDelete: "cascade",
+  }),
 });
 
 export const messages = pgTable("messages", {

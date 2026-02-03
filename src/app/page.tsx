@@ -15,7 +15,7 @@ import { useConversations } from "@/hooks/useConversations";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SelectConversation } from "@/lib/db-schema";
 
-export default function Home({ hotelName }: { hotelName?: string }) {
+export default function Home({ hotelSlug }: { hotelSlug?: string }) {
   const { isSignedIn } = useAuth();
   const [currentConversation, setCurrentConversation] =
     useState<SelectConversation | null>(null);
@@ -73,6 +73,8 @@ export default function Home({ hotelName }: { hotelName?: string }) {
     try {
       const convesation = await fetch("/api/conversations/new", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hotelSlug }),
       });
       const data = await convesation.json();
       setCurrentConversation(data);
@@ -115,7 +117,7 @@ export default function Home({ hotelName }: { hotelName?: string }) {
       }
       const body = {
         conversation,
-        hotelName, // Include hotelName in request body
+        hotelSlug, // Include hotelSlug in request body
         ...options?.body,
       };
       await sendMessage(message, { body });

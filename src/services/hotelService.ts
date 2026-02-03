@@ -90,6 +90,13 @@ export async function getHotelById(
   return hotel;
 }
 
+export async function getHotelBySlug(
+  slug: string,
+): Promise<SelectHotel | undefined> {
+  const [hotel] = await db.select().from(hotels).where(eq(hotels.slug, slug));
+  return hotel;
+}
+
 export async function getHotelByUserId(
   userId: string,
 ): Promise<SelectHotel | undefined> {
@@ -99,6 +106,7 @@ export async function getHotelByUserId(
       name: hotels.name,
       image: hotels.image,
       location: hotels.location,
+      slug:hotels.slug,
       created_at: hotels.created_at,
       updated_at: hotels.updated_at,
     })
@@ -109,8 +117,25 @@ export async function getHotelByUserId(
   return result;
 }
 
-export async function createHotel(data: InsertHotel): Promise<SelectHotel> {
-  const [newHotel] = await db.insert(hotels).values(data).returning();
+export async function createHotel(
+  data: Omit<InsertHotel, "slug"> & { slug?: string | null },
+): Promise<SelectHotel> {
+  let slug = data.slug;
+  if (!slug) {
+    slug = data.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    // Ensure slug is unique by appending a random string if needed
+    // Simple check: unlikely to collide in this context, but DB will enforce.
+    // For now, simple slugification.
+  }
+
+  const [newHotel] = await db
+    .insert(hotels)
+    .values({ ...data, slug })
+    .returning();
   return newHotel;
 }
 

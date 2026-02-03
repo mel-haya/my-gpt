@@ -95,3 +95,53 @@ export async function getAvailableStaffForHotelAction(
 ): Promise<SelectUser[]> {
   return await getAvailableStaffForHotel(hotelId);
 }
+
+import { auth } from "@clerk/nextjs/server";
+
+export async function updateHotelSlugAction(
+  hotelId: number,
+  newSlug: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const { getUserById } = await import("@/services/userService");
+    const user = await getUserById(userId);
+    if (!user || user.role !== "hotel_owner") {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Check availability
+    const { getHotelBySlug } = await import("@/services/hotelService");
+    const existing = await getHotelBySlug(newSlug);
+    if (existing && existing.id !== hotelId) {
+      return {
+        success: false,
+        error: "Slug is already taken by another hotel.",
+      };
+    }
+
+    // Validate format
+    const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+    if (!slugRegex.test(newSlug)) {
+      return {
+        success: false,
+        error:
+          "Invalid slug format. Use lowercase letters, numbers, and hyphens.",
+      };
+    }
+
+    const { updateHotel } = await import("@/services/hotelService");
+    await updateHotel(hotelId, { slug: newSlug });
+
+    revalidatePath("/dashboard");
+    revalidatePath(`/`); // Revalidate root for routing updates if relevant
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating hotel slug:", error);
+    return { success: false, error: "Failed to update slug" };
+  }
+}

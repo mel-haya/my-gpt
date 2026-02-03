@@ -94,7 +94,9 @@ export async function getUploadedFiles(
 
     const totalDocumentsResult = await db
       .select({ count: count() })
-      .from(documents);
+      .from(documents)
+      .leftJoin(uploadedFiles, eq(documents.uploaded_file_id, uploadedFiles.id))
+      .where(hotelCondition);
 
     return {
       files: uploadedFilesWithMessages,
@@ -157,7 +159,9 @@ export async function getUploadedFiles(
 
   const totalDocumentsResult = await db
     .select({ count: count() })
-    .from(documents);
+    .from(documents)
+    .leftJoin(uploadedFiles, eq(documents.uploaded_file_id, uploadedFiles.id))
+    .where(hotelCondition);
 
   return {
     files: result,
