@@ -50,13 +50,13 @@ export async function POST(req: Request) {
 
     const { messages, conversation, trigger, hotelSlug } = await req.json();
 
-    // Resolve hotel slug to name for tools if provided
-    let hotelName = undefined;
+    // Resolve hotel slug to ID for tools if provided
+    let hotelId: number | undefined;
     if (hotelSlug) {
       const { getHotelBySlug } = await import("@/services/hotelService");
       const hotel = await getHotelBySlug(hotelSlug);
       if (hotel) {
-        hotelName = hotel.name;
+        hotelId = hotel.id;
       }
     }
 
@@ -101,8 +101,8 @@ export async function POST(req: Request) {
     // Get configurable system prompt
     const systemPrompt = await getSystemPrompt();
 
-    // Get tools with dynamic staff language and hotel name filtering
-    const tools = await getTools(hotelName);
+    // Get tools with hotel ID for filtering
+    const tools = await getTools(hotelId);
 
     const response = streamText({
       messages: modelMessages,

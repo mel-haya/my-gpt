@@ -156,18 +156,35 @@ export type StaffRequestStats = {
   avgResponseTimeMinutes: number | null;
 };
 
-export async function getStaffRequestStats(): Promise<StaffRequestStats> {
-  const [totalResult] = await db.select({ count: count() }).from(staffRequests);
+export async function getStaffRequestStats(
+  hotelId?: number,
+): Promise<StaffRequestStats> {
+  const hotelCondition = hotelId
+    ? eq(staffRequests.hotel_id, hotelId)
+    : undefined;
+
+  const [totalResult] = await db
+    .select({ count: count() })
+    .from(staffRequests)
+    .where(hotelCondition);
 
   const [pendingResult] = await db
     .select({ count: count() })
     .from(staffRequests)
-    .where(eq(staffRequests.status, "pending"));
+    .where(
+      hotelCondition
+        ? and(eq(staffRequests.status, "pending"), hotelCondition)
+        : eq(staffRequests.status, "pending"),
+    );
 
   const [completedResult] = await db
     .select({ count: count() })
     .from(staffRequests)
-    .where(eq(staffRequests.status, "done"));
+    .where(
+      hotelCondition
+        ? and(eq(staffRequests.status, "done"), hotelCondition)
+        : eq(staffRequests.status, "done"),
+    );
 
   // Calculate average response time for completed requests (in minutes)
   const avgTimeResult = await db
@@ -176,10 +193,16 @@ export async function getStaffRequestStats(): Promise<StaffRequestStats> {
     })
     .from(staffRequests)
     .where(
-      and(
-        eq(staffRequests.status, "done"),
-        sql`${staffRequests.completed_at} IS NOT NULL`,
-      ),
+      hotelCondition
+        ? and(
+            eq(staffRequests.status, "done"),
+            sql`${staffRequests.completed_at} IS NOT NULL`,
+            hotelCondition,
+          )
+        : and(
+            eq(staffRequests.status, "done"),
+            sql`${staffRequests.completed_at} IS NOT NULL`,
+          ),
     );
 
   return {
@@ -192,10 +215,20 @@ export async function getStaffRequestStats(): Promise<StaffRequestStats> {
   };
 }
 
-export async function getPendingRequestsCount(): Promise<number> {
+export async function getPendingRequestsCount(
+  hotelId?: number,
+): Promise<number> {
+  const hotelCondition = hotelId
+    ? eq(staffRequests.hotel_id, hotelId)
+    : undefined;
+
   const [result] = await db
     .select({ count: count() })
     .from(staffRequests)
-    .where(eq(staffRequests.status, "pending"));
+    .where(
+      hotelCondition
+        ? and(eq(staffRequests.status, "pending"), hotelCondition)
+        : eq(staffRequests.status, "pending"),
+    );
   return Number(result?.count || 0);
 }

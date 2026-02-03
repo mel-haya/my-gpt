@@ -5,6 +5,7 @@ import { getActivities } from "@/services/activitiesService";
 import { cohere } from "@ai-sdk/cohere";
 import { createStaffRequest } from "@/services/staffRequestsService";
 import { getSetting } from "@/services/settingsService";
+import { getHotelById } from "@/services/hotelService";
 
 const searchKnowledgeBaseInputSchema = z.object({
   query: z
@@ -31,13 +32,19 @@ export type SearchKnowledgeBaseResult = z.infer<
   typeof searchKnowledgeBaseOutputSchema
 >;
 
-function searchKnowledgeBaseTool(hotelName?: string) {
+function searchKnowledgeBaseTool(hotelId?: number) {
   return tool({
     description:
       "Searches the knowledge base for relevant information based on a query.",
     inputSchema: searchKnowledgeBaseInputSchema,
     execute: async ({ query }) => {
       try {
+        // Resolve hotelId to hotelName for search filtering
+        let hotelName: string | undefined;
+        if (hotelId) {
+          const hotel = await getHotelById(hotelId);
+          hotelName = hotel?.name;
+        }
         const response = await searchDocuments(query, 5, 0, hotelName);
         if (response.length === 0) {
           console.log("No relevant documents found.");
@@ -110,7 +117,7 @@ const suggestActivitiesTool = tool({
   },
 });
 
-function createStaffRequestTool(staffLanguage: string) {
+function createStaffRequestTool(staffLanguage: string, hotelId?: number) {
   return tool({
     description: `Creates a staff request for guest services (room service, housekeeping, maintenance, etc.) or issues. IMPORTANT: The title and description MUST be written in ${staffLanguage.toUpperCase()}, NOT the conversation language. Only the userMessage should match the conversation language.`,
     inputSchema: z.object({
@@ -156,6 +163,7 @@ function createStaffRequestTool(staffLanguage: string) {
           urgency: input.urgency,
           room_number: input.room_number,
           status: "pending",
+          hotel_id: hotelId,
         });
         return {
           success: true,
@@ -231,21 +239,21 @@ function createMockedStaffRequestTool(staffLanguage: string) {
   });
 }
 
-export async function getTools(hotelName?: string) {
+export async function getTools(hotelId?: number) {
   const staffLanguage = await getSetting("staff_preferred_language", "english");
 
   return {
-    searchKnowledgeBase: searchKnowledgeBaseTool(hotelName),
+    searchKnowledgeBase: searchKnowledgeBaseTool(hotelId),
     suggestActivities: suggestActivitiesTool,
-    createStaffRequest: createStaffRequestTool(staffLanguage),
+    createStaffRequest: createStaffRequestTool(staffLanguage, hotelId),
   };
 }
 
-export async function getTestTools(hotelName?: string) {
+export async function getTestTools(hotelId?: number) {
   const staffLanguage = await getSetting("staff_preferred_language", "english");
 
   return {
-    searchKnowledgeBase: searchKnowledgeBaseTool(hotelName),
+    searchKnowledgeBase: searchKnowledgeBaseTool(hotelId),
     suggestActivities: suggestActivitiesTool,
     createStaffRequest: createMockedStaffRequestTool(staffLanguage),
   };

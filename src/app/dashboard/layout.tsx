@@ -38,9 +38,17 @@ export default async function DashboardLayout({
     redirect("/");
   }
 
+  const { getHotelById } = await import("@/services/hotelService");
+  const hotel = await getHotelById(hotelId);
+  const hotelSlug = hotel?.slug || null;
+
   return (
     <div className="flex h-screen">
-      <DashboardSidebar userRole={userRole as "hotel_owner" | "hotel_staff"} />
+      <DashboardSidebar
+        userRole={userRole as "hotel_owner" | "hotel_staff"}
+        hotelId={hotelId}
+        hotelSlug={hotelSlug}
+      />
       <div className="flex-1 overflow-y-auto">{children}</div>
       <ToastContainer autoClose={3000} theme="dark" pauseOnHover={false} />
     </div>

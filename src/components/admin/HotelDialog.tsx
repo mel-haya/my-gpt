@@ -16,7 +16,7 @@ import {
   uploadHotelImageAction,
 } from "@/app/actions/hotels";
 import { InsertHotel, SelectHotel } from "@/lib/db-schema";
-import { Pencil, Plus, Upload, Loader2, X } from "lucide-react";
+import { Plus, Upload, Loader2, X } from "lucide-react";
 import Image from "next/image";
 
 interface HotelDialogProps {
@@ -129,7 +129,7 @@ export default function HotelDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-106.25">
         <DialogHeader>
           <DialogTitle>{hotel ? "Edit Hotel" : "Add New Hotel"}</DialogTitle>
         </DialogHeader>

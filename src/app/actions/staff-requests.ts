@@ -49,8 +49,10 @@ export async function completeStaffRequestAction(
   return request;
 }
 
-export async function getStaffRequestStatsAction(): Promise<StaffRequestStats> {
-  return await getStaffRequestStats();
+export async function getStaffRequestStatsAction(
+  hotelId?: number,
+): Promise<StaffRequestStats> {
+  return await getStaffRequestStats(hotelId);
 }
 
 export async function deleteStaffRequestAction(id: number): Promise<void> {
@@ -58,6 +60,8 @@ export async function deleteStaffRequestAction(id: number): Promise<void> {
   revalidatePath("/admin/requests");
 }
 
-export async function getPendingRequestsCountAction(): Promise<number> {
-  return await getPendingRequestsCount();
+export async function getPendingRequestsCountAction(
+  hotelId?: number,
+): Promise<number> {
+  return await getPendingRequestsCount(hotelId);
 }

@@ -6,6 +6,7 @@ import {
   FilesIcon,
   MessageSquare,
   ClipboardList,
+  Home,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -20,9 +21,15 @@ type NavItem = {
 
 type DashboardSidebarProps = {
   userRole: "hotel_owner" | "hotel_staff";
+  hotelId: number | null;
+  hotelSlug: string | null;
 };
 
-export default function DashboardSidebar({ userRole }: DashboardSidebarProps) {
+export default function DashboardSidebar({
+  userRole,
+  hotelId,
+  hotelSlug,
+}: DashboardSidebarProps) {
   const { user } = useUser();
   const router = useRouter();
   const pathname = usePathname();
@@ -30,7 +37,9 @@ export default function DashboardSidebar({ userRole }: DashboardSidebarProps) {
 
   useEffect(() => {
     const fetchCount = () => {
-      getPendingRequestsCountAction().then(setPendingCount);
+      if (hotelId) {
+        getPendingRequestsCountAction(hotelId).then(setPendingCount);
+      }
     };
 
     fetchCount();
@@ -39,7 +48,7 @@ export default function DashboardSidebar({ userRole }: DashboardSidebarProps) {
     return () => {
       window.removeEventListener("staffRequestsUpdated", fetchCount);
     };
-  }, [pathname]);
+  }, [pathname, hotelId]);
 
   const navItems: NavItem[] = [
     {
@@ -99,6 +108,15 @@ export default function DashboardSidebar({ userRole }: DashboardSidebarProps) {
       </div>
 
       <nav className="flex flex-col mt-2 overflow-y-auto">
+        {/* Home Link */}
+        <div
+          className="w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 cursor-pointer flex gap-2 items-center"
+          onClick={() => router.push(`/${hotelSlug || ""}`)}
+        >
+          <Home size={20} />
+          <span className="flex-1">Home</span>
+        </div>
+
         <div className="px-4 pt-4 pb-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-neutral-500">
             Dashboard

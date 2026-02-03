@@ -23,11 +23,11 @@ export default async function DashboardRequestsPage() {
 
   const [{ requests, pagination }, stats] = await Promise.all([
     getStaffRequests(undefined, undefined, "pending", 10, 1, hotelId),
-    getStaffRequestStats(),
+    getStaffRequestStats(hotelId),
   ]);
 
   return (
-    <div className="p-8">
+    <div className="flex flex-col max-w-350 mx-4 2xl:mx-auto my-4 gap-4">
       <StaffRequestsPageClient
         initialRequests={requests}
         totalCount={pagination.totalCount}
