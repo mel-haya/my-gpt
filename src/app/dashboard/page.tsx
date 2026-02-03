@@ -2,10 +2,10 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { getUserById } from "@/services/userService";
 import { getUserHotelId } from "@/lib/checkRole";
-import { getHotelById } from "@/services/hotelService";
+import { getHotelById, getHotelStaff } from "@/services/hotelService";
 import { getStaffRequestStats } from "@/services/staffRequestsService";
-import Link from "next/link";
 import SlugEditor from "@/components/dashboard/SlugEditor";
+import TeamManagement from "@/components/dashboard/TeamManagement";
 
 export default async function DashboardOverviewPage() {
   const { userId } = await auth();
@@ -16,8 +16,9 @@ export default async function DashboardOverviewPage() {
 
   const user = await getUserById(userId);
 
-  // Only hotel owners can access overview
-  if (user?.role !== "hotel_owner") {
+  // Only hotel owners or staff can access overview
+  if (user?.role !== "hotel_owner" && user?.role !== "hotel_staff") {
+    // If just a user, redirect home or to requests if they have logic for that
     redirect("/dashboard/requests");
   }
 
@@ -27,150 +28,113 @@ export default async function DashboardOverviewPage() {
   }
 
   const hotel = await getHotelById(hotelId);
-  const stats = await getStaffRequestStats();
+  const stats = await getStaffRequestStats(hotelId);
+  const staff = await getHotelStaff(hotelId);
+
+  const formatAvgTime = (minutes: number) => {
+    if (minutes <= 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
+  };
 
   return (
-    <div className="flex flex-col max-w-350 mx-4 2xl:mx-auto my-4 gap-4">
+    <div className="flex flex-col max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 gap-8">
+      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Dashboard
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Welcome to {hotel?.name || "your hotel"} management dashboard
+        <p className="text-gray-500 dark:text-gray-400 mt-2">
+          Overview for{" "}
+          <span className="font-medium text-gray-800 dark:text-gray-200">
+            {hotel?.name}
+          </span>
         </p>
       </div>
 
-      <SlugEditor hotelId={hotelId} initialSlug={hotel?.slug || null} />
-
-      {/* Stats Cards */}
+      {/* Stats Cards - Elegant & Minimal */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-neutral-800 rounded-lg p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            Total Requests
-          </h3>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-            {stats.totalRequests}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-neutral-800 rounded-lg p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            Pending
-          </h3>
-          <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mt-2">
-            {stats.pendingRequests}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-neutral-800 rounded-lg p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            Completed
-          </h3>
-          <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
-            {stats.completedRequests}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-neutral-800 rounded-lg p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            Avg Response Time
-          </h3>
-          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
-            {stats.avgResponseTimeMinutes
-              ? `${stats.avgResponseTimeMinutes}m`
-              : "N/A"}
-          </p>
-        </div>
+        <StatsCard
+          label="Total Requests"
+          value={stats.totalRequests}
+          trend="All time"
+        />
+        <StatsCard
+          label="Pending"
+          value={stats.pendingRequests}
+          valueClassName="text-yellow-600 dark:text-yellow-400"
+          trend="Needs attention"
+        />
+        <StatsCard
+          label="Completed"
+          value={stats.completedRequests}
+          valueClassName="text-green-600 dark:text-green-400"
+          trend="Resolved"
+        />
+        <StatsCard
+          label="Avg Response"
+          value={
+            stats.avgResponseTimeMinutes
+              ? formatAvgTime(stats.avgResponseTimeMinutes)
+              : "-"
+          }
+          valueClassName="text-blue-600 dark:text-blue-400"
+          trend="Speed"
+        />
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-neutral-800 rounded-lg p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link
-            href="/dashboard/files"
-            className="flex items-center gap-3 p-4 bg-gray-100 dark:bg-neutral-700 rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors"
-          >
-            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="font-medium text-gray-900 dark:text-white">
-                Upload Files
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Add knowledge base documents
-              </p>
-            </div>
-          </Link>
-          <Link
-            href="/dashboard/requests"
-            className="flex items-center gap-3 p-4 bg-gray-100 dark:bg-neutral-700 rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors"
-          >
-            <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="font-medium text-gray-900 dark:text-white">
-                View Requests
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Manage guest requests
-              </p>
-            </div>
-          </Link>
-          <Link
-            href="/dashboard/messages"
-            className="flex items-center gap-3 p-4 bg-gray-100 dark:bg-neutral-700 rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors"
-          >
-            <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="font-medium text-gray-900 dark:text-white">
-                Message Logs
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                View conversation history
-              </p>
-            </div>
-          </Link>
+      {/* Management Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Column: Team Management (2/3 width) */}
+        <div className="lg:col-span-2">
+          <TeamManagement
+            hotelId={hotelId}
+            initialStaff={staff}
+            currentUserId={userId}
+            currentUserRole={user?.role}
+          />
         </div>
+
+        {/* Side Column: Settings / Slug (1/3 width) */}
+        <div className="space-y-6 h-fit">
+          <SlugEditor hotelId={hotelId} initialSlug={hotel?.slug || null} />
+
+          {/* Placeholder for future Elegant Settings or Insights */}
+          {/* <div className="p-6 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-neutral-800 dark:to-neutral-900 border border-dashed border-gray-200 dark:border-neutral-700 flex flex-col items-center justify-center text-center h-48 opacity-60">
+            <p className="text-sm text-gray-400">More insights coming soon</p>
+          </div> */}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatsCard({
+  label,
+  value,
+  valueClassName = "text-gray-900 dark:text-white",
+  trend,
+}: {
+  label: string;
+  value: string | number;
+  valueClassName?: string;
+  trend?: string;
+}) {
+  return (
+    <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 flex flex-col justify-between h-32 hover:shadow-md transition-shadow">
+      <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">
+        {label}
+      </h3>
+      <div className="mt-2">
+        <p className={`text-3xl font-light tracking-tight ${valueClassName}`}>
+          {value}
+        </p>
+        {trend && (
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 font-medium">
+            {trend}
+          </p>
+        )}
       </div>
     </div>
   );
