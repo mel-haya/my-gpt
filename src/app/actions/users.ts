@@ -1,8 +1,14 @@
 "use server";
 
-import { getUsersWithTokenUsage, updateUserRole } from "@/services/userService";
+import {
+  getUsersWithTokenUsage,
+  updateUserRole,
+  getUserById,
+} from "@/services/userService";
 import { checkRole } from "@/lib/checkRole";
 import { revalidatePath } from "next/cache";
+import { auth } from "@clerk/nextjs/server";
+import { Roles } from "@/types/globals";
 
 export async function getUsersWithStatus(
   searchQuery?: string,
@@ -40,5 +46,18 @@ export async function updateUserRoleAction(
   } catch (error) {
     console.error("Error in updateUserRoleAction:", error);
     throw new Error("Failed to update user role");
+  }
+}
+
+export async function getCurrentUserRole(): Promise<Roles | null> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return null;
+
+    const user = await getUserById(userId);
+    return (user?.role as Roles) ?? null;
+  } catch (error) {
+    console.error("Error in getCurrentUserRole action:", error);
+    return null;
   }
 }

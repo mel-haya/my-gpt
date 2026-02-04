@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
   Select,
   SelectContent,
@@ -15,6 +15,51 @@ import {
 } from "@/app/actions/hotels";
 import { toast } from "react-toastify";
 import type { SelectUser } from "@/lib/db-schema";
+
+// useSyncExternalStore helpers for client-only rendering
+const emptySubscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+const roleLabels: Record<string, string> = {
+  hotel_owner: "Owner",
+  hotel_staff: "Staff",
+};
+
+// Client-only Select to avoid hydration mismatch with Radix UI
+function RoleSelect({
+  value,
+  onValueChange,
+}: {
+  value: "hotel_owner" | "hotel_staff";
+  onValueChange: (value: "hotel_owner" | "hotel_staff") => void;
+}) {
+  const isClient = useSyncExternalStore(
+    emptySubscribe,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
+
+  if (!isClient) {
+    return (
+      <div className="h-7 w-24 flex items-center px-2 text-xs border border-input rounded-md bg-transparent">
+        {roleLabels[value]}
+      </div>
+    );
+  }
+
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger className="h-7 w-24 text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="hotel_staff">Staff</SelectItem>
+        <SelectItem value="hotel_owner">Owner</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
 
 interface TeamManagementProps {
   hotelId: number;
@@ -136,27 +181,16 @@ export default function TeamManagement({
             <div className="flex items-center gap-3">
               {isOwner && member.id !== currentUserId ? (
                 <>
-                  <Select
+                  <RoleSelect
                     value={
                       member.role === "hotel_owner"
                         ? "hotel_owner"
                         : "hotel_staff"
                     }
                     onValueChange={(value) =>
-                      handleRoleChange(
-                        member.id,
-                        value as "hotel_owner" | "hotel_staff",
-                      )
+                      handleRoleChange(member.id, value)
                     }
-                  >
-                    <SelectTrigger className="h-7 w-24 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hotel_staff">Staff</SelectItem>
-                      <SelectItem value="hotel_owner">Owner</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  />
                   <button
                     onClick={() => handleRemove(member.id)}
                     className="text-red-500 hover:text-red-600 p-1 opacity-100 transition-opacity"

@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+
+const emptySubscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
@@ -40,6 +44,13 @@ const formatDate = (date: Date): string => {
 
 type RoleType = "admin" | "hotel_owner" | "hotel_staff" | null;
 
+const roleLabels: Record<string, string> = {
+  none: "No Role",
+  admin: "Admin",
+  hotel_owner: "Hotel Owner",
+  hotel_staff: "Hotel Staff",
+};
+
 function RoleCell({
   userId,
   currentRole,
@@ -48,6 +59,11 @@ function RoleCell({
   currentRole: RoleType;
 }) {
   const [isPending, startTransition] = useTransition();
+  const isClient = useSyncExternalStore(
+    emptySubscribe,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
 
   const handleRoleChange = (newRole: string) => {
     const roleValue = newRole === "none" ? null : (newRole as RoleType);
@@ -59,6 +75,15 @@ function RoleCell({
       }
     });
   };
+
+  // Render a static placeholder during SSR to avoid hydration mismatch
+  if (!isClient) {
+    return (
+      <div className="w-32 h-8 flex items-center px-3 text-sm border border-input rounded-md bg-transparent">
+        {roleLabels[currentRole ?? "none"]}
+      </div>
+    );
+  }
 
   return (
     <Select
