@@ -15,6 +15,7 @@ import {
 } from "@/app/actions/hotels";
 import { toast } from "react-toastify";
 import type { SelectUser } from "@/lib/db-schema";
+import DeleteDialog from "@/components/ui/DeleteDialog";
 
 // useSyncExternalStore helpers for client-only rendering
 const emptySubscribe = () => () => {};
@@ -77,6 +78,7 @@ export default function TeamManagement({
   const [staff, setStaff] = useState(initialStaff);
   const [inviteEmail, setInviteEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [staffToRemove, setStaffToRemove] = useState<SelectUser | null>(null);
 
   const isOwner = currentUserRole === "hotel_owner";
 
@@ -101,19 +103,19 @@ export default function TeamManagement({
     }
   };
 
-  const handleRemove = async (userId: string) => {
-    if (!confirm("Are you sure you want to remove this staff member?")) return;
-    try {
-      const result = await removeStaffFromHotelAction(hotelId, userId);
-      if (result.success) {
-        toast.success("Staff member removed");
-        setStaff((prev) => prev.filter((u) => u.id !== userId));
-        window.location.reload();
-      } else {
-        toast.error(result.error || "Failed to remove staff");
-      }
-    } catch (error) {
-      toast.error("Error removing staff");
+  const handleRemove = (member: SelectUser) => {
+    setStaffToRemove(member);
+  };
+
+  const confirmRemove = async () => {
+    if (!staffToRemove) return;
+    const result = await removeStaffFromHotelAction(hotelId, staffToRemove.id);
+    if (result.success) {
+      toast.success("Staff member removed");
+      setStaff((prev) => prev.filter((u) => u.id !== staffToRemove.id));
+      window.location.reload();
+    } else {
+      toast.error(result.error || "Failed to remove staff");
     }
   };
 
@@ -192,7 +194,7 @@ export default function TeamManagement({
                     }
                   />
                   <button
-                    onClick={() => handleRemove(member.id)}
+                    onClick={() => handleRemove(member)}
                     className="text-red-500 hover:text-red-600 p-1 opacity-100 transition-opacity"
                     title="Remove staff"
                   >
@@ -255,6 +257,15 @@ export default function TeamManagement({
           * User must already be signed up to the platform.
         </p>
       </form>
+
+      <DeleteDialog
+        isOpen={!!staffToRemove}
+        onClose={() => setStaffToRemove(null)}
+        onConfirm={confirmRemove}
+        title="Remove Staff Member"
+        description={`Are you sure you want to remove ${staffToRemove?.username} from this hotel?`}
+        confirmText="Remove"
+      />
     </div>
   );
 }

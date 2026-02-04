@@ -95,11 +95,14 @@ export async function removeStaffFromHotelAction(
     const { getUserById } = await import("@/services/userService");
     const currentUser = await getUserById(userId);
 
-    // Only hotel_owner can remove staff (or admin)
-    if (!currentUser || currentUser.role !== "hotel_owner") {
+    // Only hotel_owner or admin can remove staff
+    if (
+      !currentUser ||
+      (currentUser.role !== "hotel_owner" && currentUser.role !== "admin")
+    ) {
       return {
         success: false,
-        error: "Unauthorized: Only owners can remove staff.",
+        error: "Unauthorized: Only owners or admins can remove staff.",
       };
     }
 
@@ -249,8 +252,12 @@ export async function inviteStaffByEmailAction(
     // Let's catch duplicate key error inside assignStaffToHotel or here.
     try {
       await assignStaffToHotel(hotelId, targetUser.id);
-    } catch (e: any) {
-      if (e.code === "23505") {
+    } catch (e: unknown) {
+      if (
+        e instanceof Error &&
+        "code" in e &&
+        e.code === "23505"
+      ) {
         // Unique violation
         return {
           success: false,
