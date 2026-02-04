@@ -719,19 +719,20 @@ export async function evaluateTestResponse(
 **Scoring Guidelines:**
 - **0 (Failed):** Misleading, inaccurate, completely wrong information, or major inaccuracies. Not helpful to the user.
 - **5 (Partial):** Some correct information but missing key details or has minor inaccuracies. Partially helpful.
-- **10 (Success):** Contains most or all of the essential information from the expected response. Comprehensive, accurate, and highly helpful.
+- **10 (Success):** Contains sufficient correct information to fully address the user's needs. Accurate and helpful.
 
 **Evaluation Criteria:**
 1. **Accuracy:** How correct is the information compared to the expected response?
-2. **Completeness:** Does it include all essential information from the expected response?
+2. **Sufficiency:** Does the response provide enough valid information to answer the user's question?
 3. **Helpfulness:** How useful is the response for answering the original prompt?
 4. **Clarity:** Is the response clear and understandable?
 
-**Guidelines:**
+**Critical Guidelines:**
+- When the expected response contains MULTIPLE VALID ALTERNATIVES (e.g., multiple phone numbers, emails, hours), the AI does NOT need to list all of them. Providing at least ONE valid option is sufficient for a full score.
 - Paraphrasing and alternative wording are acceptable if the meaning is preserved
 - Minor additional clarifications are acceptable and can even improve the score
-- Focus on whether the user gets the essential information they need
-- Consider both what's included and what's missing
+- Focus on whether the user gets ENOUGH correct information to fulfill their request
+- Do not penalize for omitting redundant alternatives when one valid option is provided
 - Remember: Your final score MUST be exactly 0, 5, or 10`,
     prompt: `Evaluate this AI response:
 
