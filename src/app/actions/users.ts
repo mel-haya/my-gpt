@@ -5,6 +5,7 @@ import {
   updateUserRole,
   getUserById,
 } from "@/services/userService";
+import { getAllHotelsBasic, updateUserHotel } from "@/services/hotelService";
 import { checkRole } from "@/lib/checkRole";
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
@@ -59,5 +60,38 @@ export async function getCurrentUserRole(): Promise<Roles | null> {
   } catch (error) {
     console.error("Error in getCurrentUserRole action:", error);
     return null;
+  }
+}
+
+export async function getAllHotelsForDropdown() {
+  try {
+    const isAdmin = await checkRole("admin");
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    return await getAllHotelsBasic();
+  } catch (error) {
+    console.error("Error in getAllHotelsForDropdown action:", error);
+    throw new Error("Failed to fetch hotels");
+  }
+}
+
+export async function updateUserHotelAction(
+  userId: string,
+  hotelId: number | null,
+) {
+  try {
+    const isAdmin = await checkRole("admin");
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    await updateUserHotel(userId, hotelId);
+    revalidatePath("/admin/users");
+    return { success: true };
+  } catch (error) {
+    console.error("Error in updateUserHotelAction:", error);
+    throw new Error("Failed to update user hotel");
   }
 }

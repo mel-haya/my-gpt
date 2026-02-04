@@ -18,10 +18,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { UserWithTokenUsage } from "@/services/userService";
-import { updateUserRoleAction } from "@/app/actions/users";
+import {
+  updateUserRoleAction,
+  updateUserHotelAction,
+} from "@/app/actions/users";
+
+type HotelBasic = { id: number; name: string };
+
+type UserWithHotel = UserWithTokenUsage & {
+  hotelId: number | null;
+  hotelName: string | null;
+};
 
 interface UsersTableProps {
-  users: UserWithTokenUsage[];
+  users: UserWithHotel[];
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -30,6 +40,7 @@ interface UsersTableProps {
     hasPreviousPage: boolean;
   };
   searchQuery: string;
+  hotels: HotelBasic[];
 }
 
 const formatDate = (date: Date): string => {
@@ -104,9 +115,70 @@ function RoleCell({
   );
 }
 
+function HotelCell({
+  userId,
+  currentHotelId,
+  currentHotelName,
+  hotels,
+}: {
+  userId: string;
+  currentHotelId: number | null;
+  currentHotelName: string | null;
+  hotels: HotelBasic[];
+}) {
+  const [isPending, startTransition] = useTransition();
+  const isClient = useSyncExternalStore(
+    emptySubscribe,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
+
+  const handleHotelChange = (newHotelId: string) => {
+    const hotelIdValue =
+      newHotelId === "none" ? null : parseInt(newHotelId, 10);
+    startTransition(async () => {
+      try {
+        await updateUserHotelAction(userId, hotelIdValue);
+      } catch (error) {
+        console.error("Failed to update hotel:", error);
+      }
+    });
+  };
+
+  // Render a static placeholder during SSR to avoid hydration mismatch
+  if (!isClient) {
+    return (
+      <div className="w-36 h-8 flex items-center px-3 text-sm border border-input rounded-md bg-transparent truncate">
+        {currentHotelName ?? "No Hotel"}
+      </div>
+    );
+  }
+
+  return (
+    <Select
+      value={currentHotelId?.toString() ?? "none"}
+      onValueChange={handleHotelChange}
+      disabled={isPending}
+    >
+      <SelectTrigger className="w-36 h-8">
+        <SelectValue placeholder="Select hotel" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">No Hotel</SelectItem>
+        {hotels.map((hotel) => (
+          <SelectItem key={hotel.id} value={hotel.id.toString()}>
+            {hotel.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 const getColumns = (
   handleRefresh: () => void,
-): ColumnDef<UserWithTokenUsage>[] => [
+  hotels: HotelBasic[],
+): ColumnDef<UserWithHotel>[] => [
   {
     accessorKey: "username",
     header: "Username",
@@ -134,6 +206,18 @@ const getColumns = (
     ),
   },
   {
+    accessorKey: "hotelName",
+    header: "Hotel",
+    cell: ({ row }) => (
+      <HotelCell
+        userId={row.original.id}
+        currentHotelId={row.original.hotelId}
+        currentHotelName={row.original.hotelName}
+        hotels={hotels}
+      />
+    ),
+  },
+  {
     accessorKey: "created_at",
     header: "Joined",
     cell: ({ row }) => {
@@ -151,6 +235,7 @@ export default function UsersTable({
   users,
   pagination,
   searchQuery,
+  hotels,
 }: UsersTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -236,7 +321,7 @@ export default function UsersTable({
       </div>
 
       <DataTable
-        columns={getColumns(handleRefresh)}
+        columns={getColumns(handleRefresh, hotels)}
         data={users}
         emptyMessage="No users found."
       />

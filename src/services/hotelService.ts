@@ -106,7 +106,7 @@ export async function getHotelByUserId(
       name: hotels.name,
       image: hotels.image,
       location: hotels.location,
-      slug:hotels.slug,
+      slug: hotels.slug,
       created_at: hotels.created_at,
       updated_at: hotels.updated_at,
     })
@@ -155,6 +155,20 @@ export async function deleteHotel(id: number): Promise<void> {
   await db.delete(hotels).where(eq(hotels.id, id));
 }
 
+// Get all hotels (for dropdown selects)
+export async function getAllHotelsBasic(): Promise<
+  { id: number; name: string }[]
+> {
+  const result = await db
+    .select({
+      id: hotels.id,
+      name: hotels.name,
+    })
+    .from(hotels)
+    .orderBy(hotels.name);
+  return result;
+}
+
 // Staff Management
 
 export async function getHotelStaff(hotelId: number): Promise<SelectUser[]> {
@@ -193,6 +207,22 @@ export async function removeStaffFromHotel(
     .where(
       and(eq(hotelStaff.hotel_id, hotelId), eq(hotelStaff.user_id, userId)),
     );
+}
+
+export async function updateUserHotel(
+  userId: string,
+  newHotelId: number | null,
+): Promise<void> {
+  // Remove user from all hotels first
+  await db.delete(hotelStaff).where(eq(hotelStaff.user_id, userId));
+
+  // Assign to new hotel if specified
+  if (newHotelId !== null) {
+    await db.insert(hotelStaff).values({
+      hotel_id: newHotelId,
+      user_id: userId,
+    });
+  }
 }
 
 export async function getAvailableStaffForHotel(
