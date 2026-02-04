@@ -79,7 +79,6 @@ export async function assignStaffToHotelAction(
   userId: string,
 ): Promise<void> {
   await assignStaffToHotel(hotelId, userId);
-  revalidatePath("/admin/hotels");
 }
 
 export async function removeStaffFromHotelAction(
@@ -112,8 +111,6 @@ export async function removeStaffFromHotelAction(
     }
 
     await removeStaffFromHotel(hotelId, targetUserId);
-    revalidatePath("/admin/hotels"); // Keep admin revalidation
-    revalidatePath("/dashboard"); // Add dashboard revalidation
     return { success: true };
   } catch (error) {
     console.error("Error removing staff:", error);
@@ -253,11 +250,7 @@ export async function inviteStaffByEmailAction(
     try {
       await assignStaffToHotel(hotelId, targetUser.id);
     } catch (e: unknown) {
-      if (
-        e instanceof Error &&
-        "code" in e &&
-        e.code === "23505"
-      ) {
+      if (e instanceof Error && "code" in e && e.code === "23505") {
         // Unique violation
         return {
           success: false,

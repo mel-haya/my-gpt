@@ -95,7 +95,7 @@ export default function HotelStaffDialog({ hotel }: HotelStaffDialogProps) {
           Manage Staff
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-125">
         <DialogHeader>
           <DialogTitle>Manage Staff - {hotel.name}</DialogTitle>
           <DialogDescription>
@@ -154,7 +154,7 @@ export default function HotelStaffDialog({ hotel }: HotelStaffDialogProps) {
                 No staff assigned to this hotel.
               </p>
             ) : (
-              <ScrollArea className="h-[200px] rounded-md border p-2">
+              <ScrollArea className="h-50 rounded-md border p-2">
                 <div className="space-y-2">
                   {staff.map((user) => (
                     <div
