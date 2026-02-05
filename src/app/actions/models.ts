@@ -33,10 +33,6 @@ export async function getAvailableModels(): Promise<ModelOption[]> {
     return models;
   } catch (error) {
     console.error("Error in getAvailableModels action:", error);
-    // Return fallback models in case of error (database down etc)
-    return [
-      { id: "openai/gpt-5-nano", name: "GPT-5 Nano" },
-      { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
-    ];
+    throw error;
   }
 }

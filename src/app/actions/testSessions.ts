@@ -44,7 +44,7 @@ export interface SessionRunResult {
 
 export async function runTestSessionAction(
   profileId: number,
-  evaluatorModel: string = "openai/gpt-4o",
+  evaluatorModel: string,
 ): Promise<ActionResult<{ testRunId: number }>> {
   try {
     const { userId } = await auth();
@@ -333,7 +333,7 @@ async function runTestsInBackground(
   }[],
   modelIdMap: Map<string, number>,
   systemPrompt: string,
-  evaluatorModel = "openai/gpt-4o",
+  evaluatorModel: string,
 ) {
   // Helper function with timeout
   const withTimeout = <T>(

@@ -690,7 +690,7 @@ export async function evaluateTestResponse(
   originalPrompt: string,
   expectedResult: string,
   aiResponse: string,
-  evaluatorModel: string = "openai/gpt-4o",
+  evaluatorModel: string,
 ): Promise<{
   status: "Success" | "Failed";
   explanation: string;
