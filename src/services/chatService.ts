@@ -1,19 +1,11 @@
 import { generateText, convertToModelMessages, stepCountIs } from "ai";
 import { ChatMessage } from "@/types/chatMessage";
-import { getSystemPrompt } from "@/services/settingsService";
 import {
   getTools,
   getTestTools,
   SearchKnowledgeBaseResult,
 } from "@/app/api/chat/tools";
-import { metadata } from "@/app/layout";
-
-const supportedModels = [
-  "openai/gpt-4o",
-  "google/gemini-2.5-flash",
-  "anthropic/claude-haiku-4.5",
-  "xai/grok-4-fast-non-reasoning",
-];
+import { getModelByStringId } from "@/services/modelsService";
 
 export interface ChatRequest {
   messages: ChatMessage[];
@@ -40,17 +32,6 @@ export interface ChatResponse {
 }
 
 /**
- * Internal service function for generating chat completions
- * This bypasses the API route authentication and is intended for internal use like testing
- */
-export async function generateChatCompletion(
-  request: ChatRequest,
-): Promise<string> {
-  const response = await generateChatCompletionWithToolCalls(request);
-  return response.text;
-}
-
-/**
  * Internal service function for generating chat completions with tool calls
  * Returns both the text response and tool call information
  */
@@ -62,21 +43,18 @@ export async function generateChatCompletionWithToolCalls(
 
     const modelMessages = await convertToModelMessages(messages);
 
-    const selectedModel = supportedModels.includes(model)
-      ? model
-      : "openai/gpt-4o";
-
-    // Use custom system prompt if provided, otherwise get configurable system prompt
-    let systemPrompt = "";
-    if (customSystemPrompt) {
-      systemPrompt = customSystemPrompt;
-    } else {
-      try {
-        systemPrompt = await getSystemPrompt();
-      } catch {
-        systemPrompt = "You are a helpful assistant.";
-      }
+    // Validate model exists in database
+    const dbModel = await getModelByStringId(model);
+    if (!dbModel) {
+      throw new Error(`Model "${model}" is not registered in the database`);
     }
+    const selectedModel = dbModel.model_id;
+
+    // Require custom system prompt - no fallback
+    if (!customSystemPrompt) {
+      throw new Error("Missing custom system prompt");
+    }
+    const systemPrompt = customSystemPrompt;
 
     // Use test tools if requested (mocked createStaffRequest that doesn't create DB entries)
     const activeTools = request.useTestTools
@@ -156,18 +134,12 @@ export async function generateChatCompletionWithToolCalls(
       cost: result.providerMetadata?.gateway?.cost as number,
     };
   } catch (error) {
-    // For testing, return a simple fallback response to identify if the error is in AI generation
-    console.error("Detailed error generating chat completion:", {
+    console.error("Error generating chat completion:", {
       error: error,
       message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
       model: request.model,
     });
-    if (process.env.NODE_ENV === "development") {
-      return {
-        text: "This is a fallback response for testing purposes. The AI service is currently unavailable.",
-      };
-    }
 
     throw new Error(
       `Failed to generate chat completion: ${

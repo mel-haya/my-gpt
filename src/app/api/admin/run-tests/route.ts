@@ -180,8 +180,8 @@ async function runTestsInBackground(
             webSearch: false,
             systemPrompt: systemPrompt,
           }),
-          60000, // 1 minute timeout for generation
-          "Test execution timed out after 60 seconds",
+          90000, // 1 minute timeout for generation
+          "Test execution timed out after 90 seconds",
         );
 
         const executionTime = Date.now() - startTime;

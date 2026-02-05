@@ -75,6 +75,7 @@ export interface DetailedTestProfile {
     expected_result: string;
     best_model: string | null;
     best_score: number | null;
+    total_score: number;
     is_manual?: boolean;
   }[];
   models: SelectTestProfileModel[];
@@ -540,15 +541,21 @@ export async function getTestProfileWithDetails(
   const latestResults = Array.from(latestResultsMap.values());
 
   const bestResultsMap = new Map<string, { model: string; score: number }>();
+  // Map to store sum of all model scores for each test
+  const totalScoresMap = new Map<string, number>();
 
-  // Group latest results by test and find the highest score
+  // Group latest results by test and find the highest score + calculate total
   for (const [key, res] of latestResultsMap.entries()) {
-    if (res.score === null || res.score === undefined) continue;
-
     // key is either `id-{testId}-{model}` or `manual-{prompt}-{model}`
     // We want a testKey that is either `id-{testId}` or `manual-{prompt}`
     const parts = key.split("-");
     const testKey = parts.slice(0, 2).join("-");
+
+    // Sum scores for total (treat null as 0)
+    const currentTotal = totalScoresMap.get(testKey) || 0;
+    totalScoresMap.set(testKey, currentTotal + (res.score ?? 0));
+
+    if (res.score === null || res.score === undefined) continue;
 
     const existing = bestResultsMap.get(testKey);
     if (!existing || res.score >= existing.score) {
@@ -563,6 +570,7 @@ export async function getTestProfileWithDetails(
     ...t,
     best_model: bestResultsMap.get(`id-${t.test_id}`)?.model || null,
     best_score: bestResultsMap.get(`id-${t.test_id}`)?.score ?? null,
+    total_score: totalScoresMap.get(`id-${t.test_id}`) ?? 0,
   }));
 
   // Merge manual tests
@@ -577,6 +585,7 @@ export async function getTestProfileWithDetails(
       expected_result: t.expected_result,
       best_model: bestResultsMap.get(testKey)?.model || null,
       best_score: bestResultsMap.get(testKey)?.score ?? null,
+      total_score: totalScoresMap.get(testKey) ?? 0,
       is_manual: true,
     };
   });
@@ -655,7 +664,9 @@ export async function getTestProfileWithDetails(
     username: profile.username,
     created_at: profile.created_at,
     updated_at: profile.updated_at,
-    tests: [...testsWithBest, ...manualTestsMapped],
+    tests: [...testsWithBest, ...manualTestsMapped].sort(
+      (a, b) => a.total_score - b.total_score,
+    ),
     models: profileModels,
     total_tokens_cost: totalCost,
     total_tokens: totalTokens,

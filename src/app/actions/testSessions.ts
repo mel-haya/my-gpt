@@ -415,7 +415,7 @@ async function runTestsInBackground(
               systemPrompt: systemPrompt,
               useTestTools: true, // Use mocked tools that don't create actual DB entries
             }),
-            60000, // 1 minute timeout for generation
+            90000, // 1 minute and 30 s timeout for generation
             "Test execution timed out after 60 seconds",
           );
 
@@ -1131,7 +1131,7 @@ async function runSingleTestForProfileInBackground(
             webSearch: false,
             systemPrompt: systemPrompt,
           }),
-          60000,
+          90000,
           "Test execution timed out after 60 seconds",
         );
 

@@ -139,7 +139,7 @@ export default function TestResultsList({
         typeof item === "object" &&
         item !== null &&
         "toolName" in item &&
-        typeof item.toolName === "string"
+        typeof item.toolName === "string",
     );
 
     if (validToolCalls.length === 0) {
@@ -248,19 +248,18 @@ export default function TestResultsList({
                           "w-3.5 h-3.5",
                           (result.status === "Running" ||
                             result.status === "Evaluating") &&
-                          "animate-spin text-blue-500"
+                            "animate-spin text-blue-500",
                         )}
                       />
                     </Button>
                   )}
-
 
                   {/* Score */}
                   {result.score !== null && (
                     <div
                       className={cn(
                         "px-2 py-0.5 rounded text-xs font-semibold border",
-                        getScoreColor(result.score)
+                        getScoreColor(result.score),
                       )}
                     >
                       Score: {result.score}/10

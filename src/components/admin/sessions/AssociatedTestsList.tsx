@@ -41,13 +41,6 @@ export function AssociatedTestsList({
 }: AssociatedTestsListProps) {
   const [expanded, setExpanded] = useState(true);
 
-  // Sorting logic from original page
-  const sortedTests = [...tests].sort((a, b) => {
-    const scoreA = a.best_score ?? -1;
-    const scoreB = b.best_score ?? -1;
-    return scoreA - scoreB;
-  });
-
   return (
     <div>
       <div
@@ -72,7 +65,7 @@ export function AssociatedTestsList({
           </Card>
         ) : (
           <div className="space-y-2">
-            {sortedTests.map((test) => (
+            {tests.map((test) => (
               <Card
                 key={test.test_id}
                 className="hover:shadow-sm transition-shadow py-4"

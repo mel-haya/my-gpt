@@ -15,7 +15,6 @@ import { getSystemPrompt } from "@/services/settingsService";
 import { uploadImageToImageKit } from "./imageKit";
 import { auth } from "@clerk/nextjs/server";
 import { renameConversationAI } from "./renameConversationAI";
-
 import { getDefaultModel } from "@/services/modelsService";
 
 export async function POST(req: Request) {
@@ -70,7 +69,20 @@ export async function POST(req: Request) {
     const modelMessages = await convertToModelMessages(messages);
 
     const defaultModel = await getDefaultModel();
-    const selectedmodel = defaultModel?.model_id || "openai/gpt-5-nano";
+    if (!defaultModel) {
+      return new Response(
+        JSON.stringify({
+          error: "Service unavailable",
+          message:
+            "The chat service is temporarily unavailable. Please try again later.",
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+    const selectedmodel = defaultModel.model_id;
 
     // Count user messages to determine if we should rename
     const userMessageCount = messages.filter(
@@ -99,7 +111,21 @@ export async function POST(req: Request) {
     } | null = null;
 
     // Get configurable system prompt
-    let systemPrompt = await getSystemPrompt();
+    const systemPromptResult = await getSystemPrompt();
+    if (!systemPromptResult) {
+      return new Response(
+        JSON.stringify({
+          error: "Service unavailable",
+          message:
+            "The chat service is temporarily unavailable. Please try again later.",
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+    let systemPrompt = systemPromptResult;
 
     // Get tools with hotel ID for filtering
     const tools = await getTools(hotelId);
