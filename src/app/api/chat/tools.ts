@@ -11,11 +11,14 @@ const searchKnowledgeBaseInputSchema = z.object({
   query: z
     .string()
     .describe("The search query to look for in the knowledge base."),
+  userLanguage: z.string().describe("The language of the conversation eg: English, French, Arabic if two or more languages are used choose the most frequent language"),
+
 });
 
 const searchKnowledgeBaseOutputSchema = z.object({
   success: z.boolean().describe("Whether the search was successful"),
   message: z.string().describe("Status message"),
+  system: z.string().optional().describe("System message for the AI"),
   results: z
     .array(
       z.object({
@@ -37,7 +40,8 @@ function searchKnowledgeBaseTool(hotelId?: number) {
     description:
       "Searches the knowledge base for relevant information based on a query.",
     inputSchema: searchKnowledgeBaseInputSchema,
-    execute: async ({ query }) => {
+    execute: async ({ query, userLanguage }) => {
+      const systemMessage = `keep the conversation in ${userLanguage}`;
       try {
         // Resolve hotelId to hotelName for search filtering
         let hotelName: string | undefined;
@@ -46,22 +50,15 @@ function searchKnowledgeBaseTool(hotelId?: number) {
           hotelName = hotel?.name;
         }
         const response = await searchDocuments(query, 5, 0, hotelName);
-        if (response.length === 0) {
-          console.log("No relevant documents found.");
-          return {
-            success: false,
-            message: "No relevant information found in the knowledge base.",
-            results: [],
-          };
-        }
         return {
-          success: true,
+          success: response.length > 0,
           message: `Found ${response.length} relevant documents in the knowledge base.`,
           results: response.map((doc) => ({
             id: doc.id,
             content: doc.content,
             similarity: Number(doc.similarity.toFixed(3)),
           })),
+          system: systemMessage,
         };
       } catch (error) {
         console.error("Error searching knowledge base:", error);
@@ -69,6 +66,7 @@ function searchKnowledgeBaseTool(hotelId?: number) {
           success: false,
           message: "An error occurred while searching the knowledge base.",
           results: [],
+          system: systemMessage,
         };
       }
     },

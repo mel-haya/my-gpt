@@ -125,19 +125,10 @@ export async function POST(req: Request) {
         },
       );
     }
-    let systemPrompt = systemPromptResult;
+    const systemPrompt = systemPromptResult;
 
     // Get tools with hotel ID for filtering
     const tools = await getTools(hotelId);
-
-    const lastUserMessage =
-      messages.filter((m: ChatMessage) => m.role === "user").at(-1)?.content ||
-      "";
-    systemPrompt = `
-    ${systemPrompt}
-    ## CRITICAL: Language Instruction
-    You MUST respond in the EXACT same language as this user message: "${lastUserMessage.slice(0, 100)}"
-    `;
 
     const response = streamText({
       messages: modelMessages,

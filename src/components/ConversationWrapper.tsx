@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-// import Message from "./message";
+import { useMemo, useState, useEffect } from "react";
+
 import { ChatMessage } from "@/types/chatMessage";
 import ActivitySuggestionCard, {
   Activity,
-} from "@/components/ActivitySuggestionCard"; // [NEW] Import custom card component
+} from "@/components/ActivitySuggestionCard";
 import PromptInput from "./PromptInput";
 import {
   ChatRequestOptions,
@@ -14,6 +14,13 @@ import {
   isToolUIPart,
   getToolName,
 } from "ai";
+import {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
 import {
   Conversation,
   ConversationContent,
@@ -41,11 +48,13 @@ import {
 import TestDialog from "@/components/admin/TestDialog";
 import Styles from "@/assets/styles/customScrollbar.module.css";
 import Background from "@/components/background";
-import { useUser } from "@clerk/nextjs";
+
+import { useAuth } from "@clerk/nextjs";
 
 import { useTokenUsage } from "@/hooks/useTokenUsage";
 import { useSubscription } from "@/hooks/useSubscription";
 import { submitFeedbackAction } from "@/app/actions/feedback";
+import { getUserRoleAction } from "@/app/actions/user";
 import { toast } from "react-toastify";
 
 const welcomeMessage = "Hello! How can I assist you today?";
@@ -78,7 +87,7 @@ export default function ConversationWrapper({
   const { usage } = useTokenUsage();
   const { isSubscribed, loading: subscriptionLoading } = useSubscription();
   const [showRibbon, setShowRibbon] = useState(true);
-  const { user } = useUser();
+
   const [localFeedback, setLocalFeedback] = useState<
     Record<string, "positive" | "negative">
   >({});
@@ -87,7 +96,20 @@ export default function ConversationWrapper({
   // Track previous conversation ID to reset state during render
   const [prevConversationId, setPrevConversationId] = useState(conversationId);
 
-  const isAdmin = user?.publicMetadata?.role === "admin";
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { isSignedIn } = useAuth();
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const role = await getUserRoleAction();
+        setIsAdmin(role === "admin");
+      } catch (error) {
+        console.error("Failed to fetch user role:", error);
+      }
+    };
+    fetchRole();
+  }, []);
 
   // Reset local feedback when conversation changes
   if (conversationId !== prevConversationId) {
@@ -171,7 +193,7 @@ export default function ConversationWrapper({
     <div className="flex flex-col grow h-screen relative items-center pt-6">
       {/* Upgrade Ribbon */}
       {/* Upgrade Ribbon (not full width, dismissible with transition) - Hidden for subscribed users */}
-      {!isSubscribed && !subscriptionLoading && user && (
+      {!isSubscribed && !subscriptionLoading && isSignedIn && (
         <div
           className={`z-30 flex justify-center absolute top-3 left-0 w-full pointer-events-none transition-all duration-500 ${
             showRibbon
@@ -367,32 +389,35 @@ export default function ConversationWrapper({
                               }
                             }
 
-                            // return (
-                            //   <Tool key={`${message.key}-tool-${index}`}>
-                            //     <ToolHeader
-                            //       title={toolName}
-                            //       type={
-                            //         tool.type === "dynamic-tool"
-                            //           ? "tool-dynamic"
-                            //           : (tool.type as `tool-${string}`)
-                            //       }
-                            //       state={tool.state}
-                            //     />
-                            //     <ToolContent>
-                            //       {tool.input && (
-                            //         <ToolInput input={tool.input} />
-                            //       )}
-                            //       {(tool.output || tool.errorText) &&
-                            //         tool.state === "output-available" && (
-                            //           <ToolOutput
-                            //             output={tool.output}
-                            //             errorText={tool.errorText}
-                            //             toolName={toolName}
-                            //           />
-                            //         )}
-                            //     </ToolContent>
-                            //   </Tool>
-                            // );
+                            // Handle searchKnowledgeBase tool (admin only)
+                            if (toolName === "searchKnowledgeBase" && isAdmin) {
+                              return (
+                                <Tool key={`${message.key}-tool-${index}`}>
+                                  <ToolHeader
+                                    title="Knowledge Base Search"
+                                    type={
+                                      tool.type === "dynamic-tool"
+                                        ? "tool-dynamic"
+                                        : (tool.type as `tool-${string}`)
+                                    }
+                                    state={tool.state}
+                                  />
+                                  <ToolContent>
+                                    {tool.input && (
+                                      <ToolInput input={tool.input} />
+                                    )}
+                                    {(tool.output || tool.errorText) &&
+                                      tool.state === "output-available" && (
+                                        <ToolOutput
+                                          output={tool.output}
+                                          errorText={tool.errorText}
+                                          toolName={toolName}
+                                        />
+                                      )}
+                                  </ToolContent>
+                                </Tool>
+                              );
+                            }
                           })}
                         </div>
                       )}

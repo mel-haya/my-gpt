@@ -157,6 +157,7 @@ export const ToolOutput = ({
           success={output.success}
           message={output.message}
           results={output.results}
+          system={output.system}
         />
       </div>
     );
