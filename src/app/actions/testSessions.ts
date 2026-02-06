@@ -116,7 +116,7 @@ export async function runTestSessionAction(
             model_id: modelId,
             evaluator_model: evaluatorModel,
           });
-        } else if (typeof test.test_id === "string" && test.is_manual) {
+        } else if (test.is_manual) {
           testRunResultsData.push({
             test_run_id: testRunId,
             test_id: null,
