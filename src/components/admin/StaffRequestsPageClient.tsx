@@ -46,6 +46,7 @@ interface StaffRequestsPageClientProps {
   stats: StaffRequestStats;
   showHotelColumn?: boolean;
   hotelId?: number;
+  userRole?: string;
 }
 
 export function StaffRequestsPageClient({
@@ -56,6 +57,7 @@ export function StaffRequestsPageClient({
   stats,
   showHotelColumn = false,
   hotelId,
+  userRole,
 }: StaffRequestsPageClientProps) {
   const { userId } = useAuth();
   const [requests, setRequests] =
@@ -172,13 +174,15 @@ export function StaffRequestsPageClient({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsSettingsDialogOpen(true)}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
+          {userRole === "admin" && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsSettingsDialogOpen(true)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
           <Button onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" /> New Request
           </Button>

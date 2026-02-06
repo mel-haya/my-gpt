@@ -275,3 +275,30 @@ export async function inviteStaffByEmailAction(
     return { success: false, error: "Failed to invite staff" };
   }
 }
+
+export async function updateHotelLanguageAction(
+  hotelId: number,
+  language: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const { getUserById } = await import("@/services/userService");
+    const user = await getUserById(userId);
+    if (!user || user.role !== "hotel_owner") {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const { updateHotel } = await import("@/services/hotelService");
+    await updateHotel(hotelId, { preferred_language: language });
+
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating hotel language:", error);
+    return { success: false, error: "Failed to update language" };
+  }
+}

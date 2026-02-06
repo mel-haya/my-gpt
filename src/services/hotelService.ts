@@ -97,6 +97,13 @@ export async function getHotelBySlug(
   return hotel;
 }
 
+export async function getHotelPreferredLanguage(
+  hotelId: number,
+): Promise<string> {
+  const hotel = await getHotelById(hotelId);
+  return hotel?.preferred_language ?? "english";
+}
+
 export async function getHotelByUserId(
   userId: string,
 ): Promise<SelectHotel | undefined> {
@@ -106,6 +113,7 @@ export async function getHotelByUserId(
       name: hotels.name,
       image: hotels.image,
       location: hotels.location,
+      preferred_language: hotels.preferred_language,
       slug: hotels.slug,
       created_at: hotels.created_at,
       updated_at: hotels.updated_at,

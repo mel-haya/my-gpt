@@ -124,6 +124,7 @@ export const hotels = pgTable(
     name: text("name").notNull(),
     image: text("image"),
     location: text("location").notNull(),
+    preferred_language: text("preferred_language").notNull().default("english"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     slug: text("slug").unique(),

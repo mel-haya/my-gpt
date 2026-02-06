@@ -5,14 +5,20 @@ import { getActivities } from "@/services/activitiesService";
 import { cohere } from "@ai-sdk/cohere";
 import { createStaffRequest } from "@/services/staffRequestsService";
 import { getSetting } from "@/services/settingsService";
-import { getHotelById } from "@/services/hotelService";
+import {
+  getHotelById,
+  getHotelPreferredLanguage,
+} from "@/services/hotelService";
 
 const searchKnowledgeBaseInputSchema = z.object({
   query: z
     .string()
     .describe("The search query to look for in the knowledge base."),
-  userLanguage: z.string().describe("The language of the conversation eg: English, French, Arabic if two or more languages are used choose the most frequent language"),
-
+  userLanguage: z
+    .string()
+    .describe(
+      "The language of the conversation eg: English, French, Arabic if two or more languages are used choose the most frequent language",
+    ),
 });
 
 const searchKnowledgeBaseOutputSchema = z.object({
@@ -238,7 +244,9 @@ function createMockedStaffRequestTool(staffLanguage: string) {
 }
 
 export async function getTools(hotelId?: number) {
-  const staffLanguage = await getSetting("staff_preferred_language", "english");
+  const staffLanguage = hotelId
+    ? await getHotelPreferredLanguage(hotelId)
+    : await getSetting("staff_preferred_language", "english");
 
   return {
     searchKnowledgeBase: searchKnowledgeBaseTool(hotelId),
@@ -248,7 +256,9 @@ export async function getTools(hotelId?: number) {
 }
 
 export async function getTestTools(hotelId?: number) {
-  const staffLanguage = await getSetting("staff_preferred_language", "english");
+  const staffLanguage = hotelId
+    ? await getHotelPreferredLanguage(hotelId)
+    : await getSetting("staff_preferred_language", "english");
 
   return {
     searchKnowledgeBase: searchKnowledgeBaseTool(hotelId),

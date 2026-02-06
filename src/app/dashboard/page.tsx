@@ -5,6 +5,7 @@ import { getUserHotelId } from "@/lib/checkRole";
 import { getHotelById, getHotelStaff } from "@/services/hotelService";
 import { getStaffRequestStats } from "@/services/staffRequestsService";
 import SlugEditor from "@/components/dashboard/SlugEditor";
+import HotelLanguageSelector from "@/components/dashboard/HotelLanguageSelector";
 import TeamManagement from "@/components/dashboard/TeamManagement";
 
 export default async function DashboardOverviewPage() {
@@ -99,11 +100,10 @@ export default async function DashboardOverviewPage() {
         {/* Side Column: Settings / Slug (1/3 width) */}
         <div className="space-y-6 h-fit">
           <SlugEditor hotelId={hotelId} initialSlug={hotel?.slug || null} />
-
-          {/* Placeholder for future Elegant Settings or Insights */}
-          {/* <div className="p-6 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-neutral-800 dark:to-neutral-900 border border-dashed border-gray-200 dark:border-neutral-700 flex flex-col items-center justify-center text-center h-48 opacity-60">
-            <p className="text-sm text-gray-400">More insights coming soon</p>
-          </div> */}
+          <HotelLanguageSelector
+            hotelId={hotelId}
+            initialLanguage={hotel?.preferred_language || "english"}
+          />
         </div>
       </div>
     </div>
