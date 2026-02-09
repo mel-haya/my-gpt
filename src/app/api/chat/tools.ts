@@ -17,7 +17,7 @@ const searchKnowledgeBaseInputSchema = z.object({
   userLanguage: z
     .string()
     .describe(
-      "The language of the conversation eg: English, French, Arabic if two or more languages are used choose the most frequent language",
+      "The required response language for the conversation (e.g., English, French, Arabic). If two or more languages are used, choose the most frequent language.",
     ),
 });
 
@@ -47,7 +47,7 @@ function searchKnowledgeBaseTool(hotelId?: number) {
       "Searches the knowledge base for relevant information based on a query.",
     inputSchema: searchKnowledgeBaseInputSchema,
     execute: async ({ query, userLanguage }) => {
-      const systemMessage = `keep the conversation in ${userLanguage}`;
+      const systemMessage = `Always respond in ${userLanguage}. Do not switch to the document language. If sources are in another language, translate them and keep the reply in ${userLanguage}.`;
       try {
         // Resolve hotelId to hotelName for search filtering
         let hotelName: string | undefined;

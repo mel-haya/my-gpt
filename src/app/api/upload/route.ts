@@ -94,6 +94,33 @@ export async function parseDOCX(url: string, uploadedFileId: number) {
   }
 }
 
+export async function parseTXT(url: string, uploadedFileId: number) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `Failed to fetch TXT file: ${response.statusText}`,
+      };
+    }
+    const text = await response.text();
+
+    if (text.trim().length === 0) {
+      return {
+        success: false,
+        error: "No text found in TXT file",
+      };
+    }
+    return await embedAndSave(text, uploadedFileId);
+  } catch (error) {
+    console.log("Error processing TXT:", error);
+    return {
+      success: false,
+      error: "Failed to process TXT",
+    };
+  }
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(
@@ -112,6 +139,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           allowedContentTypes: [
             "application/pdf",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "text/plain",
           ],
           addRandomSuffix: true,
           tokenPayload: clientPayload, // This should be the userId from frontend
@@ -168,6 +196,10 @@ export async function POST(request: Request): Promise<NextResponse> {
             case "docx":
               result = await parseDOCX(blob.downloadUrl, insertedFile.id);
               console.log("DOCX processing result:", result);
+              break;
+            case "txt":
+              result = await parseTXT(blob.downloadUrl, insertedFile.id);
+              console.log("TXT processing result:", result);
               break;
             default:
               console.error("Unsupported file type:", fileExtension);
