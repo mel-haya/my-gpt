@@ -103,7 +103,7 @@ export default function ConversationWrapper({
     const fetchRole = async () => {
       try {
         const role = await getUserRoleAction();
-        setIsAdmin(role === "admin");
+        setIsAdmin(role === "admin" || process.env.NEXT_PUBLIC_ENVIRONMENT === "development");
       } catch (error) {
         console.error("Failed to fetch user role:", error);
       }

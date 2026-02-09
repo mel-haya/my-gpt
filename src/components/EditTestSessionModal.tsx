@@ -102,9 +102,11 @@ export default function EditTestSessionModal({
     if (profile) {
       setSessionName(profile.name);
       setSelectedPromptId(
-        profile.system_prompt_id ? profile.system_prompt_id.toString() : ""
+        profile.system_prompt_id ? profile.system_prompt_id.toString() : "",
       );
-      setSelectedTestIds(profile.tests.map((t) => Number(t.test_id)));
+      setSelectedTestIds(
+        profile.tests.filter((t) => !t.is_manual).map((t) => Number(t.test_id)),
+      );
       setSelectedModels(profile.models.map((m) => m.model_name));
       setManualTests(profile.manual_tests || []);
     }
@@ -188,8 +190,7 @@ export default function EditTestSessionModal({
 
     if (
       !sessionName.trim() ||
-      !selectedPromptId ||
-      selectedTestIds.length === 0
+      !selectedPromptId
     ) {
       alert("Please fill in all required fields and select at least one test.");
       return;
@@ -204,7 +205,7 @@ export default function EditTestSessionModal({
 
     try {
       const selectedSystemPromptObj = availableSystemPrompts.find(
-        (sp) => sp.id.toString() === selectedPromptId
+        (sp) => sp.id.toString() === selectedPromptId,
       );
       if (!selectedSystemPromptObj) {
         alert("Selected system prompt not found");
@@ -233,7 +234,7 @@ export default function EditTestSessionModal({
     }
   };
   const selectedSystemPromptObj = availableSystemPrompts.find(
-    (sp) => sp.id.toString() === selectedPromptId
+    (sp) => sp.id.toString() === selectedPromptId,
   );
 
   return (

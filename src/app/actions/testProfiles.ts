@@ -136,6 +136,7 @@ export async function updateTestProfileAction(
       system_prompt_id: data.system_prompt_id,
       test_ids: data.test_ids,
       model_configs: data.model_configs,
+      manual_tests: data.manual_tests,
     };
 
     const result = await updateTestProfile(id, updateData);

@@ -164,7 +164,7 @@ export default function CreateTestSessionModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || !selectedSystemPrompt || selectedTestIds.length === 0) {
+    if (!name.trim() || !selectedSystemPrompt) {
       alert("Please fill in all required fields and select at least one test.");
       return;
     }
