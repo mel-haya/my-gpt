@@ -97,6 +97,7 @@ export const staffRequests = pgTable(
     category: staffRequestCategoryEnum("category").notNull(),
     urgency: staffRequestUrgencyEnum("urgency").notNull().default("medium"),
     room_number: integer("room_number"),
+    guest_contact: text("guest_contact"),
     status: staffRequestStatusEnum("status").notNull().default("pending"),
     completed_by: text("completed_by").references(() => users.id, {
       onDelete: "set null",

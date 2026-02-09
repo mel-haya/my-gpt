@@ -188,10 +188,7 @@ export default function EditTestSessionModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (
-      !sessionName.trim() ||
-      !selectedPromptId
-    ) {
+    if (!sessionName.trim() || !selectedPromptId) {
       alert("Please fill in all required fields and select at least one test.");
       return;
     }

@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 
 export async function getSetting(
   key: string,
-  defaultValue: string,
+  defaultValue?: string,
 ): Promise<string> {
   try {
     const result = await db
@@ -13,10 +13,22 @@ export async function getSetting(
       .where(eq(settings.key, key))
       .limit(1);
 
-    return result[0]?.value ?? defaultValue;
+    const value = result[0]?.value;
+    if (value !== undefined) {
+      return value;
+    }
+
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    }
+
+    throw new Error(`Setting '${key}' not found and no default value provided`);
   } catch (error) {
-    console.error(`Error fetching setting '${key}':`, error);
-    return defaultValue;
+    if (defaultValue !== undefined) {
+      console.error(`Error fetching setting '${key}':`, error);
+      return defaultValue;
+    }
+    throw error;
   }
 }
 

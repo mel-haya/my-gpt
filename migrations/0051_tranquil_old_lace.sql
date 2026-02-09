@@ -1,0 +1,1 @@
+ALTER TABLE "staff_requests" ADD COLUMN "guest_contact" text;

@@ -152,6 +152,12 @@ function createStaffRequestTool(staffLanguage: string, hotelId?: number) {
         .describe(
           "Guest's room number if applicable (can be null for general requests)",
         ),
+      guest_contact: z
+        .string()
+        .optional()
+        .describe(
+          "Guest's contact information (phone number or email) if provided. Capture this when the guest shares their contact details.",
+        ),
       userMessage: z
         .string()
         .describe(
@@ -166,6 +172,7 @@ function createStaffRequestTool(staffLanguage: string, hotelId?: number) {
           category: input.category,
           urgency: input.urgency,
           room_number: input.room_number,
+          guest_contact: input.guest_contact,
           status: "pending",
           hotel_id: hotelId,
         });
@@ -217,6 +224,12 @@ function createMockedStaffRequestTool(staffLanguage: string) {
         .describe(
           "Guest's room number if applicable (can be null for general requests)",
         ),
+      guest_contact: z
+        .string()
+        .optional()
+        .describe(
+          "Guest's contact information (phone number or email) if provided. Capture this when the guest shares their contact details.",
+        ),
       userMessage: z
         .string()
         .describe(
@@ -235,6 +248,7 @@ function createMockedStaffRequestTool(staffLanguage: string) {
           category: input.category,
           urgency: input.urgency,
           room_number: input.room_number,
+          guest_contact: input.guest_contact,
           status: "pending",
         },
         userMessage: input.userMessage,
@@ -244,9 +258,9 @@ function createMockedStaffRequestTool(staffLanguage: string) {
 }
 
 export async function getTools(hotelId?: number) {
-  const staffLanguage = hotelId
-    ? await getHotelPreferredLanguage(hotelId)
-    : await getSetting("staff_preferred_language", "english");
+  const hotelLang = hotelId ? await getHotelPreferredLanguage(hotelId) : null;
+  const staffLanguage =
+    hotelLang ?? (await getSetting("staff_preferred_language"));
 
   return {
     searchKnowledgeBase: searchKnowledgeBaseTool(hotelId),
@@ -256,9 +270,9 @@ export async function getTools(hotelId?: number) {
 }
 
 export async function getTestTools(hotelId?: number) {
-  const staffLanguage = hotelId
-    ? await getHotelPreferredLanguage(hotelId)
-    : await getSetting("staff_preferred_language", "english");
+  const hotelLang = hotelId ? await getHotelPreferredLanguage(hotelId) : null;
+  const staffLanguage =
+    hotelLang ?? (await getSetting("staff_preferred_language"));
 
   return {
     searchKnowledgeBase: searchKnowledgeBaseTool(hotelId),

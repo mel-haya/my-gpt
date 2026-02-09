@@ -99,9 +99,9 @@ export async function getHotelBySlug(
 
 export async function getHotelPreferredLanguage(
   hotelId: number,
-): Promise<string> {
+): Promise<string | null> {
   const hotel = await getHotelById(hotelId);
-  return hotel?.preferred_language ?? "english";
+  return hotel?.preferred_language ?? null;
 }
 
 export async function getHotelByUserId(

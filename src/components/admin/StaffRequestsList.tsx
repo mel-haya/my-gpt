@@ -120,6 +120,14 @@ export function StaffRequestsList({
               {!!request.room_number && (
                 <Badge variant="outline">Room {request.room_number}</Badge>
               )}
+              {!!request.guest_contact && (
+                <Badge
+                  variant="outline"
+                  className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                >
+                  📞 {request.guest_contact}
+                </Badge>
+              )}
               {showHotelColumn && (
                 <Badge
                   variant="secondary"
