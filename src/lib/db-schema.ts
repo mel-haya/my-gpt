@@ -175,7 +175,7 @@ export const documents = pgTable(
 
 export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
-  user_id: text("user_id").notNull(),
+  user_id: text("user_id"),
   title: text("title"),
   hotel_id: integer("hotel_id").references(() => hotels.id, {
     onDelete: "cascade",

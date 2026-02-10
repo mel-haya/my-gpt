@@ -5,10 +5,10 @@ import {
   SelectConversation,
 } from "@/lib/db-schema";
 import { db } from "@/lib/db-config";
-import { eq, and, desc, ilike, or } from "drizzle-orm";
+import { eq, and, desc, ilike, or, isNull } from "drizzle-orm";
 
 export async function addConversation(
-  userId: string,
+  userId: string | null,
   hotelId?: number,
 ): Promise<SelectConversation> {
   const insertConversation: InsertConversation = {
@@ -23,19 +23,17 @@ export async function addConversation(
 }
 
 export async function changeConversationTitle(
-  userId: string,
+  userId: string | null,
   conversationId: number,
   title: string,
 ): Promise<number> {
+  const userCondition = userId
+    ? eq(conversations.user_id, userId)
+    : isNull(conversations.user_id);
   const result = await db
     .update(conversations)
     .set({ title })
-    .where(
-      and(
-        eq(conversations.user_id, userId),
-        eq(conversations.id, conversationId),
-      ),
-    );
+    .where(and(userCondition, eq(conversations.id, conversationId)));
   return result.rowCount;
 }
 

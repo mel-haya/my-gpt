@@ -6,7 +6,8 @@ import { ChatMessage } from "@/types/chatMessage";
 import ActivitySuggestionCard, {
   Activity,
 } from "@/components/ActivitySuggestionCard";
-import PromptInput from "./PromptInput";
+import dynamic from "next/dynamic";
+const PromptInput = dynamic(() => import("./PromptInput"), { ssr: false });
 import {
   ChatRequestOptions,
   FileUIPart,
@@ -103,7 +104,10 @@ export default function ConversationWrapper({
     const fetchRole = async () => {
       try {
         const role = await getUserRoleAction();
-        setIsAdmin(role === "admin" || process.env.NEXT_PUBLIC_ENVIRONMENT === "development");
+        setIsAdmin(
+          role === "admin" ||
+            process.env.NEXT_PUBLIC_ENVIRONMENT === "development",
+        );
       } catch (error) {
         console.error("Failed to fetch user role:", error);
       }

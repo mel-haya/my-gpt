@@ -22,29 +22,25 @@ export async function POST(req: Request) {
     // Get the authenticated user ID from Clerk
     const { userId } = await auth();
 
-    if (!userId) {
-      return new Response("Unauthorized - Please sign in", {
-        status: 401,
-      });
-    }
+    // Check daily message limit only for authenticated users
+    if (userId) {
+      const hasReachedLimit = await hasReachedDailyLimit(userId);
 
-    // Check if user has reached their daily message limit
-    const hasReachedLimit = await hasReachedDailyLimit(userId);
-
-    if (hasReachedLimit) {
-      const remainingMessages = await getRemainingMessages(userId);
-      return new Response(
-        JSON.stringify({
-          error: "Daily message limit reached",
-          message:
-            "You have reached your daily limit of 10 messages. Please upgrade for unlimited access or try again tomorrow.",
-          remainingMessages,
-        }),
-        {
-          status: 429,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+      if (hasReachedLimit) {
+        const remainingMessages = await getRemainingMessages(userId);
+        return new Response(
+          JSON.stringify({
+            error: "Daily message limit reached",
+            message:
+              "You have reached your daily limit of 10 messages. Please upgrade for unlimited access or try again tomorrow.",
+            remainingMessages,
+          }),
+          {
+            status: 429,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
     }
 
     const { messages, conversation, trigger, hotelSlug } = await req.json();
@@ -191,13 +187,15 @@ export async function POST(req: Request) {
             );
           }
 
-          // Record message usage with actual token count from AI response
-          const actualTokens = streamUsage?.totalTokens || 0;
-          const usageResult = await recordUsage(userId, actualTokens);
+          // Record message usage with actual token count from AI response (only for authenticated users)
+          if (userId) {
+            const actualTokens = streamUsage?.totalTokens || 0;
+            const usageResult = await recordUsage(userId, actualTokens);
 
-          console.log(
-            `User ${userId} - Messages: ${usageResult.usage.messages_sent}/${usageResult.usage.daily_message_limit}, Actual Tokens: ${usageResult.usage.tokens_used}`,
-          );
+            console.log(
+              `User ${userId} - Messages: ${usageResult.usage.messages_sent}/${usageResult.usage.daily_message_limit}, Actual Tokens: ${usageResult.usage.tokens_used}`,
+            );
+          }
         } catch (error) {
           console.error("Error in onFinish:", error);
         }

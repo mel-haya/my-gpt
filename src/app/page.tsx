@@ -46,7 +46,7 @@ export default function Home({ hotelSlug }: { hotelSlug?: string }) {
       // Refresh usage immediately
       refreshUsage().catch(console.error);
       // Delay conversation refresh to allow background rename to complete
-      if (userMessageCountRef.current <= 3) {
+      if (userMessageCountRef.current <= 3 && isSignedIn) {
         setTimeout(() => {
           refetch().catch(console.error);
         }, 4000);
@@ -88,14 +88,8 @@ export default function Home({ hotelSlug }: { hotelSlug?: string }) {
     message: { text: string; files?: FileUIPart[] },
     options?: ChatRequestOptions,
   ): Promise<void> {
-    // Check if user is signed in
-    if (!isSignedIn) {
-      setShowSignInPopup(true);
-      return;
-    }
-
-    // Frontend validation: Check if user has reached their daily limit
-    if (usage?.hasReachedLimit) {
+    // Frontend validation: Check if user has reached their daily limit (only for signed-in users)
+    if (isSignedIn && usage?.hasReachedLimit) {
       const resetTime = new Date();
       resetTime.setHours(24, 0, 0, 0); // Next midnight
       const hoursUntilReset = Math.ceil(
@@ -161,13 +155,7 @@ export default function Home({ hotelSlug }: { hotelSlug?: string }) {
   async function regenerateMessage(
     options?: ChatRequestOptions,
   ): Promise<void> {
-    // Check if user is signed in
-    if (!isSignedIn) {
-      setShowSignInPopup(true);
-      return;
-    }
-
-    if (usage?.hasReachedLimit) {
+    if (isSignedIn && usage?.hasReachedLimit) {
       const resetTime = new Date();
       resetTime.setHours(24, 0, 0, 0); // Next midnight
       const hoursUntilReset = Math.ceil(
