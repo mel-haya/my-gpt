@@ -42,7 +42,7 @@ export default function StatisticsCards({
       <div className="bg-white dark:bg-neutral-900 p-4 pb-8 rounded-lg border border-neutral-200 dark:border-neutral-700 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Total Documents</p>
+            <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Total Embeddings</p>
             <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{totalDocumentsCount}</p>
           </div>
           <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">

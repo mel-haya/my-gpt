@@ -372,6 +372,13 @@
       "when": 1770688205048,
       "tag": "0052_brown_silverclaw",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1770723840905,
+      "tag": "0053_overjoyed_wild_pack",
+      "breakpoints": true
     }
   ]
 }
