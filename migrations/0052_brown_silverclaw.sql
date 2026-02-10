@@ -1,0 +1,1 @@
+ALTER TABLE "uploaded_files" ADD COLUMN "include_in_tests" boolean DEFAULT true NOT NULL;

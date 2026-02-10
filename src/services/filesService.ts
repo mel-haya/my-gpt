@@ -66,6 +66,7 @@ export async function getUploadedFiles(
         status: uploadedFiles.status,
         user_id: uploadedFiles.user_id,
         active: uploadedFiles.active,
+        include_in_tests: uploadedFiles.include_in_tests,
         downloadUrl: uploadedFiles.downloadUrl,
         hotel_id: uploadedFiles.hotel_id,
         username: users.username,
@@ -130,6 +131,7 @@ export async function getUploadedFiles(
       status: uploadedFiles.status,
       user_id: uploadedFiles.user_id,
       active: uploadedFiles.active,
+      include_in_tests: uploadedFiles.include_in_tests,
       downloadUrl: uploadedFiles.downloadUrl,
       hotel_id: uploadedFiles.hotel_id,
       username: users.username,
@@ -225,5 +227,29 @@ export async function toggleFileActive(
   await db
     .update(uploadedFiles)
     .set({ active })
+    .where(eq(uploadedFiles.id, fileId));
+}
+
+export async function toggleFileIncludeInTests(
+  fileId: number,
+  includeInTests: boolean,
+  hotelId?: number,
+): Promise<void> {
+  const whereCondition = hotelId
+    ? and(eq(uploadedFiles.id, fileId), eq(uploadedFiles.hotel_id, hotelId))
+    : eq(uploadedFiles.id, fileId);
+
+  const [file] = await db
+    .select({ id: uploadedFiles.id })
+    .from(uploadedFiles)
+    .where(whereCondition);
+
+  if (!file) {
+    throw new Error("File not found or access denied");
+  }
+
+  await db
+    .update(uploadedFiles)
+    .set({ include_in_tests: includeInTests })
     .where(eq(uploadedFiles.id, fileId));
 }

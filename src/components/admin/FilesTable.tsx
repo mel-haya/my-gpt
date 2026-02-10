@@ -6,6 +6,8 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { toggleFileIncludeInTestsAction } from "@/app/actions/files";
 import FileActionButtons from "./FileActionButtons";
 import type { UploadedFileWithUser } from "@/services/filesService";
 import UploadFile from "./UploadFile";
@@ -20,6 +22,7 @@ interface FilesTableProps {
     hasPreviousPage: boolean;
   };
   searchQuery: string;
+  isAdmin?: boolean;
 }
 
 function FileStatusBadge({
@@ -46,7 +49,8 @@ function FileStatusBadge({
 }
 
 const getColumns = (
-  handleRefresh: () => void
+  handleRefresh: () => void,
+  isAdmin?: boolean,
 ): ColumnDef<UploadedFileWithUser>[] => [
   {
     accessorKey: "fileName",
@@ -106,6 +110,27 @@ const getColumns = (
       );
     },
   },
+  ...(isAdmin
+    ? [
+        {
+          accessorKey: "include_in_tests" as const,
+          header: "Include in Tests",
+          size: 50,
+          cell: ({ row }: { row: { original: UploadedFileWithUser } }) => {
+            const file = row.original;
+            return (
+              <Switch
+                checked={file.include_in_tests}
+                onCheckedChange={async (checked: boolean) => {
+                  await toggleFileIncludeInTestsAction(file.id, checked);
+                  handleRefresh();
+                }}
+              />
+            );
+          },
+        },
+      ]
+    : []),
   {
     accessorKey: "actions",
     header: "Actions",
@@ -131,6 +156,7 @@ export default function FilesTable({
   files,
   pagination,
   searchQuery,
+  isAdmin,
 }: FilesTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -222,7 +248,7 @@ export default function FilesTable({
       </div>
 
       <DataTable
-        columns={getColumns(handleRefresh)}
+        columns={getColumns(handleRefresh, isAdmin)}
         data={files}
         emptyMessage="No files found."
       />
@@ -280,7 +306,7 @@ export default function FilesTable({
                       {pageNum}
                     </Button>
                   );
-                }
+                },
               )}
             </div>
 

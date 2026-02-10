@@ -41,7 +41,7 @@ export type SearchKnowledgeBaseResult = z.infer<
   typeof searchKnowledgeBaseOutputSchema
 >;
 
-function searchKnowledgeBaseTool(hotelId?: number) {
+function searchKnowledgeBaseTool(hotelId?: number, testOnly?: boolean) {
   return tool({
     description:
       "Searches the knowledge base for relevant information based on a query.",
@@ -55,7 +55,13 @@ function searchKnowledgeBaseTool(hotelId?: number) {
           const hotel = await getHotelById(hotelId);
           hotelName = hotel?.name;
         }
-        const response = await searchDocuments(query, 5, 0, hotelName);
+        const response = await searchDocuments(
+          query,
+          5,
+          0,
+          hotelName,
+          testOnly,
+        );
         return {
           success: response.length > 0,
           message: `Found ${response.length} relevant documents in the knowledge base.`,
@@ -275,7 +281,7 @@ export async function getTestTools(hotelId?: number) {
     hotelLang ?? (await getSetting("staff_preferred_language"));
 
   return {
-    searchKnowledgeBase: searchKnowledgeBaseTool(hotelId),
+    searchKnowledgeBase: searchKnowledgeBaseTool(hotelId, true),
     suggestActivities: suggestActivitiesTool,
     createStaffRequest: createMockedStaffRequestTool(staffLanguage),
   };

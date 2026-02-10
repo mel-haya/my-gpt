@@ -8,6 +8,7 @@ export async function searchDocuments(
   limit: number = 5,
   threshold: number = 0.5,
   hotelName?: string,
+  testOnly?: boolean,
 ) {
   const embedding = await generateEmbedding(query);
 
@@ -31,6 +32,7 @@ export async function searchDocuments(
         gt(similarity, threshold),
         eq(uploadedFiles.active, true),
         hotelName ? eq(hotels.name, hotelName) : undefined,
+        testOnly ? eq(uploadedFiles.include_in_tests, true) : undefined,
       ),
     )
     .orderBy(desc(similarity))

@@ -67,7 +67,7 @@ export default function FileActionButtons({
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onClick={handleToggleActive}>
             {active ? (
               <>
