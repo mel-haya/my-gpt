@@ -19,7 +19,7 @@ import type {
   InsertTestProfileModel,
   SelectTestProfileModel,
 } from "@/lib/db-schema";
-import { eq, and, ilike, count, sql, inArray } from "drizzle-orm";
+import { eq, and, ilike, count, sql, inArray, ne } from "drizzle-orm";
 
 export interface TestProfilesResponse {
   testProfiles: SelectTestProfileWithPrompt[];
@@ -153,7 +153,7 @@ export async function getTestProfiles(options?: {
       INNER JOIN users u ON tp.user_id = u.id
       LEFT JOIN LATERAL (
         WITH deduped AS (
-          SELECT DISTINCT ON (COALESCE(test_id::text, manual_prompt), trr.model_id)
+          SELECT DISTINCT ON (test_id, trr.model_id)
             trr.tokens_cost,
             trr.token_count,
             trr.score,
@@ -164,7 +164,7 @@ export async function getTestProfiles(options?: {
           JOIN test_run_results trr ON tr.id = trr.test_run_id
           LEFT JOIN models m ON trr.model_id = m.id
           WHERE tr.profile_id = tp.id
-          ORDER BY COALESCE(test_id::text, manual_prompt), trr.model_id, trr.created_at DESC
+          ORDER BY test_id, trr.model_id, trr.created_at DESC
         )
         SELECT 
           SUM(tokens_cost) as total_tokens_cost,
@@ -239,14 +239,51 @@ export async function createTestProfile(
         name: data.name,
         system_prompt_id: data.system_prompt_id,
         user_id: data.user_id,
-        manual_tests: data.manual_tests,
+        manual_tests: null, // No longer storing JSON manual tests
       })
       .returning();
 
+    // Process manual tests if provided: Create them in `tests` table and add to test_ids
+    const allTestIds = [...data.test_ids];
+
+    if (data.manual_tests && data.manual_tests.length > 0) {
+      for (const manualTest of data.manual_tests) {
+        // Check for existing identical manual test for this user to avoid duplicates
+        const existingDetails = await db
+          .select({ id: tests.id })
+          .from(tests)
+          .where(
+            and(
+              eq(tests.prompt, manualTest.prompt),
+              eq(tests.user_id, data.user_id),
+              eq(tests.is_manual, true),
+            ),
+          )
+          .limit(1);
+
+        if (existingDetails.length > 0) {
+          allTestIds.push(existingDetails[0].id);
+        } else {
+          const [newTest] = await db
+            .insert(tests)
+            .values({
+              prompt: manualTest.prompt,
+              expected_result: manualTest.expected_result,
+              user_id: data.user_id,
+              category: "Manual",
+              is_manual: true,
+            })
+            .returning();
+          allTestIds.push(newTest.id);
+        }
+      }
+    }
+
     // Add tests to the profile if provided
-    if (data.test_ids.length > 0) {
+    if (allTestIds.length > 0) {
       try {
-        const testProfileTestData: InsertTestProfileTest[] = data.test_ids.map(
+        const uniqueTestIds = Array.from(new Set(allTestIds));
+        const testProfileTestData: InsertTestProfileTest[] = uniqueTestIds.map(
           (test_id) => ({
             profile_id: profile.id,
             test_id,
@@ -337,7 +374,7 @@ export async function updateTestProfile(
       .set({
         name: data.name,
         system_prompt_id: data.system_prompt_id,
-        manual_tests: data.manual_tests,
+        manual_tests: null, // No longer storing JSON manual tests
         updated_at: new Date(),
       })
       .where(eq(testProfiles.id, id))
@@ -347,13 +384,105 @@ export async function updateTestProfile(
       throw new Error("Test profile not found");
     }
 
-    // 3. Update test associations (Delete then Insert)
+    // Process manual tests if provided: Create them in `tests` table and add to test_ids
+    const allTestIds = [...data.test_ids];
+
+    if (data.manual_tests && data.manual_tests.length > 0) {
+      // Get the user_id from the existing profile so we scope the manual tests correctly
+      const profileUser = await db
+        .select({ user_id: testProfiles.user_id })
+        .from(testProfiles)
+        .where(eq(testProfiles.id, id))
+        .limit(1);
+
+      if (profileUser.length > 0) {
+        const userId = profileUser[0].user_id;
+
+        for (const manualTest of data.manual_tests) {
+          // Check for existing identical manual test for this user
+          const existingDetails = await db
+            .select({ id: tests.id })
+            .from(tests)
+            .where(
+              and(
+                eq(tests.prompt, manualTest.prompt),
+                eq(tests.user_id, userId),
+                eq(tests.is_manual, true),
+              ),
+            )
+            .limit(1);
+
+          if (existingDetails.length > 0) {
+            allTestIds.push(existingDetails[0].id);
+          } else {
+            const [newTest] = await db
+              .insert(tests)
+              .values({
+                prompt: manualTest.prompt,
+                expected_result: manualTest.expected_result,
+                user_id: userId,
+                category: "Manual",
+                is_manual: true,
+              })
+              .returning();
+            allTestIds.push(newTest.id);
+          }
+        }
+      }
+    }
+
+    // 3. Identify and delete removed manual tests
+    // specific tests that are being removed from this profile
+    const currentProfileTests = await db
+      .select({
+        test_id: tests.id,
+        is_manual: tests.is_manual,
+      })
+      .from(testProfileTests)
+      .innerJoin(tests, eq(testProfileTests.test_id, tests.id))
+      .where(eq(testProfileTests.profile_id, id));
+
+    const newTestIdsSet = new Set(allTestIds);
+
+    const manualTestsToRemove = currentProfileTests.filter(
+      (t) => t.is_manual && !newTestIdsSet.has(t.test_id),
+    );
+
+    for (const testToRemove of manualTestsToRemove) {
+      // Check if this manual test is used by ANY other profile
+      // We check for references in test_profile_tests where profile_id != id
+      const otherUsage = await db
+        .select({ count: count() })
+        .from(testProfileTests)
+        .where(
+          and(
+            eq(testProfileTests.test_id, testToRemove.test_id),
+            ne(testProfileTests.profile_id, id),
+          ),
+        );
+
+      const otherUsageCount = otherUsage[0]?.count || 0;
+
+      if (otherUsageCount === 0) {
+        // Safe to delete: Not used by any other profile
+        // 1. Delete test run results for this test
+        await db
+          .delete(testRunResults)
+          .where(eq(testRunResults.test_id, testToRemove.test_id));
+
+        // 2. Delete the test itself
+        await db.delete(tests).where(eq(tests.id, testToRemove.test_id));
+      }
+    }
+
+    // 4. Update test associations (Delete then Insert)
     await db
       .delete(testProfileTests)
       .where(eq(testProfileTests.profile_id, id));
 
-    if (data.test_ids.length > 0) {
-      const testProfileTestData: InsertTestProfileTest[] = data.test_ids.map(
+    if (allTestIds.length > 0) {
+      const uniqueTestIds = Array.from(new Set(allTestIds));
+      const testProfileTestData: InsertTestProfileTest[] = uniqueTestIds.map(
         (test_id) => ({
           profile_id: id,
           test_id,
@@ -437,7 +566,11 @@ export async function deleteTestProfile(id: number): Promise<void> {
 }
 
 export async function getTestsForSelection(): Promise<SelectTest[]> {
-  return await db.select().from(tests).orderBy(tests.id);
+  return await db
+    .select()
+    .from(tests)
+    .where(eq(tests.is_manual, false))
+    .orderBy(tests.id);
 }
 
 export async function getSystemPromptsForSelection(): Promise<
@@ -483,9 +616,9 @@ export async function getTestProfileWithDetails(
   const profileTests = await db
     .select({
       test_id: testProfileTests.test_id,
-      // test_name removed
       test_prompt: tests.prompt,
       expected_result: tests.expected_result,
+      is_manual: tests.is_manual,
     })
     .from(testProfileTests)
     .innerJoin(tests, eq(testProfileTests.test_id, tests.id))
@@ -501,7 +634,6 @@ export async function getTestProfileWithDetails(
       created_at: testRunResults.created_at,
       tokens_cost: testRunResults.tokens_cost,
       token_count: testRunResults.token_count,
-      manual_prompt: testRunResults.manual_prompt, // Include manual_prompt
     })
     .from(testRuns)
     .innerJoin(testRunResults, eq(testRuns.id, testRunResults.test_run_id))
@@ -509,12 +641,11 @@ export async function getTestProfileWithDetails(
     .where(eq(testRuns.profile_id, id))
     .orderBy(sql`${testRunResults.created_at} DESC`);
 
-  // Map to store latest result for each (test_id, model_name) OR (manual_prompt, model_name)
+  // Map to store latest result for each (test_id, model_name)
   const latestResultsMap = new Map<
     string,
     {
       test_id: number | null;
-      manual_prompt: string | null;
       model: string;
       score: number | null;
       cost: number | null;
@@ -523,13 +654,12 @@ export async function getTestProfileWithDetails(
   >();
 
   for (const res of allResults) {
-    const key = res.test_id
-      ? `id-${res.test_id}:::${res.model_name}`
-      : `manual-${res.manual_prompt}:::${res.model_name}`;
+    if (!res.test_id) continue;
+
+    const key = `id-${res.test_id}:::${res.model_name}`;
     if (!latestResultsMap.has(key)) {
       latestResultsMap.set(key, {
         test_id: res.test_id,
-        manual_prompt: res.manual_prompt,
         model: res.model_name || "N/A",
         score: res.score,
         cost: res.tokens_cost,
@@ -540,25 +670,23 @@ export async function getTestProfileWithDetails(
 
   const latestResults = Array.from(latestResultsMap.values());
 
-  const bestResultsMap = new Map<string, { model: string; score: number }>();
+  const bestResultsMap = new Map<number, { model: string; score: number }>();
   // Map to store sum of all model scores for each test
-  const totalScoresMap = new Map<string, number>();
+  const totalScoresMap = new Map<number, number>();
 
   // Group latest results by test and find the highest score + calculate total
-  for (const [key, res] of latestResultsMap.entries()) {
-    // key is either `id-{testId}:::{model}` or `manual-{prompt}:::{model}`
-    // We want a testKey that is either `id-{testId}` or `manual-{prompt}`
-    const testKey = key.split(":::")[0];
+  for (const [, res] of latestResultsMap.entries()) {
+    if (!res.test_id) continue;
 
     // Sum scores for total (treat null as 0)
-    const currentTotal = totalScoresMap.get(testKey) || 0;
-    totalScoresMap.set(testKey, currentTotal + (res.score ?? 0));
+    const currentTotal = totalScoresMap.get(res.test_id) || 0;
+    totalScoresMap.set(res.test_id, currentTotal + (res.score ?? 0));
 
     if (res.score === null || res.score === undefined) continue;
 
-    const existing = bestResultsMap.get(testKey);
+    const existing = bestResultsMap.get(res.test_id);
     if (!existing || res.score >= existing.score) {
-      bestResultsMap.set(testKey, {
+      bestResultsMap.set(res.test_id, {
         model: res.model,
         score: res.score,
       });
@@ -567,27 +695,10 @@ export async function getTestProfileWithDetails(
 
   const testsWithBest = profileTests.map((t) => ({
     ...t,
-    best_model: bestResultsMap.get(`id-${t.test_id}`)?.model || null,
-    best_score: bestResultsMap.get(`id-${t.test_id}`)?.score ?? null,
-    total_score: totalScoresMap.get(`id-${t.test_id}`) ?? 0,
+    best_model: bestResultsMap.get(t.test_id)?.model || null,
+    best_score: bestResultsMap.get(t.test_id)?.score ?? null,
+    total_score: totalScoresMap.get(t.test_id) ?? 0,
   }));
-
-  // Merge manual tests
-  const manualTests =
-    (profile.manual_tests as { prompt: string; expected_result: string }[]) ||
-    [];
-  const manualTestsMapped = manualTests.map((t) => {
-    const testKey = `manual-${t.prompt}`;
-    return {
-      test_id: testKey,
-      test_prompt: t.prompt,
-      expected_result: t.expected_result,
-      best_model: bestResultsMap.get(testKey)?.model || null,
-      best_score: bestResultsMap.get(testKey)?.score ?? null,
-      total_score: totalScoresMap.get(testKey) ?? 0,
-      is_manual: true,
-    };
-  });
 
   // Get associated model configurations
   const profileModels = await db
@@ -613,7 +724,6 @@ export async function getTestProfileWithDetails(
       : null;
 
   // Calculate average score, tokens, and cost per model from the latest results
-  // latestResultsMap has keys like "id-{testId}-{model}" or "manual-{prompt}-{model}"
   const modelScoresMap = new Map<
     string,
     { total: number; count: number; tokens: number; cost: number }
@@ -663,14 +773,14 @@ export async function getTestProfileWithDetails(
     username: profile.username,
     created_at: profile.created_at,
     updated_at: profile.updated_at,
-    tests: [...testsWithBest, ...manualTestsMapped].sort(
-      (a, b) => a.total_score - b.total_score,
-    ),
+    tests: testsWithBest.sort((a, b) => a.total_score - b.total_score),
     models: profileModels,
     total_tokens_cost: totalCost,
     total_tokens: totalTokens,
     average_score: avgScore,
     model_averages: modelAverages,
-    manual_tests: profile.manual_tests as ManualTest[] | null,
+    // We can keep this null or remove it, depending on if frontend strictly needs it.
+    // Keeping as null since we migrated data.
+    manual_tests: null,
   };
 }

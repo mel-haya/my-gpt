@@ -285,6 +285,7 @@ export const tests = pgTable(
 
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
+    is_manual: boolean("is_manual").notNull().default(false),
   },
   (table) => [index("tests_user_id_index").on(table.user_id)],
 );
@@ -324,9 +325,7 @@ export const testRunResults = pgTable(
     model_id: integer("model_id").references(() => models.id, {
       onDelete: "set null",
     }),
-    system_prompt: text("system_prompt"),
-    manual_prompt: text("manual_prompt"),
-    manual_expected_result: text("manual_expected_result"),
+
     tokens_cost: real("tokens_cost"), // Changed from integer to real to store dollar amounts
     token_count: integer("token_count"),
     execution_time_ms: integer("execution_time_ms"),

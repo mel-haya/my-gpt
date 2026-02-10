@@ -143,7 +143,6 @@ async function runTestsInBackground(
             status: "Failed",
             output: "Test run was stopped",
             modelId,
-            systemPrompt,
           });
           return { testId: test.id, status: "Stopped" };
         }
@@ -202,7 +201,6 @@ async function runTestsInBackground(
             status: "Failed",
             output: "Test run was stopped during execution",
             modelId,
-            systemPrompt,
           });
           return { testId: test.id, status: "Stopped" };
         }
@@ -232,7 +230,6 @@ async function runTestsInBackground(
           explanation: evaluation.explanation,
           toolCalls: chatResponse.toolCalls,
           modelId,
-          systemPrompt,
           tokensCost: costInDollars ?? 0,
           executionTimeMs: executionTime,
           score: evaluation.score,
@@ -257,8 +254,7 @@ async function runTestsInBackground(
           testId: test.id,
           status: "Failed",
           output: errorMessage,
-          modelId, // Use modelId here
-          systemPrompt,
+          modelId,
         });
         return { testId: test.id, status: "Failed", error: errorMessage };
       }

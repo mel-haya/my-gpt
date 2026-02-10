@@ -24,13 +24,11 @@ import { z } from "zod";
 export interface UpdateTestRunResultParams {
   testRunId: number;
   testId?: number | null;
-  manualPrompt?: string;
   status: "Running" | "Success" | "Failed" | "Evaluating" | "Pending";
   output?: string;
   explanation?: string;
   toolCalls?: unknown;
   modelId?: number;
-  systemPrompt?: string;
   tokensCost?: number;
   tokenCount?: number;
   executionTimeMs?: number;
@@ -57,15 +55,12 @@ export interface IndividualTestResult {
   id: number;
   test_run_id?: number | null;
   test_id: number | null;
-  manual_prompt: string | null;
-  manual_expected_result: string | null;
   output: string | null;
   explanation: string | null;
   score: number | null;
   tool_calls: unknown;
   model_id?: number | null;
   evaluator_model?: string | null;
-  system_prompt?: string | null;
   tokens_cost: number | null;
   token_count: number | null;
   execution_time_ms: number | null;
@@ -138,7 +133,11 @@ export async function getTestsWithPagination(
 
   const categoryCondition = category ? eq(tests.category, category) : undefined;
 
-  const baseConditions = and(searchCondition, categoryCondition);
+  const baseConditions = and(
+    searchCondition,
+    categoryCondition,
+    eq(tests.is_manual, false),
+  );
 
   // Create a subquery for the latest test results using MAX(id) aggregation
   const latestResultIds = db
@@ -172,6 +171,7 @@ export async function getTestsWithPagination(
       created_at: tests.created_at,
       updated_at: tests.updated_at,
       username: userTable.username,
+      is_manual: tests.is_manual,
       latest_test_result_status: latestResultsSubquery.status,
       latest_test_result_created_at: latestResultsSubquery.created_at,
       latest_test_result_output: latestResultsSubquery.output,
@@ -274,6 +274,7 @@ export async function getTestById(id: number): Promise<TestWithUser | null> {
       created_at: tests.created_at,
       updated_at: tests.updated_at,
       username: userTable.username,
+      is_manual: tests.is_manual,
     })
     .from(tests)
     .leftJoin(userTable, eq(tests.user_id, userTable.id))
@@ -314,9 +315,6 @@ export async function getTestRunsForTest(
         result_score: testRunResults.score,
         result_tool_calls: testRunResults.tool_calls,
         result_model_id: testRunResults.model_id,
-        result_system_prompt: testRunResults.system_prompt,
-        result_manual_prompt: testRunResults.manual_prompt,
-        result_manual_expected_result: testRunResults.manual_expected_result,
         result_tokens_cost: testRunResults.tokens_cost,
         result_token_count: testRunResults.token_count,
         result_execution_time_ms: testRunResults.execution_time_ms,
@@ -364,15 +362,12 @@ export async function getTestRunsForTest(
         score: row.result_score,
         tool_calls: row.result_tool_calls,
         model_id: row.result_model_id,
-        system_prompt: row.result_system_prompt,
         tokens_cost: row.result_tokens_cost,
         token_count: row.result_token_count,
         execution_time_ms: row.result_execution_time_ms,
         status: row.result_status,
         created_at: row.result_created_at,
         updated_at: row.result_updated_at,
-        manual_prompt: row.result_manual_prompt,
-        manual_expected_result: row.result_manual_expected_result,
         evaluator_model: row.result_evaluator_model,
       });
     }
@@ -393,8 +388,6 @@ async function getLatestIndividualTestResult(
         id: testRunResults.id,
         test_run_id: testRunResults.test_run_id,
         test_id: testRunResults.test_id,
-        manual_prompt: testRunResults.manual_prompt,
-        manual_expected_result: testRunResults.manual_expected_result,
         output: testRunResults.output,
         explanation: testRunResults.explanation,
         score: testRunResults.score,
@@ -583,9 +576,11 @@ export async function getAllTests(): Promise<TestWithUser[]> {
       created_at: tests.created_at,
       updated_at: tests.updated_at,
       username: users.username,
+      is_manual: tests.is_manual,
     })
     .from(tests)
     .leftJoin(users, eq(tests.user_id, users.id))
+    .where(eq(tests.is_manual, false))
     .orderBy(tests.id);
 
   return result.map((test) => ({
@@ -614,13 +609,11 @@ export async function createAllTestRunResults(
 export async function updateTestRunResult({
   testRunId,
   testId,
-  manualPrompt,
   status,
   output,
   explanation,
   toolCalls,
   modelId,
-  systemPrompt,
   tokensCost,
   tokenCount,
   executionTimeMs,
@@ -635,8 +628,6 @@ export async function updateTestRunResult({
 
   if (testId !== undefined && testId !== null) {
     whereConditions.push(eq(testRunResults.test_id, testId as number));
-  } else if (manualPrompt) {
-    whereConditions.push(eq(testRunResults.manual_prompt, manualPrompt));
   }
 
   const [updatedResult] = await db
@@ -648,7 +639,6 @@ export async function updateTestRunResult({
       score: score,
       tool_calls: toolCalls,
       model_id: modelId,
-      system_prompt: systemPrompt,
       tokens_cost: tokensCost,
       token_count: tokenCount,
       execution_time_ms: executionTimeMs,
@@ -873,7 +863,6 @@ export async function awardVictoriesForTestRun(
       .select({
         id: testRunResults.id,
         test_id: testRunResults.test_id,
-        manual_prompt: testRunResults.manual_prompt,
         model_id: testRunResults.model_id,
         score: testRunResults.score,
         tokens_cost: testRunResults.tokens_cost,
@@ -891,14 +880,13 @@ export async function awardVictoriesForTestRun(
       return; // No qualifying results
     }
 
-    // Group results by test (test_id or manual_prompt)
+    // Group results by test (test_id)
     const testGroups = new Map<string, typeof results>();
 
     for (const result of results) {
-      const key =
-        result.test_id !== null
-          ? `test_${result.test_id}`
-          : `manual_${result.manual_prompt}`;
+      if (!result.test_id) continue;
+
+      const key = `test_${result.test_id}`;
 
       if (!testGroups.has(key)) {
         testGroups.set(key, []);

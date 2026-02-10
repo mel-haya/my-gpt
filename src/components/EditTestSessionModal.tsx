@@ -108,7 +108,14 @@ export default function EditTestSessionModal({
         profile.tests.filter((t) => !t.is_manual).map((t) => Number(t.test_id)),
       );
       setSelectedModels(profile.models.map((m) => m.model_name));
-      setManualTests(profile.manual_tests || []);
+      setManualTests(
+        profile.tests
+          .filter((t) => t.is_manual)
+          .map((t) => ({
+            prompt: t.test_prompt,
+            expected_result: t.expected_result,
+          })),
+      );
     }
     loadData();
   }, [profile]);
