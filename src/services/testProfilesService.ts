@@ -524,12 +524,12 @@ export async function getTestProfileWithDetails(
 
   for (const res of allResults) {
     const key = res.test_id
-      ? `id-${res.test_id}-${res.model_name}`
-      : `manual-${res.manual_prompt}-${res.model_name}`; // Use res.manual_prompt
+      ? `id-${res.test_id}:::${res.model_name}`
+      : `manual-${res.manual_prompt}:::${res.model_name}`;
     if (!latestResultsMap.has(key)) {
       latestResultsMap.set(key, {
         test_id: res.test_id,
-        manual_prompt: res.manual_prompt, // Store manual_prompt
+        manual_prompt: res.manual_prompt,
         model: res.model_name || "N/A",
         score: res.score,
         cost: res.tokens_cost,
@@ -546,10 +546,9 @@ export async function getTestProfileWithDetails(
 
   // Group latest results by test and find the highest score + calculate total
   for (const [key, res] of latestResultsMap.entries()) {
-    // key is either `id-{testId}-{model}` or `manual-{prompt}-{model}`
+    // key is either `id-{testId}:::{model}` or `manual-{prompt}:::{model}`
     // We want a testKey that is either `id-{testId}` or `manual-{prompt}`
-    const parts = key.split("-");
-    const testKey = parts.slice(0, 2).join("-");
+    const testKey = key.split(":::")[0];
 
     // Sum scores for total (treat null as 0)
     const currentTotal = totalScoresMap.get(testKey) || 0;
