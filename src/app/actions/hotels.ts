@@ -51,6 +51,7 @@ export async function createHotelAction(
 ): Promise<SelectHotel> {
   const hotel = await createHotel(data);
   revalidatePath("/admin/hotels");
+  revalidatePath("/");
   return hotel;
 }
 
@@ -60,12 +61,14 @@ export async function updateHotelAction(
 ): Promise<SelectHotel> {
   const hotel = await updateHotel(id, data);
   revalidatePath("/admin/hotels");
+  revalidatePath("/");
   return hotel;
 }
 
 export async function deleteHotelAction(id: number): Promise<void> {
   await deleteHotel(id);
   revalidatePath("/admin/hotels");
+  revalidatePath("/");
 }
 
 export async function getHotelStaffAction(
