@@ -177,6 +177,27 @@ export async function getAllHotelsBasic(): Promise<
   return result;
 }
 
+// Get all hotels for the public landing page
+export async function getAllHotelsForLanding(): Promise<
+  {
+    name: string;
+    slug: string | null;
+    location: string;
+    image: string | null;
+  }[]
+> {
+  const result = await db
+    .select({
+      name: hotels.name,
+      slug: hotels.slug,
+      location: hotels.location,
+      image: hotels.image,
+    })
+    .from(hotels)
+    .orderBy(hotels.name);
+  return result;
+}
+
 // Staff Management
 
 export async function getHotelStaff(hotelId: number): Promise<SelectUser[]> {

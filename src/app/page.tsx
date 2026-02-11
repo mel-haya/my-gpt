@@ -1,314 +1,227 @@
-"use client";
+import { Metadata } from "next";
+import Link from "next/link";
+import { getAllHotelsForLanding } from "@/services/hotelService";
 
-import Conversation from "@/components/ConversationWrapper";
-import Sidebar from "@/components/sidebar";
-import SignInPopup from "@/components/sign-in-popup";
-import { useChat } from "@ai-sdk/react";
-import { ChatMessage } from "@/types/chatMessage";
-import { ToastContainer } from "react-toastify";
-import { FileUIPart, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { useEffect, useState, useEffectEvent, useRef } from "react";
-import { useAuth } from "@clerk/nextjs";
-import { ChatRequestOptions } from "ai";
-import { useTokenUsage } from "@/hooks/useTokenUsage";
-import { useConversations } from "@/hooks/useConversations";
-import { useQueryClient } from "@tanstack/react-query";
-import type { SelectConversation } from "@/lib/db-schema";
+export const metadata: Metadata = {
+  title: "Oasis — AI Hotel Assistant",
+  description:
+    "Book rooms, get instant answers, and request hotel services through a smart conversational AI assistant available 24/7.",
+};
 
-export default function Home({ hotelSlug }: { hotelSlug?: string }) {
-  const { isSignedIn } = useAuth();
-  const [currentConversation, setCurrentConversation] =
-    useState<SelectConversation | null>(null);
-  const [showSignInPopup, setShowSignInPopup] = useState(false);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const { usage, refreshUsage } = useTokenUsage();
-  const {
-    data: conversationsData,
-    isLoading: conversationsLoading,
-    isFetching: conversationsFetching,
-    refetch,
-  } = useConversations(searchQuery, { enabled: isSignedIn });
-  const queryClient = useQueryClient();
-  // Track user message count for current conversation to refresh only first 3 times
-  const userMessageCountRef = useRef(0);
-  const {
-    messages,
-    sendMessage,
-    status,
-    error,
-    regenerate,
-    stop,
-    setMessages,
-  } = useChat<ChatMessage>({
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-    onFinish() {
-      userMessageCountRef.current++;
-      // Refresh usage immediately
-      refreshUsage().catch(console.error);
-      // Delay conversation refresh to allow background rename to complete
-      if (userMessageCountRef.current <= 3 && isSignedIn) {
-        setTimeout(() => {
-          refetch().catch(console.error);
-        }, 4000);
-      }
-    },
-  });
-
-  // Helper function to add system messages to the conversation
-  const addSystemMessage = (content: string) => {
-    const systemMessage: ChatMessage = {
-      id: `system-${Date.now()}`,
-      role: "assistant",
-      parts: [
-        {
-          type: "text",
-          text: content,
-        },
-      ],
-    };
-    setMessages((prev) => [...prev, systemMessage]);
-  };
-
-  async function initConversation() {
-    try {
-      const convesation = await fetch("/api/conversations/new", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hotelSlug }),
-      });
-      const data = await convesation.json();
-      setCurrentConversation(data);
-      return data;
-    } catch (error) {
-      console.error("Error initializing conversation:", error);
-    }
-  }
-
-  async function send(
-    message: { text: string; files?: FileUIPart[] },
-    options?: ChatRequestOptions,
-  ): Promise<void> {
-    // Frontend validation: Check if user has reached their daily limit (only for signed-in users)
-    if (isSignedIn && usage?.hasReachedLimit) {
-      const resetTime = new Date();
-      resetTime.setHours(24, 0, 0, 0); // Next midnight
-      const hoursUntilReset = Math.ceil(
-        (resetTime.getTime() - Date.now()) / (1000 * 60 * 60),
-      );
-
-      addSystemMessage(
-        `⚠️ **Daily message limit reached!**\n\nYou've used all your messages for today. Your limit will reset in ${hoursUntilReset} hour${
-          hoursUntilReset !== 1 ? "s" : ""
-        }.\n\nPlease try again tomorrow.`,
-      );
-      return;
-    }
-
-    try {
-      let conversation = currentConversation;
-      if (!conversation) {
-        conversation = await initConversation();
-      }
-      const body = {
-        conversation,
-        hotelSlug, // Include hotelSlug in request body
-        ...options?.body,
-      };
-      await sendMessage(message, { body });
-      // Refresh usage immediately after sending (in addition to onFinish)
-      await refreshUsage();
-    } catch (error: unknown) {
-      console.error("Error sending message:", error);
-
-      // Handle 429 rate limit error specifically
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      const isRateLimit =
-        errorMessage.includes("429") ||
-        errorMessage.includes("Rate limit") ||
-        errorMessage.includes("Daily message limit reached");
-
-      if (isRateLimit) {
-        const resetTime = new Date();
-        resetTime.setHours(24, 0, 0, 0); // Next midnight
-        const hoursUntilReset = Math.ceil(
-          (resetTime.getTime() - Date.now()) / (1000 * 60 * 60),
-        );
-
-        addSystemMessage(
-          `🚫 **Rate limit exceeded!**\n\nYou've reached your daily message limit. Your limit will reset in ${hoursUntilReset} hour${
-            hoursUntilReset !== 1 ? "s" : ""
-          }.\n\nPlease try again tomorrow. We appreciate your patience! ✨`,
-        );
-      } else {
-        // Handle other errors
-        addSystemMessage(
-          `❌ **Message failed to send**\n\nThere was an issue sending your message. Please try again.\n\nIf the problem persists, please check your connection or contact support.`,
-        );
-      }
-
-      // Still refresh usage even if there's an error, in case the message was processed
-      await refreshUsage();
-    }
-  }
-
-  async function regenerateMessage(
-    options?: ChatRequestOptions,
-  ): Promise<void> {
-    if (isSignedIn && usage?.hasReachedLimit) {
-      const resetTime = new Date();
-      resetTime.setHours(24, 0, 0, 0); // Next midnight
-      const hoursUntilReset = Math.ceil(
-        (resetTime.getTime() - Date.now()) / (1000 * 60 * 60),
-      );
-
-      addSystemMessage(
-        `⚠️ **Daily message limit reached!**\n\nYou've used all your messages for today. Your limit will reset in ${hoursUntilReset} hour${
-          hoursUntilReset !== 1 ? "s" : ""
-        }.\n\nPlease try again tomorrow.`,
-      );
-      return;
-    }
-    try {
-      const conversation = currentConversation;
-      const body = { conversation, ...options?.body };
-      await regenerate({ body });
-      // Refresh usage immediately after sending (in addition to onFinish)
-      await refreshUsage();
-    } catch (error: unknown) {
-      console.error("Error regenerating message:", error);
-
-      // Handle 429 rate limit error specifically
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      const isRateLimit =
-        errorMessage.includes("429") ||
-        errorMessage.includes("Rate limit") ||
-        errorMessage.includes("Daily message limit reached");
-
-      if (isRateLimit) {
-        const resetTime = new Date();
-        resetTime.setHours(24, 0, 0, 0); // Next midnight
-        const hoursUntilReset = Math.ceil(
-          (resetTime.getTime() - Date.now()) / (1000 * 60 * 60),
-        );
-
-        addSystemMessage(
-          `🚫 **Rate limit exceeded!**\n\nYou've reached your daily message limit. Your limit will reset in ${hoursUntilReset} hour${
-            hoursUntilReset !== 1 ? "s" : ""
-          }.\n\nPlease try again tomorrow. We appreciate your patience! ✨`,
-        );
-      } else {
-        // Handle other errors
-        addSystemMessage(
-          `❌ **Message failed to send**\n\nThere was an issue sending your message. Please try again.\n\nIf the problem persists, please check your connection or contact support.`,
-        );
-      }
-
-      // Still refresh usage even if there's an error, in case the message was processed
-      await refreshUsage();
-    }
-  }
-  function resetConversation() {
-    setMessages([]);
-    setCurrentConversation(null);
-    userMessageCountRef.current = 0; // Reset counter for new conversation
-  }
-
-  async function deleteConversation(conversationId: number) {
-    try {
-      const res = await fetch(
-        `/api/conversations?conversationId=${conversationId}`,
-        {
-          method: "DELETE",
-        },
-      );
-      const data = await res;
-      console.log("Delete response data:", data);
-      if (data.ok) {
-        if (currentConversation?.id === conversationId) {
-          resetConversation();
-        }
-        await refetch();
-      }
-    } catch (error) {
-      console.error("Error deleting conversation:", error);
-    }
-  }
-  // const fetchConversations = useCallback(async (searchQuery?: string) => {
-  //   try {
-  //     const url = searchQuery
-  //       ? `/api/conversations?search=${encodeURIComponent(searchQuery)}`
-  //       : "/api/conversations";
-  //     const res = await fetch(url);
-  //     const data = await res.json();
-  //     setConversations(data);
-  //   } catch (error) {
-  //     console.error("Error fetching conversations:", error);
-  //   }
-  // }, []);
-
-  const onSignOut = useEffectEvent(() => {
-    resetConversation();
-    queryClient.removeQueries({ queryKey: ["conversations"] });
-    // setConversations([]);
-  });
-
-  const onSignin = useEffectEvent(async () => {
-    await refetch();
-  });
-
-  const searchConversations = (query: string) => {
-    setSearchQuery(query);
-  };
-
-  useEffect(() => {
-    if (!isSignedIn) onSignOut();
-    else onSignin();
-  }, [isSignedIn]);
-
-  async function changeConversation(conversation: SelectConversation) {
-    setCurrentConversation(conversation);
-    userMessageCountRef.current = 0; // Reset counter when changing conversation
-    try {
-      const res = await fetch(
-        "/api/messages?conversationId=" + conversation?.id,
-      );
-      const data = await res.json();
-      setMessages(data);
-      // Set the counter based on existing user messages
-      const userMessages = data.filter((m: ChatMessage) => m.role === "user");
-      userMessageCountRef.current = userMessages.length;
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-    }
-  }
+export default async function LandingPage() {
+  const hotels = await getAllHotelsForLanding();
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
-      <Sidebar
-        reset={resetConversation}
-        setCurrentConversation={changeConversation}
-        loading={conversationsLoading || conversationsFetching}
-        conversations={conversationsData || []}
-        deleteConversation={deleteConversation}
-        onSignInRequired={() => setShowSignInPopup(true)}
-        searchConversations={searchConversations}
-      />
-      <Conversation
-        messages={messages}
-        sendMessage={send}
-        status={status}
-        error={error}
-        stop={stop}
-        regenerate={regenerateMessage}
-        conversationId={currentConversation?.id}
-      />
-      <ToastContainer autoClose={3000} theme="dark" pauseOnHover={false} />
-      <SignInPopup
-        isOpen={showSignInPopup}
-        onClose={() => setShowSignInPopup(false)}
-      />
+    <div className="relative min-h-screen overflow-hidden bg-[#0a0a0f] text-white selection:bg-[#2974dd]/30 selection:text-blue-100">
+      {/* ── ambient background ── */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute -top-40 right-[-10%] h-150 w-150 rounded-full bg-[#2974dd]/9 blur-[120px]" />
+        <div className="absolute bottom-[-15%] left-[-8%] h-125 w-125 rounded-full bg-[#53335a]/15 blur-[140px]" />
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+            backgroundRepeat: "repeat",
+            backgroundSize: "128px 128px",
+          }}
+        />
+      </div>
+
+      {/* ── nav ── */}
+      <nav className="relative z-10 flex items-center justify-between px-8 py-6 md:px-16 lg:px-24">
+        <span className="font-goldman text-4xl font-bold tracking-wide text-[#2974dd]">
+          Oasis
+        </span>
+        <div className="hidden items-center gap-10 text-sm font-light tracking-wide text-white/60 md:flex font-jost">
+          <a href="#hotels" className="transition-colors hover:text-white">
+            Hotels
+          </a>
+          <a href="#how" className="transition-colors hover:text-white">
+            How it works
+          </a>
+        </div>
+      </nav>
+
+      {/* ── hero ── */}
+      <section className="relative z-10 mx-auto max-w-4xl px-8 pt-16 pb-20 text-center md:px-16 md:pt-28 md:pb-24">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/6 bg-white/4 px-4 py-1.5 text-xs tracking-widest text-white/50 uppercase backdrop-blur-sm font-jost">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          AI-Powered Hospitality
+        </div>
+
+        <h1 className="font-goldman text-5xl leading-[1.08] font-bold tracking-tight md:text-6xl lg:text-7xl">
+          <span className="bg-linear-to-r from-[#5b9eef] via-[#2974dd] to-[#7a4f85] bg-clip-text text-transparent">
+            Your AI Hotel Assistant
+          </span>
+          <br />
+          <span className="mt-2 block text-white/90">Book, Ask, Relax.</span>
+        </h1>
+
+        <h2 className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed font-light text-white/50 font-jost md:text-xl">
+          Book rooms, get instant answers, and request hotel services — all
+          through a smart conversational assistant available{" "}
+          <span className="text-[#2974dd]/80 font-normal">24/7</span>.
+        </h2>
+      </section>
+
+      {/* ── divider ── */}
+      <div
+        aria-hidden
+        className="relative z-10 mx-auto max-w-7xl px-8 md:px-16 lg:px-24"
+      >
+        <div className="h-px bg-linear-to-r from-transparent via-[#2974dd]/20 to-transparent" />
+      </div>
+
+      {/* ── hotel directory ── */}
+      <section
+        id="hotels"
+        className="relative z-10 mx-auto max-w-7xl px-8 py-20 md:px-16 lg:px-24"
+      >
+        <div className="mb-12 text-center">
+          <h3 className="font-goldman text-3xl font-bold text-white/90 md:text-4xl">
+            Choose Your Hotel
+          </h3>
+          <p className="mt-3 text-base text-white/40 font-jost font-light">
+            Select a hotel to start chatting with its AI concierge
+          </p>
+        </div>
+
+        {hotels.length === 0 ? (
+          <p className="text-center text-white/30 font-jost">
+            No hotels available at the moment.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {hotels.map((hotel) => {
+              const href = hotel.slug ? `/${hotel.slug}` : "#";
+              return (
+                <Link
+                  key={hotel.slug ?? hotel.name}
+                  href={href}
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/6 bg-white/3 backdrop-blur-sm transition-all duration-300 hover:border-[#2974dd]/30 hover:bg-white/5 hover:shadow-lg hover:shadow-[#2974dd]/5"
+                >
+                  {/* image area */}
+                  <div className="relative h-44 w-full overflow-hidden bg-white/4">
+                    {hotel.image ? (
+                      <img
+                        src={hotel.image}
+                        alt={hotel.name}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-[#2974dd]/10 to-[#53335a]/10">
+                        <span className="text-5xl opacity-30">🏨</span>
+                      </div>
+                    )}
+                    {/* hover overlay */}
+                    <div className="absolute inset-0 bg-linear-to-t from-[#0a0a0f]/80 to-transparent opacity-60 transition-opacity group-hover:opacity-40" />
+                  </div>
+
+                  {/* info */}
+                  <div className="flex flex-1 flex-col gap-2 p-5">
+                    <h4 className="text-lg font-semibold text-white/90 font-jost group-hover:text-white transition-colors">
+                      {hotel.name}
+                    </h4>
+                    <div className="flex items-center gap-1.5 text-sm text-white/40 font-jost font-light">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        className="shrink-0 text-white/30"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"
+                        />
+                      </svg>
+                      {hotel.location}
+                    </div>
+
+                    <div className="mt-auto pt-3">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#2974dd]/70 font-jost transition-colors group-hover:text-[#2974dd]">
+                        Chat with AI concierge
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="12"
+                          height="12"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          className="transition-transform group-hover:translate-x-0.5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+                          />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ── how it works ── */}
+      <div
+        aria-hidden
+        className="relative z-10 mx-auto max-w-7xl px-8 md:px-16 lg:px-24"
+      >
+        <div className="h-px bg-linear-to-r from-transparent via-[#2974dd]/20 to-transparent" />
+      </div>
+
+      <section
+        id="how"
+        className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-0 px-8 py-20 sm:grid-cols-3 md:px-16 lg:px-24"
+      >
+        {[
+          {
+            step: "01",
+            title: "Pick Your Hotel",
+            desc: "Browse the list and select the hotel you're staying at or planning to visit.",
+          },
+          {
+            step: "02",
+            title: "Ask Anything",
+            desc: "Chat with the AI concierge — ask about rooms, amenities, or local tips.",
+          },
+          {
+            step: "03",
+            title: "Book & Request",
+            desc: "Reserve rooms and request services like room service, housekeeping, or spa — all in the chat.",
+          },
+        ].map((f, i) => (
+          <div
+            key={i}
+            className="group flex flex-col items-start gap-4 border-white/4 p-8 transition-colors hover:bg-white/2 sm:border-l first:border-l-0"
+          >
+            <span className="font-goldman text-3xl font-bold text-[#2974dd]/20 group-hover:text-[#2974dd]/40 transition-colors">
+              {f.step}
+            </span>
+            <h3 className="text-base font-semibold text-white/90 font-jost">
+              {f.title}
+            </h3>
+            <p className="text-sm leading-relaxed text-white/40 font-jost font-light">
+              {f.desc}
+            </p>
+          </div>
+        ))}
+      </section>
     </div>
   );
 }

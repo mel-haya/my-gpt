@@ -1,4 +1,4 @@
-import Home from "../page";
+import Home from "../mainChat";
 import { getHotelBySlug } from "@/services/hotelService";
 import { notFound } from "next/navigation";
 
