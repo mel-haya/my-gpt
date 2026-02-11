@@ -1006,9 +1006,10 @@ async function runSingleTestForProfileInBackground(
             model: selectedModel,
             webSearch: false,
             systemPrompt: systemPrompt,
+            useTestTools: true,
           }),
           90000,
-          "Test execution timed out after 60 seconds",
+          "Test execution timed out after 90 seconds",
         );
 
         const executionTime = Date.now() - startTime;

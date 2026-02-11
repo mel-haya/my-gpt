@@ -788,6 +788,7 @@ export async function runSingleTest(
         },
       ],
       model: "openai/gpt-4o", // Default model, could be configurable
+      useTestTools: true,
     });
 
     output = chatResponse.text;

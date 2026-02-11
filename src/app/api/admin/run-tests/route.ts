@@ -178,6 +178,7 @@ async function runTestsInBackground(
             model: selectedModel,
             webSearch: false,
             systemPrompt: systemPrompt,
+            useTestTools: true,
           }),
           90000, // 1 minute timeout for generation
           "Test execution timed out after 90 seconds",
