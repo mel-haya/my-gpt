@@ -14,7 +14,21 @@ import { useEffect, useState } from "react";
 import { getCurrentUserRole } from "@/app/actions/users";
 import { Roles } from "@/types/globals";
 
-export default function UserComponent() {
+import { cn } from "@/lib/utils";
+
+interface UserComponentProps {
+  showSignOut?: boolean;
+  signInButton?: React.ReactNode;
+  containerClassName?: string;
+  className?: string; // wrapper class
+}
+
+export default function UserComponent({
+  showSignOut = true,
+  signInButton,
+  containerClassName,
+  className,
+}: UserComponentProps) {
   const { user, isLoaded } = useUser();
   const [role, setRole] = useState<Roles | null>(null);
 
@@ -28,15 +42,22 @@ export default function UserComponent() {
   const isHotelStaff = role === "hotel_owner" || role === "hotel_staff";
 
   return (
-    <header>
+    <div className={className}>
       <SignedIn>
-        <div className="flex justify-between  items-center py-4 px-2">
-          <div className="flex items-center gap-3 cursor-pointer">
+        <div
+          className={cn(
+            "flex items-center",
+            showSignOut ? "justify-between py-4 px-2" : "",
+            containerClassName,
+          )}
+        >
+          <div className="flex cursor-pointer items-center gap-3">
             <UserButton
               showName={true}
               appearance={{
                 elements: {
                   userButtonOuterIdentifier: "order-2 pl-0",
+                  avatarBox: "h-9 w-9",
                 },
               }}
             >
@@ -58,20 +79,26 @@ export default function UserComponent() {
               </UserButton.MenuItems>
             </UserButton>
           </div>
-          <div className="cursor-pointer">
-            <SignOutButton>
-              <LogOut size={20} className="inline mr-2" />
-            </SignOutButton>
-          </div>
+          {showSignOut && (
+            <div className="cursor-pointer">
+              <SignOutButton>
+                <LogOut size={20} className="inline mr-2" />
+              </SignOutButton>
+            </div>
+          )}
         </div>
       </SignedIn>
       <SignedOut>
         <SignInButton mode="modal">
-          <div className="w-full cursor-pointer py-6 px-2 flex items-center hover:bg-gray-200 dark:hover:bg-neutral-800">
-            <LogIn size={20} className="inline mr-2" /> Sign In
-          </div>
+          {signInButton ? (
+            signInButton
+          ) : (
+            <div className="flex w-full cursor-pointer items-center px-2 py-6 hover:bg-gray-200 dark:hover:bg-neutral-800">
+              <LogIn size={20} className="inline mr-2" /> Sign In
+            </div>
+          )}
         </SignInButton>
       </SignedOut>
-    </header>
+    </div>
   );
 }

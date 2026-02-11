@@ -1,6 +1,6 @@
 "use client";
 
-import { UserAvatar, useUser } from "@clerk/nextjs";
+import { UserAvatar, useUser, SignOutButton } from "@clerk/nextjs";
 import {
   UsersIcon,
   FilesIcon,
@@ -13,6 +13,7 @@ import {
   ThumbsUp,
   ClipboardList,
   Building,
+  LogOut,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -140,6 +141,14 @@ export default function SidebarAdmin() {
           </div>
         ))}
       </nav>
+      <div className="mt-auto px-4 py-4 border-t border-gray-300 dark:border-neutral-700">
+        <SignOutButton>
+          <button className="flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-300 dark:hover:bg-neutral-700 rounded cursor-pointer text-sm">
+            <LogOut size={18} />
+            Sign Out
+          </button>
+        </SignOutButton>
+      </div>
     </div>
   );
 }

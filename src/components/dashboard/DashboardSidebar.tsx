@@ -1,12 +1,13 @@
 "use client";
 
-import { UserAvatar, useUser } from "@clerk/nextjs";
+import { UserAvatar, useUser, SignOutButton } from "@clerk/nextjs";
 import {
   LayoutDashboard,
   FilesIcon,
   MessageSquare,
   ClipboardList,
   Home,
+  LogOut,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -147,6 +148,14 @@ export default function DashboardSidebar({
           })}
         </ul>
       </nav>
+      <div className="mt-auto border-t border-gray-300 px-4 py-4 dark:border-neutral-800">
+        <SignOutButton>
+          <div className="flex w-full cursor-pointer items-center gap-2 rounded px-4 py-2 text-sm transition-colors hover:bg-gray-300 dark:hover:bg-neutral-700">
+            <LogOut size={20} />
+            <span>Sign Out</span>
+          </div>
+        </SignOutButton>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { getAllHotelsForLanding } from "@/services/hotelService";
+import UserComponent from "@/components/userComponent";
 
 export const metadata: Metadata = {
   title: "Oasis — AI Hotel Assistant",
@@ -40,6 +41,16 @@ export default async function LandingPage() {
           <a href="#how" className="transition-colors hover:text-white">
             How it works
           </a>
+          <UserComponent
+            showSignOut={false}
+            containerClassName="contents"
+            className="contents"
+            signInButton={
+              <button className="rounded-full bg-[#2974dd]/10 px-6 py-2 text-[#2974dd] transition-all hover:bg-[#2974dd] hover:text-white hover:shadow-lg hover:shadow-[#2974dd]/20">
+                Log in
+              </button>
+            }
+          />
         </div>
       </nav>
 
@@ -381,6 +392,35 @@ export default async function LandingPage() {
           </div>
         ))}
       </section>
+
+      {/* ── footer ── */}
+      <div
+        aria-hidden
+        className="relative z-10 mx-auto max-w-7xl px-8 md:px-16 lg:px-24"
+      >
+        <div className="h-px bg-linear-to-r from-transparent via-[#2974dd]/20 to-transparent" />
+      </div>
+
+      <footer className="relative z-10 mx-auto max-w-7xl px-8 py-12 md:px-16 lg:px-24">
+        <div className="flex flex-col items-center justify-between gap-8 sm:flex-row">
+          <span className="font-goldman text-2xl font-bold tracking-wide text-[#2974dd]/60">
+            Oasis
+          </span>
+
+          <div className="flex items-center gap-8 text-sm font-light tracking-wide text-white/40 font-jost">
+            <a href="#hotels" className="transition-colors hover:text-white/70">
+              Hotels
+            </a>
+            <a href="#how" className="transition-colors hover:text-white/70">
+              How it works
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-8 text-center text-xs text-white/25 font-jost font-light tracking-wide">
+          © {new Date().getFullYear()} Oasis. All rights reserved.
+        </div>
+      </footer>
     </div>
   );
 }
