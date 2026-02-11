@@ -94,6 +94,8 @@ export const staffRequests = pgTable(
     id: serial("id").primaryKey(),
     title: text("title").notNull(),
     description: text("description").notNull(),
+    admin_title: text("admin_title"),
+    admin_description: text("admin_description"),
     category: staffRequestCategoryEnum("category").notNull(),
     urgency: staffRequestUrgencyEnum("urgency").notNull().default("medium"),
     room_number: integer("room_number"),

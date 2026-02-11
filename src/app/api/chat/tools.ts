@@ -127,9 +127,13 @@ const suggestActivitiesTool = tool({
   },
 });
 
-function createStaffRequestTool(staffLanguage: string, hotelId?: number) {
+function createStaffRequestTool(
+  staffLanguage: string,
+  adminLanguage: string,
+  hotelId?: number,
+) {
   return tool({
-    description: `Creates a staff request for guest services (room service, housekeeping, maintenance, etc.) or issues. IMPORTANT: The title and description MUST be written in ${staffLanguage.toUpperCase()}, NOT the conversation language. Only the userMessage should match the conversation language.`,
+    description: `Creates a staff request for guest services (room service, housekeeping, maintenance, etc.) or issues. IMPORTANT: The title and description MUST be written in ${staffLanguage.toUpperCase()}. Additionally, you must provide an 'admin_title' and 'admin_description' which are translations of the title and description into ${adminLanguage.toUpperCase()}. Only the userMessage should match the conversation language.`,
     inputSchema: z.object({
       title: z
         .string()
@@ -138,6 +142,16 @@ function createStaffRequestTool(staffLanguage: string, hotelId?: number) {
         .string()
         .describe(
           `Detailed description of the request (MUST be in ${staffLanguage})`,
+        ),
+      admin_title: z
+        .string()
+        .describe(
+          `Brief title of the request translated into ${adminLanguage} for admin review`,
+        ),
+      admin_description: z
+        .string()
+        .describe(
+          `Detailed description of the request translated into ${adminLanguage} for admin review`,
         ),
       category: z.enum([
         "reservation",
@@ -175,6 +189,8 @@ function createStaffRequestTool(staffLanguage: string, hotelId?: number) {
         const result = await createStaffRequest({
           title: input.title,
           description: input.description,
+          admin_title: input.admin_title,
+          admin_description: input.admin_description,
           category: input.category,
           urgency: input.urgency,
           room_number: input.room_number,
@@ -201,7 +217,7 @@ function createStaffRequestTool(staffLanguage: string, hotelId?: number) {
 
 function createMockedStaffRequestTool(staffLanguage: string) {
   return tool({
-    description: `Creates a staff request for guest services (room service, housekeeping, maintenance, etc.) or issues. IMPORTANT: The title and description MUST be written in ${staffLanguage.toUpperCase()}, NOT the conversation language. Only the userMessage should match the conversation language.`,
+    description: `Creates a staff request for guest services (room service, housekeeping, maintenance, etc.) or issues. IMPORTANT: The title and description MUST be written in ${staffLanguage.toUpperCase()}. Only the userMessage should match the conversation language.`,
     inputSchema: z.object({
       title: z
         .string()
@@ -211,6 +227,14 @@ function createMockedStaffRequestTool(staffLanguage: string) {
         .describe(
           `Detailed description of the request (MUST be in ${staffLanguage})`,
         ),
+      admin_title: z
+        .string()
+        .optional()
+        .describe(`(Optional for test) Admin title`),
+      admin_description: z
+        .string()
+        .optional()
+        .describe(`(Optional for test) Admin description`),
       category: z.enum([
         "reservation",
         "room_issue",
@@ -267,11 +291,17 @@ export async function getTools(hotelId?: number) {
   const hotelLang = hotelId ? await getHotelPreferredLanguage(hotelId) : null;
   const staffLanguage =
     hotelLang ?? (await getSetting("staff_preferred_language"));
+  const adminLanguage =
+    (await getSetting("staff_preferred_language")) || "English";
 
   return {
     searchKnowledgeBase: searchKnowledgeBaseTool(hotelId),
     suggestActivities: suggestActivitiesTool,
-    createStaffRequest: createStaffRequestTool(staffLanguage, hotelId),
+    createStaffRequest: createStaffRequestTool(
+      staffLanguage,
+      adminLanguage,
+      hotelId,
+    ),
   };
 }
 
