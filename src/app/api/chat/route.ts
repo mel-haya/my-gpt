@@ -126,12 +126,37 @@ export async function POST(req: Request) {
     // Get tools with hotel ID for filtering
     const tools = await getTools(hotelId);
 
+    const getStreamErrorMessage = (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      const normalized = message.toLowerCase();
+      if (
+        normalized.includes("insufficient funds") ||
+        normalized.includes("insufficient_quota") ||
+        normalized.includes("insufficient quota")
+      ) {
+        return "Insufficient funds. Please update your billing or try again later.";
+      }
+      if (normalized.includes("rate limit")) {
+        return "Rate limit exceeded. Please try again later.";
+      }
+      if (normalized.includes("timeout")) {
+        return "Request timed out. Please try again.";
+      }
+      return "An error occurred while generating the response.";
+    };
+
+    let streamErrorMessage: string | null = null;
+
     const response = streamText({
       messages: modelMessages,
       model: selectedmodel,
       tools: tools,
       system: systemPrompt,
       stopWhen: stepCountIs(5),
+      onError: (error) => {
+        streamErrorMessage = getStreamErrorMessage(error);
+        console.error("streamText error:", error);
+      },
       onFinish: async ({ usage }) => {
         streamUsage = {
           inputTokens: usage.inputTokens || 0,
@@ -151,6 +176,11 @@ export async function POST(req: Request) {
     });
 
     return response.toUIMessageStreamResponse({
+      onError: (error) => {
+        const message = streamErrorMessage ?? getStreamErrorMessage(error);
+        console.error("UI message stream error:", error);
+        return message;
+      },
       onFinish: async ({ responseMessage }) => {
         try {
           // Handle regenerate-message trigger

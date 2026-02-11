@@ -41,6 +41,14 @@ export default function Home({ hotelSlug }: { hotelSlug?: string }) {
     setMessages,
   } = useChat<ChatMessage>({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    onError(err) {
+      stop();
+      const message =
+        err instanceof Error ? err.message : "An error occurred.";
+      addSystemMessage(
+        `❌ **Generation failed**\n\n${message}\n\nPlease try again.`,
+      );
+    },
     onFinish() {
       userMessageCountRef.current++;
       // Refresh usage immediately

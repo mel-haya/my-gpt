@@ -469,7 +469,8 @@ export default function ConversationWrapper({
                     ) : (
                       <>
                         {/* Show loading spinner above actions for the last assistant message while streaming */}
-                        {status !== "ready" &&
+                        {(status === "submitted" ||
+                          status === "streaming") &&
                           index === displayMessages.length - 1 && (
                             <div className="mb-2">
                               <LoaderCircle className="animate-spin inline-block size-4" />
