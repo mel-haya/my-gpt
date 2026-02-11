@@ -22,6 +22,7 @@ interface StaffRequestsListProps {
   onComplete: (request: SelectStaffRequest) => void;
   onDelete: (request: SelectStaffRequest) => void;
   showHotelColumn?: boolean;
+  showAdminContent?: boolean;
 }
 
 export function StaffRequestsList({
@@ -29,6 +30,7 @@ export function StaffRequestsList({
   onComplete,
   onDelete,
   showHotelColumn = false,
+  showAdminContent = false,
 }: StaffRequestsListProps) {
   if (requests.length === 0) {
     return (
@@ -90,6 +92,17 @@ export function StaffRequestsList({
     }
   };
 
+  const getDisplayText = (
+    adminValue: string | null | undefined,
+    fallbackValue: string,
+  ) => {
+    if (!showAdminContent) {
+      return fallbackValue;
+    }
+    const trimmed = adminValue?.trim();
+    return trimmed ? trimmed : fallbackValue;
+  };
+
   return (
     <div className="space-y-4">
       {requests.map((request) => (
@@ -141,9 +154,11 @@ export function StaffRequestsList({
               </span>
             </div>
             <div>
-              <h3 className="font-semibold text-lg">{request.title}</h3>
+              <h3 className="font-semibold text-lg">
+                {getDisplayText(request.admin_title, request.title)}
+              </h3>
               <p className="text-muted-foreground text-sm mt-1">
-                {request.description}
+                {getDisplayText(request.admin_description, request.description)}
               </p>
             </div>
             {(request.completion_note || request.completed_at) && (

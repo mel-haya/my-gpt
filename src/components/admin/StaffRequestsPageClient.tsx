@@ -60,6 +60,7 @@ export function StaffRequestsPageClient({
   userRole,
 }: StaffRequestsPageClientProps) {
   const { userId } = useAuth();
+  const showAdminContent = userRole === "admin";
   const [requests, setRequests] =
     useState<StaffRequestWithHotel[]>(initialRequests);
   const [page, setPage] = useState(initialPage);
@@ -238,6 +239,7 @@ export function StaffRequestsPageClient({
         onComplete={handleCompleteClick}
         onDelete={handleDeleteClick}
         showHotelColumn={showHotelColumn}
+        showAdminContent={showAdminContent}
       />
 
       {/* Pagination */}
