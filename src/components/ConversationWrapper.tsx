@@ -60,9 +60,9 @@ import { toast } from "react-toastify";
 
 const welcomeMessage = "Hello! How can I assist you today?";
 const promptExamples = [
-  "Generate an image of a kitten",
-  "Write me an Email",
-  "Who created Linux",
+  "Book a room for this weekend",
+  "What amenities does the hotel offer?",
+  "I need room service, please",
 ];
 
 export default function ConversationWrapper({
