@@ -45,7 +45,7 @@ export default async function LandingPage() {
 
       {/* ── hero ── */}
       <section className="relative z-10 mx-auto max-w-4xl px-8 pt-16 pb-20 text-center md:px-16 md:pt-28 md:pb-24">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/6 bg-white/4 px-4 py-1.5 text-xs tracking-widest text-white/50 uppercase backdrop-blur-sm font-jost">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/6 bg-white/4 px-4 py-1.5 text-xs tracking-widest text-white/70 uppercase backdrop-blur-sm font-jost">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
           AI-Powered Hospitality
         </div>
@@ -58,7 +58,7 @@ export default async function LandingPage() {
           <span className="mt-2 block text-white/90">Book, Ask, Relax.</span>
         </h1>
 
-        <h2 className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed font-light text-white/50 font-jost md:text-xl">
+        <h2 className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed font-light text-white/70 font-jost md:text-xl">
           Book rooms, get instant answers, and request hotel services — all
           through a smart conversational assistant available{" "}
           <span className="text-[#2974dd]/80 font-normal">24/7</span>.
@@ -82,7 +82,7 @@ export default async function LandingPage() {
           <h3 className="font-goldman text-3xl font-bold text-white/90 md:text-4xl">
             Choose Your Hotel
           </h3>
-          <p className="mt-3 text-base text-white/40 font-jost font-light">
+          <p className="mt-3 text-base text-white/60 font-jost font-light">
             Select a hotel to start chatting with its AI concierge
           </p>
         </div>
@@ -123,7 +123,7 @@ export default async function LandingPage() {
                     <h4 className="text-lg font-semibold text-white/90 font-jost group-hover:text-white transition-colors">
                       {hotel.name}
                     </h4>
-                    <div className="flex items-center gap-1.5 text-sm text-white/40 font-jost font-light">
+                    <div className="flex items-center gap-1.5 text-sm text-white/60 font-jost font-light">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="14"
@@ -132,7 +132,7 @@ export default async function LandingPage() {
                         viewBox="0 0 24 24"
                         stroke="currentColor"
                         strokeWidth="1.5"
-                        className="shrink-0 text-white/30"
+                        className="shrink-0 text-white/50"
                       >
                         <path
                           strokeLinecap="round"
@@ -177,6 +177,165 @@ export default async function LandingPage() {
         )}
       </section>
 
+      {/* ── features ── */}
+      <div
+        aria-hidden
+        className="relative z-10 mx-auto max-w-7xl px-8 md:px-16 lg:px-24"
+      >
+        <div className="h-px bg-linear-to-r from-transparent via-[#2974dd]/20 to-transparent" />
+      </div>
+
+      <section className="relative z-10 mx-auto max-w-7xl px-8 py-20 md:px-16 lg:px-24">
+        <div className="mb-14 text-center">
+          <h3 className="font-goldman text-3xl font-bold text-white/90 md:text-4xl">
+            What Oasis Can Do
+          </h3>
+          <p className="mt-3 text-base text-white/60 font-jost font-light">
+            Everything our guests need, one conversation away
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              title: "Smart Booking",
+              icon: (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
+                  />
+                </svg>
+              ),
+              items: [
+                "Check availability",
+                "Book or modify reservations",
+                "Instant confirmation",
+              ],
+            },
+            {
+              title: "Hotel Information",
+              icon: (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                  />
+                </svg>
+              ),
+              items: [
+                "Check-in / check-out times",
+                "Breakfast hours",
+                "Amenities and services",
+                "Local recommendations",
+              ],
+            },
+            {
+              title: "Guest Assistance",
+              icon: (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
+                  />
+                </svg>
+              ),
+              items: [
+                "Request housekeeping",
+                "Report issues",
+                "Ask for room service or extras",
+              ],
+            },
+            {
+              title: "Multilingual & 24/7",
+              icon: (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5a17.92 17.92 0 0 1-8.716-2.247m0 0A8.966 8.966 0 0 1 3 12c0-1.264.26-2.467.732-3.558"
+                  />
+                </svg>
+              ),
+              items: ["Always available", "Supports multiple languages"],
+            },
+          ].map((feature, i) => (
+            <div
+              key={i}
+              className="group rounded-2xl border border-white/6 bg-white/3 p-6 transition-all duration-300 hover:border-[#2974dd]/20 hover:bg-white/5"
+            >
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-[#2974dd]/8 text-[#2974dd]/80 transition-colors group-hover:bg-[#2974dd]/14 group-hover:text-[#2974dd]">
+                {feature.icon}
+              </div>
+              <h4 className="mb-3 text-base font-semibold text-white/90 font-jost">
+                {feature.title}
+              </h4>
+              <ul className="flex flex-col gap-2">
+                {feature.items.map((item, j) => (
+                  <li
+                    key={j}
+                    className="flex items-start gap-2 text-sm text-white/60 font-jost font-light leading-relaxed"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="mt-0.5 shrink-0 text-[#2974dd]/50"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="m4.5 12.75 6 6 9-13.5"
+                      />
+                    </svg>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ── how it works ── */}
       <div
         aria-hidden
@@ -216,7 +375,7 @@ export default async function LandingPage() {
             <h3 className="text-base font-semibold text-white/90 font-jost">
               {f.title}
             </h3>
-            <p className="text-sm leading-relaxed text-white/40 font-jost font-light">
+            <p className="text-sm leading-relaxed text-white/60 font-jost font-light">
               {f.desc}
             </p>
           </div>
