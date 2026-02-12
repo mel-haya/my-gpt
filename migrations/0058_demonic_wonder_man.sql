@@ -1,0 +1,1 @@
+ALTER TABLE "feedback" ADD COLUMN "submitted_by" text DEFAULT 'anonymous' NOT NULL;

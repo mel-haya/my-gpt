@@ -18,9 +18,6 @@ export async function submitFeedbackAction({
 }) {
   try {
     const user = await currentUser();
-    if (!user) {
-      throw new Error("User not authenticated");
-    }
 
     if (!conversationId) {
       throw new Error("Conversation ID is required");
@@ -39,6 +36,7 @@ export async function submitFeedbackAction({
       message_id: message.id,
       feedback: feedbackType,
       conversation_id: conversationId,
+      submitted_by: user?.id ?? "anonymous",
     });
 
     return { success: true };

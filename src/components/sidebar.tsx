@@ -72,10 +72,10 @@ export default function Sidebar({
   const { isSubscribed, loading: subscriptionLoading } = useSubscription();
 
   const handleNewConversation = () => {
-    if (!isSignedIn) {
-      onSignInRequired();
-      return;
-    }
+    // if (!isSignedIn) {
+    //   onSignInRequired();
+    //   return;
+    // }
     reset();
   };
 

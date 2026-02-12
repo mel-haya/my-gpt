@@ -432,6 +432,7 @@ export const feedback = pgTable("feedback", {
   message_id: integer("message_id").references(() => messages.id),
   feedback: feedbackTypeEnum("feedback").notNull(),
   submitted_at: timestamp("submitted_at").notNull().defaultNow(),
+  submitted_by: text("submitted_by").notNull().default("anonymous"),
   conversation_id: integer("conversation_id").references(
     () => conversations.id,
   ),
