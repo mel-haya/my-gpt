@@ -6,6 +6,7 @@ import {
 } from "@/lib/db-schema";
 import { db } from "@/lib/db-config";
 import { eq, and, desc, ilike, count } from "drizzle-orm";
+import { del } from "@vercel/blob";
 
 export type UploadedFileWithUser = SelectUploadedFile & {
   username: string | null;
@@ -191,7 +192,7 @@ export async function deleteFile(
 
   // Verify file exists and belongs to hotel if hotelId provided
   const [file] = await db
-    .select({ id: uploadedFiles.id })
+    .select({ id: uploadedFiles.id, downloadUrl: uploadedFiles.downloadUrl })
     .from(uploadedFiles)
     .where(whereCondition);
 
@@ -199,10 +200,31 @@ export async function deleteFile(
     throw new Error("File not found or access denied");
   }
 
+  if (file.downloadUrl) {
+    try {
+      await del(file.downloadUrl);
+    } catch (error) {
+      console.error("Error deleting file from blob storage:", error);
+    }
+  }
+
   // First delete all documents associated with this file
   await db.delete(documents).where(eq(documents.uploaded_file_id, fileId));
   // Then delete the file itself
   await db.delete(uploadedFiles).where(eq(uploadedFiles.id, fileId));
+}
+
+export async function getFileHotelId(fileId: number): Promise<number | null> {
+  const [file] = await db
+    .select({ hotel_id: uploadedFiles.hotel_id })
+    .from(uploadedFiles)
+    .where(eq(uploadedFiles.id, fileId));
+
+  if (!file) {
+    throw new Error("File not found");
+  }
+
+  return file.hotel_id ?? null;
 }
 
 export async function toggleFileActive(

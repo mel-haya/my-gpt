@@ -21,7 +21,7 @@ export default function HotelsPageClient({
   searchQuery,
 }: HotelsPageClientProps) {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto py-6 px-6 3xl:px-0 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Hotels</h2>

@@ -3,6 +3,7 @@
 import {
   getUploadedFiles,
   deleteFile,
+  getFileHotelId,
   toggleFileActive,
   toggleFileIncludeInTests,
   PaginatedUploadedFiles,
@@ -68,6 +69,10 @@ export async function deleteFileAction(fileId: number): Promise<void> {
       const hotelId = await getUserHotelId();
       if (!hotelId) {
         throw new Error("No hotel assigned");
+      }
+      const fileHotelId = await getFileHotelId(fileId);
+      if (fileHotelId !== hotelId) {
+        throw new Error("Unauthorized: File does not belong to your hotel");
       }
       await deleteFile(fileId, hotelId);
       return;
