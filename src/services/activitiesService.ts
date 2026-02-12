@@ -84,17 +84,6 @@ export async function getActivities(
   };
 }
 
-export async function getActivityById(
-  id: number,
-): Promise<SelectActivity | undefined> {
-  const result = await db
-    .select()
-    .from(activities)
-    .where(eq(activities.id, id))
-    .limit(1);
-  return result[0];
-}
-
 export async function createActivity(
   data: InsertActivity,
 ): Promise<SelectActivity> {

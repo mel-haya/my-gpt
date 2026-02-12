@@ -206,28 +206,3 @@ export async function bulkDeleteSystemPromptsAction(ids: number[]): Promise<Acti
     return { success: false, error: "Failed to delete system prompts" };
   }
 }
-
-export async function getSystemPromptByIdAction(id: number): Promise<ActionResult<SelectSystemPrompt>> {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const isAdmin = await checkRole("admin");
-    if (!isAdmin) {
-      return { success: false, error: "Admin access required" };
-    }
-
-    const prompt = await getSystemPromptById(id);
-
-    if (!prompt) {
-      return { success: false, error: "System prompt not found" };
-    }
-
-    return { success: true, data: prompt };
-  } catch (error) {
-    console.error("Error fetching system prompt:", error);
-    return { success: false, error: "Failed to fetch system prompt" };
-  }
-}

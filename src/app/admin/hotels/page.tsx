@@ -4,15 +4,18 @@ import { getHotels } from "@/services/hotelService";
 export const dynamic = "force-dynamic";
 
 interface HotelsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     page?: string;
     search?: string;
-  };
+  }>;
 }
 
 export default async function HotelsPage({ searchParams }: HotelsPageProps) {
-  const page = searchParams.page ? Number(searchParams.page) : 1;
-  const searchQuery = searchParams.search || "";
+  const resolvedSearchParams = await searchParams;
+  const page = resolvedSearchParams.page
+    ? Number(resolvedSearchParams.page)
+    : 1;
+  const searchQuery = resolvedSearchParams.search || "";
   const limit = 10;
 
   const { hotels, pagination } = await getHotels(searchQuery, limit, page);

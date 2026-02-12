@@ -165,19 +165,6 @@ export async function bulkDeleteSystemPrompts(
 
   return result.length; // Return actual count of deleted records
 }
-export async function getDefaultSystemPrompt(
-  userId: string
-): Promise<SelectSystemPrompt | null> {
-  const [defaultPrompt] = await db
-    .select()
-    .from(systemPrompts)
-    .where(
-      and(eq(systemPrompts.user_id, userId), eq(systemPrompts.default, true))
-    )
-    .limit(1);
-
-  return defaultPrompt || null;
-}
 
 export async function getSystemPromptById(
   promptId: number

@@ -54,42 +54,6 @@ export async function hasReachedDailyLimit(userId: string): Promise<boolean> {
 }
 
 /**
- * Increment message count for today
- */
-export async function incrementMessageCount(userId: string): Promise<SelectUserTokenUsage> {
-  const todaysUsage = await getTodaysUsage(userId);
-  
-  const updated = await db
-    .update(userTokenUsage)
-    .set({
-      messages_sent: todaysUsage.messages_sent + 1,
-      updated_at: new Date()
-    })
-    .where(eq(userTokenUsage.id, todaysUsage.id))
-    .returning();
-
-  return updated[0];
-}
-
-/**
- * Update token usage for a user
- */
-export async function updateTokenUsage(userId: string, tokensUsed: number): Promise<SelectUserTokenUsage> {
-  const todaysUsage = await getTodaysUsage(userId);
-  
-  const updated = await db
-    .update(userTokenUsage)
-    .set({
-      tokens_used: todaysUsage.tokens_used + tokensUsed,
-      updated_at: new Date()
-    })
-    .where(eq(userTokenUsage.id, todaysUsage.id))
-    .returning();
-
-  return updated[0];
-}
-
-/**
  * Record both message and token usage in one operation
  */
 export async function recordUsage(userId: string, tokensUsed: number): Promise<{
@@ -117,42 +81,6 @@ export async function recordUsage(userId: string, tokensUsed: number): Promise<{
 }
 
 /**
- * Get user's usage history for a date range
- */
-export async function getUserUsageHistory(
-  userId: string,
-  startDate: string,
-  endDate: string
-): Promise<SelectUserTokenUsage[]> {
-  return await db
-    .select()
-    .from(userTokenUsage)
-    .where(
-      and(
-        eq(userTokenUsage.user_id, userId),
-        gte(userTokenUsage.usage_date, startDate),
-        lte(userTokenUsage.usage_date, endDate)
-      )
-    )
-    .orderBy(userTokenUsage.usage_date);
-}
-
-/**
- * Update daily message limit for a user
- */
-export async function updateDailyLimit(userId: string, newLimit: number): Promise<void> {
-  const todaysUsage = await getTodaysUsage(userId);
-  
-  await db
-    .update(userTokenUsage)
-    .set({
-      daily_message_limit: newLimit,
-      updated_at: new Date()
-    })
-    .where(eq(userTokenUsage.id, todaysUsage.id));
-}
-
-/**
  * Get remaining messages for today (returns -1 for unlimited if subscribed)
  */
 export async function getRemainingMessages(userId: string): Promise<number> {
@@ -164,23 +92,4 @@ export async function getRemainingMessages(userId: string): Promise<number> {
 
   const todaysUsage = await getTodaysUsage(userId);
   return Math.max(0, todaysUsage.daily_message_limit - todaysUsage.messages_sent);
-}
-
-/**
- * Reset usage for a specific date (useful for testing or admin operations)
- */
-export async function resetUsageForDate(userId: string, date: string): Promise<void> {
-  await db
-    .update(userTokenUsage)
-    .set({
-      messages_sent: 0,
-      tokens_used: 0,
-      updated_at: new Date()
-    })
-    .where(
-      and(
-        eq(userTokenUsage.user_id, userId),
-        eq(userTokenUsage.usage_date, date)
-      )
-    );
 }

@@ -8,7 +8,7 @@ interface SemanticChunk {
   endIndex: number;
 }
 
-export const textSplitter = new RecursiveCharacterTextSplitter({
+const textSplitter = new RecursiveCharacterTextSplitter({
   chunkSize: 300, // Slightly larger base chunks for better semantic context
   chunkOverlap: 50,
   separators: ["\n\n", "\n", ". ", "! ", "? ", " ", ""],

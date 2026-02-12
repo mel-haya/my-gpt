@@ -7,7 +7,7 @@ import {
 } from "@/lib/db-schema";
 import { eq, or, sql, desc, count } from "drizzle-orm";
 
-export async function createUser(userData: {
+async function createUser(userData: {
   id: string;
   username: string;
   email: string;
@@ -65,31 +65,31 @@ export async function getUserById(id: string) {
   }
 }
 
-export async function updateUser(
-  id: string,
-  userData: {
-    username?: string;
-    email?: string;
-  },
-) {
-  try {
-    const updateData = {
-      ...userData,
-      updated_at: new Date(),
-    };
+// export async function updateUser(
+//   id: string,
+//   userData: {
+//     username?: string;
+//     email?: string;
+//   },
+// ) {
+//   try {
+//     const updateData = {
+//       ...userData,
+//       updated_at: new Date(),
+//     };
 
-    const result = await db
-      .update(users)
-      .set(updateData)
-      .where(eq(users.id, id))
-      .returning();
+//     const result = await db
+//       .update(users)
+//       .set(updateData)
+//       .where(eq(users.id, id))
+//       .returning();
 
-    return result[0] || null;
-  } catch (error) {
-    console.error("Error updating user:", error);
-    throw new Error("Failed to update user");
-  }
-}
+//     return result[0] || null;
+//   } catch (error) {
+//     console.error("Error updating user:", error);
+//     throw new Error("Failed to update user");
+//   }
+// }
 
 export async function deleteUser(id: string) {
   try {

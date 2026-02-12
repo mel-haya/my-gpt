@@ -216,18 +216,6 @@ export async function getDefaultModel(): Promise<SelectModel | null> {
   return defaultModel || null;
 }
 
-export async function getModelById(
-  modelId: number,
-): Promise<SelectModel | null> {
-  const [model] = await db
-    .select()
-    .from(models)
-    .where(eq(models.id, modelId))
-    .limit(1);
-
-  return model || null;
-}
-
 export async function getModelByStringId(
   modelId: string,
 ): Promise<SelectModel | null> {

@@ -39,24 +39,3 @@ export async function isUserSubscribed(userId: string): Promise<boolean> {
 
   return activeSubscription.length > 0;
 }
-
-/**
- * Get the user's current subscription details
- */
-export async function getUserSubscription(userId: string): Promise<SelectSubscription | null> {
-  const today = new Date();
-  
-  const activeSubscription = await db
-    .select()
-    .from(subscriptions)
-    .where(
-      and(
-        eq(subscriptions.user_id, userId),
-        gte(subscriptions.expiry_date, today)
-      )
-    )
-    .orderBy(subscriptions.expiry_date)
-    .limit(1);
-
-  return activeSubscription.length > 0 ? activeSubscription[0] : null;
-}

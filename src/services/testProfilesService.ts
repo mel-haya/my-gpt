@@ -205,17 +205,6 @@ export async function getTestProfiles(options?: {
   };
 }
 
-export async function getTestProfileById(
-  id: number,
-): Promise<SelectTestProfile | null> {
-  const result = await db
-    .select()
-    .from(testProfiles)
-    .where(eq(testProfiles.id, id))
-    .limit(1);
-  return result[0] || null;
-}
-
 export async function getTestProfileByName(
   name: string,
   userId: string,

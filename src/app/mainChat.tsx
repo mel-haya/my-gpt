@@ -11,7 +11,7 @@ import { useEffect, useState, useEffectEvent, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { ChatRequestOptions } from "ai";
 import { useTokenUsage } from "@/hooks/useTokenUsage";
-import { useConversations } from "@/hooks/useConversations";
+import useConversations  from "@/hooks/useConversations";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SelectConversation } from "@/lib/db-schema";
 

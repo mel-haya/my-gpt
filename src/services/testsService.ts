@@ -261,7 +261,7 @@ export async function deleteTest(id: number) {
   return deletedTest;
 }
 
-export async function getTestById(id: number): Promise<TestWithUser | null> {
+async function getTestById(id: number): Promise<TestWithUser | null> {
   const userTable = users;
 
   const result = await db
@@ -290,7 +290,7 @@ export async function getTestById(id: number): Promise<TestWithUser | null> {
   };
 }
 
-export async function getTestRunsForTest(
+async function getTestRunsForTest(
   testId: number,
 ): Promise<TestRunWithResults[]> {
   try {

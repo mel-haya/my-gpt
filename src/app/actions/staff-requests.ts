@@ -65,12 +65,6 @@ export async function completeStaffRequestAction(
   return request;
 }
 
-export async function getStaffRequestStatsAction(
-  hotelId?: number,
-): Promise<StaffRequestStats> {
-  return await getStaffRequestStats(hotelId);
-}
-
 export async function deleteStaffRequestAction(id: number): Promise<void> {
   await deleteStaffRequest(id);
   revalidatePath("/admin/requests");

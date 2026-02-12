@@ -32,20 +32,6 @@ export async function uploadHotelImageAction(
   }
 }
 
-export async function getHotelsAction(
-  searchQuery?: string,
-  limit: number = 10,
-  page: number = 1,
-): Promise<PaginatedHotels> {
-  return await getHotels(searchQuery, limit, page);
-}
-
-export async function getHotelByIdAction(
-  id: number,
-): Promise<SelectHotel | undefined> {
-  return await getHotelById(id);
-}
-
 export async function createHotelAction(
   data: InsertHotel,
 ): Promise<SelectHotel> {
