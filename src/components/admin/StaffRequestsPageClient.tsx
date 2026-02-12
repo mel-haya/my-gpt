@@ -52,6 +52,7 @@ interface StaffRequestsPageClientProps {
   showHotelColumn?: boolean;
   hotelId?: number;
   userRole?: string;
+  hotels?: { id: number; name: string }[];
 }
 
 const DatePicker = ({
@@ -100,6 +101,7 @@ export function StaffRequestsPageClient({
   showHotelColumn = false,
   hotelId,
   userRole,
+  hotels,
 }: StaffRequestsPageClientProps) {
   const { userId } = useAuth();
   const showAdminContent = userRole === "admin";
@@ -369,6 +371,9 @@ export function StaffRequestsPageClient({
         isOpen={isCreateDialogOpen}
         onClose={() => setIsCreateDialogOpen(false)}
         onConfirm={handleConfirmCreate}
+        hotelId={hotelId}
+        userRole={userRole}
+        hotels={hotels}
       />
 
       <DeleteRequestDialog

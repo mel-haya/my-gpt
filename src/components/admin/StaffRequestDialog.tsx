@@ -26,12 +26,18 @@ interface StaffRequestDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (data: InsertStaffRequest) => Promise<void>;
+  hotelId?: number;
+  userRole?: string;
+  hotels?: { id: number; name: string }[];
 }
 
 export function StaffRequestDialog({
   isOpen,
   onClose,
   onConfirm,
+  hotelId,
+  userRole,
+  hotels,
 }: StaffRequestDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -41,11 +47,23 @@ export function StaffRequestDialog({
     useState<InsertStaffRequest["urgency"]>("medium");
   const [roomNumber, setRoomNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedHotelId, setSelectedHotelId] = useState("");
+  const [hotelError, setHotelError] = useState("");
+  const isAdmin = userRole === "admin";
+  const availableHotels = hotels ?? [];
+  const hasHotels = availableHotels.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (isAdmin && !selectedHotelId) {
+        setHotelError("Select a hotel for this request.");
+        return;
+      }
       setIsSubmitting(true);
+      const resolvedHotelId = isAdmin
+        ? parseInt(selectedHotelId, 10)
+        : hotelId ?? null;
       await onConfirm({
         title,
         description,
@@ -53,6 +71,7 @@ export function StaffRequestDialog({
         urgency,
         room_number: roomNumber ? parseInt(roomNumber) : null,
         status: "pending",
+        hotel_id: resolvedHotelId,
       });
       onClose();
       // Reset form
@@ -61,6 +80,8 @@ export function StaffRequestDialog({
       setCategory("other");
       setUrgency("medium");
       setRoomNumber("");
+      setSelectedHotelId("");
+      setHotelError("");
     } catch (error) {
       console.error("Failed to create request", error);
     } finally {
@@ -78,6 +99,37 @@ export function StaffRequestDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          {isAdmin && (
+            <div className="grid gap-2">
+              <Label htmlFor="hotelId">Hotel</Label>
+              <Select
+                value={selectedHotelId}
+                onValueChange={(val) => {
+                  setSelectedHotelId(val);
+                  setHotelError("");
+                }}
+                disabled={!hasHotels}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      hasHotels ? "Select hotel" : "No hotels available"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableHotels.map((hotel) => (
+                    <SelectItem key={hotel.id} value={hotel.id.toString()}>
+                      {hotel.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {hotelError && (
+                <p className="text-sm text-destructive">{hotelError}</p>
+              )}
+            </div>
+          )}
           <div className="grid gap-2">
             <Label htmlFor="title">Title</Label>
             <Input
