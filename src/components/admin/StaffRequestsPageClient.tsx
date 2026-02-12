@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
+import { format } from "date-fns";
 import { SelectStaffRequest, InsertStaffRequest } from "@/lib/db-schema";
 import { StaffRequestsList } from "./StaffRequestsList";
 import { CompleteRequestDialog } from "./CompleteRequestDialog";
@@ -16,6 +17,8 @@ import {
 } from "@/app/actions/staff-requests";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -30,6 +33,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Settings,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "react-toastify";
@@ -37,6 +41,7 @@ import {
   StaffRequestWithHotel,
   StaffRequestStats,
 } from "@/services/staffRequestsService";
+import { cn } from "@/lib/utils";
 
 interface StaffRequestsPageClientProps {
   initialRequests: StaffRequestWithHotel[];
@@ -48,6 +53,43 @@ interface StaffRequestsPageClientProps {
   hotelId?: number;
   userRole?: string;
 }
+
+const DatePicker = ({
+  value,
+  onChange,
+  placeholder,
+  disabledDays,
+}: {
+  value: Date | undefined;
+  onChange: (date: Date | undefined) => void;
+  placeholder: string;
+  disabledDays?: ComponentProps<typeof Calendar>["disabled"];
+}) => (
+  <Popover>
+    <PopoverTrigger asChild>
+  <Button
+        variant="outline"
+        data-empty={!value}
+        className={cn(
+          "w-full justify-start text-left font-normal data-[empty=true]:text-muted-foreground",
+          "sm:w-[200px]",
+        )}
+      >
+        <CalendarIcon className="mr-2 h-4 w-4" />
+        {value ? format(value, "PPP") : <span>{placeholder}</span>}
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-auto p-0" align="start">
+      <Calendar
+        mode="single"
+        selected={value}
+        onSelect={onChange}
+        disabled={disabledDays}
+        initialFocus
+      />
+    </PopoverContent>
+  </Popover>
+);
 
 export function StaffRequestsPageClient({
   initialRequests,
@@ -69,6 +111,8 @@ export function StaffRequestsPageClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("pending");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -81,6 +125,8 @@ export function StaffRequestsPageClient({
     s: string = searchQuery,
     c: string = categoryFilter,
     st: string = statusFilter,
+    start: Date | undefined = startDate,
+    end: Date | undefined = endDate,
   ) => {
     try {
       const result = await getStaffRequestsAction(
@@ -90,6 +136,8 @@ export function StaffRequestsPageClient({
         10,
         p,
         hotelId,
+        start ? start.toISOString() : undefined,
+        end ? end.toISOString() : undefined,
       );
       setRequests(result.requests);
       setPage(p);
@@ -102,17 +150,39 @@ export function StaffRequestsPageClient({
   };
 
   const handleSearch = () => {
-    fetchRequests(1, searchQuery, categoryFilter, statusFilter);
+    fetchRequests(1, searchQuery, categoryFilter, statusFilter, startDate, endDate);
   };
 
   const handleCategoryChange = (value: string) => {
     setCategoryFilter(value);
-    fetchRequests(1, searchQuery, value, statusFilter);
+    fetchRequests(1, searchQuery, value, statusFilter, startDate, endDate);
   };
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
-    fetchRequests(1, searchQuery, categoryFilter, value);
+    fetchRequests(1, searchQuery, categoryFilter, value, startDate, endDate);
+  };
+
+  const handleStartDateChange = (date: Date | undefined) => {
+    const nextStartDate = date;
+    let nextEndDate = endDate;
+    if (nextStartDate && nextEndDate && nextStartDate > nextEndDate) {
+      nextEndDate = nextStartDate;
+      setEndDate(nextEndDate);
+    }
+    setStartDate(nextStartDate);
+    fetchRequests(1, searchQuery, categoryFilter, statusFilter, nextStartDate, nextEndDate);
+  };
+
+  const handleEndDateChange = (date: Date | undefined) => {
+    const nextEndDate = date;
+    let nextStartDate = startDate;
+    if (nextStartDate && nextEndDate && nextEndDate < nextStartDate) {
+      nextStartDate = nextEndDate;
+      setStartDate(nextStartDate);
+    }
+    setEndDate(nextEndDate);
+    fetchRequests(1, searchQuery, categoryFilter, statusFilter, nextStartDate, nextEndDate);
   };
 
   const handleCompleteClick = (request: SelectStaffRequest) => {
@@ -192,8 +262,8 @@ export function StaffRequestsPageClient({
 
       <StaffRequestsStats stats={stats} />
 
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
+      <div className="flex flex-col md:flex-row flex-wrap gap-4">
+        <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search requests..."
@@ -204,7 +274,7 @@ export function StaffRequestsPageClient({
           />
         </div>
         <Select value={statusFilter} onValueChange={handleStatusChange}>
-          <SelectTrigger className="w-45">
+          <SelectTrigger className="w-full md:w-45">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
               <SelectValue placeholder="Status" />
@@ -218,7 +288,7 @@ export function StaffRequestsPageClient({
           </SelectContent>
         </Select>
         <Select value={categoryFilter} onValueChange={handleCategoryChange}>
-          <SelectTrigger className="w-50">
+          <SelectTrigger className="w-full md:w-50">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -232,6 +302,20 @@ export function StaffRequestsPageClient({
             <SelectItem value="other">Other</SelectItem>
           </SelectContent>
         </Select>
+        <div className="flex w-full flex-col sm:flex-row gap-2 sm:w-auto">
+          <DatePicker
+            value={startDate}
+            onChange={handleStartDateChange}
+            placeholder="From date"
+            disabledDays={endDate ? { after: endDate } : undefined}
+          />
+          <DatePicker
+            value={endDate}
+            onChange={handleEndDateChange}
+            placeholder="To date"
+            disabledDays={startDate ? { before: startDate } : undefined}
+          />
+        </div>
       </div>
 
       <StaffRequestsList

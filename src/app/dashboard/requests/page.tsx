@@ -27,7 +27,7 @@ export default async function DashboardRequestsPage() {
   ]);
 
   return (
-    <div className="flex flex-col max-w-350 mx-4 2xl:mx-auto my-4 gap-4">
+    <div className="flex flex-col max-w-350 px-6 2xl:mx-auto my-4 gap-4 ">
       <StaffRequestsPageClient
         initialRequests={requests}
         totalCount={pagination.totalCount}

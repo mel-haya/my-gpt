@@ -12,6 +12,7 @@ import {
 } from "@/services/staffRequestsService";
 import { InsertStaffRequest, SelectStaffRequest } from "@/lib/db-schema";
 import { revalidatePath } from "next/cache";
+import { endOfDay, startOfDay } from "date-fns";
 
 export async function getStaffRequestsAction(
   searchQuery?: string,
@@ -20,7 +21,20 @@ export async function getStaffRequestsAction(
   limit: number = 10,
   page: number = 1,
   hotelId?: number,
+  startDate?: string,
+  endDate?: string,
 ): Promise<PaginatedStaffRequests> {
+  const parsedStartDate = startDate ? new Date(startDate) : undefined;
+  const parsedEndDate = endDate ? new Date(endDate) : undefined;
+  const normalizedStartDate =
+    parsedStartDate && !Number.isNaN(parsedStartDate.getTime())
+      ? startOfDay(parsedStartDate)
+      : undefined;
+  const normalizedEndDate =
+    parsedEndDate && !Number.isNaN(parsedEndDate.getTime())
+      ? endOfDay(parsedEndDate)
+      : undefined;
+
   return await getStaffRequests(
     searchQuery,
     category,
@@ -28,6 +42,8 @@ export async function getStaffRequestsAction(
     limit,
     page,
     hotelId,
+    normalizedStartDate,
+    normalizedEndDate,
   );
 }
 

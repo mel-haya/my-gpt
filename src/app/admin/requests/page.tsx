@@ -14,7 +14,7 @@ export default async function StaffRequestsPage() {
   ]);
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-6 px-6">
       <StaffRequestsPageClient
         initialRequests={requests}
         totalCount={pagination.totalCount}

@@ -15,6 +15,8 @@ import {
   count,
   getTableColumns,
   sql,
+  gte,
+  lte,
 } from "drizzle-orm";
 
 export type StaffRequestWithCompleter = SelectStaffRequest & {
@@ -54,6 +56,8 @@ export async function getStaffRequests(
   limit: number = 10,
   page: number = 1,
   hotelId?: number,
+  startDate?: Date,
+  endDate?: Date,
 ): Promise<PaginatedStaffRequests> {
   const offset = (page - 1) * limit;
 
@@ -80,6 +84,14 @@ export async function getStaffRequests(
 
   if (hotelId !== undefined) {
     conditions.push(eq(staffRequests.hotel_id, hotelId));
+  }
+
+  if (startDate) {
+    conditions.push(gte(staffRequests.created_at, startDate));
+  }
+
+  if (endDate) {
+    conditions.push(lte(staffRequests.created_at, endDate));
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
