@@ -3,7 +3,7 @@
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { SelectFeedback } from "@/lib/db-schema";
+// import { SelectFeedback } from "@/lib/db-schema";
 import DeleteFeedbackDialog from "@/components/admin/DeleteFeedbackDialog";
 
 export interface FeedbackData {
@@ -13,9 +13,16 @@ export interface FeedbackData {
   conversation_id: number | null;
   message_id: number | null;
   message_content: string | null;
+  hotel_name?: string | null;
 }
 
-export function FeedbackCard({ feedback }: { feedback: FeedbackData }) {
+export function FeedbackCard({
+  feedback,
+  showHotelName = false,
+}: {
+  feedback: FeedbackData;
+  showHotelName?: boolean;
+}) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const router = useRouter();
 
@@ -24,14 +31,22 @@ export function FeedbackCard({ feedback }: { feedback: FeedbackData }) {
   return (
     <div className="bg-gray-800/30 backdrop-blur-md border border-white/5 rounded-2xl p-6 w-full transition-all duration-200 hover:bg-gray-800/50 hover:border-indigo-500/30">
       <div className="flex justify-between items-center mb-4">
-        <span
-          className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${isPositive
-            ? "bg-green-500/10 text-green-400 border border-green-500/20"
-            : "bg-red-500/10 text-red-400 border border-red-500/20"
+        <div className="flex items-center gap-3">
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+              isPositive
+                ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                : "bg-red-500/10 text-red-400 border border-red-500/20"
             }`}
-        >
-          {isPositive ? "Positive" : "Negative"}
-        </span>
+          >
+            {isPositive ? "Positive" : "Negative"}
+          </span>
+          {showHotelName && feedback.hotel_name && (
+            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              {feedback.hotel_name}
+            </span>
+          )}
+        </div>
         <span className="text-gray-500 text-sm">
           {new Date(feedback.submitted_at).toLocaleString()}
         </span>

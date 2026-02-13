@@ -36,7 +36,7 @@ export default async function FeedbackPage({
       stats={stats}
       currentPage={currentPage}
       hasMore={hasMore}
-      showHotelName={true}
+      showHotelName={false}
     />
   );
 }

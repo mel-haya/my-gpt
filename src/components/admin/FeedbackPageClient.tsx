@@ -1,8 +1,11 @@
 "use client";
 
-import { FeedbackCard, Pagination, FeedbackData } from "@/components/admin/FeedbackList";
+import {
+  FeedbackCard,
+  Pagination,
+  FeedbackData,
+} from "@/components/admin/FeedbackList";
 import { MessageSquare, ThumbsDown, ThumbsUp, Activity } from "lucide-react";
-import { SelectFeedback } from "@/lib/db-schema";
 
 interface Stats {
   total: number;
@@ -16,11 +19,13 @@ export default function FeedbackPageClient({
   stats,
   currentPage,
   hasMore,
+  showHotelName = false,
 }: {
   feedbacks: FeedbackData[];
   stats: Stats;
   currentPage: number;
   hasMore: boolean;
+  showHotelName?: boolean;
 }) {
   return (
     <div className="p-8 max-w-7xl mx-auto font-sans text-gray-200">
@@ -34,7 +39,7 @@ export default function FeedbackPageClient({
       </header>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex flex-col">
+        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex-col">
           <div className="p-4 rounded-2xl flex gap-2 items-center justify-center bg-blue-500/10 text-blue-500">
             <MessageSquare size={24} />
             <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -48,7 +53,7 @@ export default function FeedbackPageClient({
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex flex-col">
+        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex-col">
           <div className="p-4 rounded-2xl flex gap-2 items-center justify-center bg-green-500/10 text-green-500">
             <ThumbsUp size={24} />
             <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -62,7 +67,7 @@ export default function FeedbackPageClient({
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex flex-col">
+        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex-col">
           <div className="p-4 rounded-2xl flex items-center justify-center bg-red-500/10 text-red-500 gap-2">
             <ThumbsDown size={24} />
             <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -76,8 +81,8 @@ export default function FeedbackPageClient({
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex flex-col">
-          <div className="p-4 flex gap-2 rounded-2xl flex items-center justify-center bg-purple-500/10 text-purple-500">
+        <div className="bg-gray-800/50 backdrop-blur-lg border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all duration-200 hover:-translate-y-1 hover:bg-gray-800/80 shadow-lg flex-col">
+          <div className="p-4 flex gap-2 rounded-2xl items-center justify-center bg-purple-500/10 text-purple-500">
             <Activity size={24} />
             <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
               Satisfaction Rate
@@ -98,7 +103,13 @@ export default function FeedbackPageClient({
               No feedback found.
             </div>
           ) : (
-            feedbacks.map((f) => <FeedbackCard key={f.id} feedback={f} />)
+            feedbacks.map((f) => (
+              <FeedbackCard
+                key={f.id}
+                feedback={f}
+                showHotelName={showHotelName}
+              />
+            ))
           )}
         </div>
 

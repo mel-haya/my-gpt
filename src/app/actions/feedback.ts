@@ -1,7 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db-config";
-import { feedback, messages } from "@/lib/db-schema";
+import {
+  feedback,
+  messages,
+  hotels,
+  hotelStaff,
+  conversations,
+} from "@/lib/db-schema";
 import { currentUser } from "@clerk/nextjs/server";
 import { desc, eq } from "drizzle-orm";
 
@@ -65,7 +71,18 @@ export async function getFeedbacksAction({
 
     const offset = (page - 1) * limit;
 
-    const feedbackEntries = await db
+    // Check if user is associated with a hotel
+    const staffRecords = await db
+      .select({
+        hotel_id: hotelStaff.hotel_id,
+      })
+      .from(hotelStaff)
+      .where(eq(hotelStaff.user_id, user.id))
+      .limit(1);
+
+    const staffRecord = staffRecords.length > 0 ? staffRecords[0] : null;
+
+    let query = db
       .select({
         id: feedback.id,
         feedback: feedback.feedback,
@@ -73,12 +90,23 @@ export async function getFeedbacksAction({
         conversation_id: feedback.conversation_id,
         message_id: feedback.message_id,
         message_content: messages.text_content,
+        hotel_name: hotels.name,
       })
       .from(feedback)
       .leftJoin(messages, eq(feedback.message_id, messages.id))
+      .leftJoin(conversations, eq(feedback.conversation_id, conversations.id))
+      .leftJoin(hotels, eq(conversations.hotel_id, hotels.id))
       .orderBy(desc(feedback.submitted_at))
       .limit(limit)
-      .offset(offset);
+      .offset(offset)
+      .$dynamic();
+
+    // If user is hotel staff/owner, filter by their hotel_id
+    if (staffRecord) {
+      query = query.where(eq(conversations.hotel_id, staffRecord.hotel_id));
+    }
+
+    const feedbackEntries = await query;
 
     return { success: true, data: feedbackEntries };
   } catch (error) {
@@ -98,7 +126,30 @@ export async function getFeedbackStatsAction() {
       throw new Error("User not authenticated");
     }
 
-    const allFeedback = await db.select().from(feedback);
+    // Check if user is associated with a hotel
+    const staffRecords = await db
+      .select({
+        hotel_id: hotelStaff.hotel_id,
+      })
+      .from(hotelStaff)
+      .where(eq(hotelStaff.user_id, user.id))
+      .limit(1);
+
+    const staffRecord = staffRecords.length > 0 ? staffRecords[0] : null;
+
+    let query = db
+      .select({
+        feedback: feedback.feedback,
+      })
+      .from(feedback)
+      .leftJoin(conversations, eq(feedback.conversation_id, conversations.id))
+      .$dynamic();
+
+    if (staffRecord) {
+      query = query.where(eq(conversations.hotel_id, staffRecord.hotel_id));
+    }
+
+    const allFeedback = await query;
 
     const total = allFeedback.length;
     const positive = allFeedback.filter(

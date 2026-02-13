@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Home,
   LogOut,
+  ThumbsUp,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -74,6 +75,12 @@ export default function DashboardSidebar({
       label: "Requests",
       path: "/dashboard/requests",
       icon: ClipboardList,
+    },
+    {
+      label: "Feedback",
+      path: "/dashboard/feedback",
+      icon: ThumbsUp,
+      ownerOnly: true,
     },
   ];
 
