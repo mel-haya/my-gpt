@@ -6,6 +6,7 @@ export interface HistoryConversation {
   email: string | null;
   messageCount: number;
   lastMessageAt: string;
+  hotelName?: string | null;
 }
 
 export interface PaginatedConversationsResult {

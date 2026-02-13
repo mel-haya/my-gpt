@@ -15,6 +15,7 @@ interface ConversationsListProps {
   hasMore: boolean;
   isLoading: boolean;
   className?: string;
+  showHotelName?: boolean;
 }
 
 export default function ConversationsList({
@@ -25,6 +26,7 @@ export default function ConversationsList({
   hasMore,
   isLoading,
   className,
+  showHotelName = false,
 }: ConversationsListProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -104,17 +106,24 @@ export default function ConversationsList({
                 )}
 
                 <div className="flex flex-col gap-2">
-                  <div className="flex justify-between items-start gap-2">
-                    <h3
-                      className={cn(
-                        "font-semibold text-sm line-clamp-1 transition-colors",
-                        selectedId === conv.id
-                          ? "text-blue-400"
-                          : "text-neutral-200 group-hover:text-white",
-                      )}
-                    >
-                      {conv.title || "Untitled Conversation"}
-                    </h3>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between items-start gap-2">
+                      <h3
+                        className={cn(
+                          "font-semibold text-sm line-clamp-1 transition-colors",
+                          selectedId === conv.id
+                            ? "text-blue-400"
+                            : "text-neutral-200 group-hover:text-white",
+                        )}
+                      >
+                        {conv.title || "Untitled Conversation"}
+                      </h3>
+                    </div>
+                    {showHotelName && conv.hotelName && (
+                      <span className="self-start text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                        {conv.hotelName}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3 text-[11px] text-neutral-500 italic">

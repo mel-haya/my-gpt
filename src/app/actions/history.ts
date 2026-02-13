@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db-config";
-import { conversations, messages, users } from "@/lib/db-schema";
+import { conversations, messages, users, hotels } from "@/lib/db-schema";
 import { eq, desc, ilike, or, sql, lt, and } from "drizzle-orm";
 import { PaginatedConversationsResult } from "@/types/history";
 
@@ -9,7 +9,10 @@ export async function getAllConversationsAction(
   searchQuery?: string,
   limit: number = 20,
   cursor?: number,
-): Promise<{ success: true; data: PaginatedConversationsResult } | { success: false; error: string }> {
+): Promise<
+  | { success: true; data: PaginatedConversationsResult }
+  | { success: false; error: string }
+> {
   try {
     const query = db
       .select({
@@ -20,11 +23,13 @@ export async function getAllConversationsAction(
         email: users.email,
         messageCount: sql<number>`count(${messages.id})`,
         lastMessageAt: sql<string>`max(${messages.id})`,
+        hotelName: hotels.name,
       })
       .from(conversations)
       .leftJoin(users, eq(conversations.user_id, users.id))
       .leftJoin(messages, eq(conversations.id, messages.conversation_id))
-      .groupBy(conversations.id, users.id)
+      .leftJoin(hotels, eq(conversations.hotel_id, hotels.id))
+      .groupBy(conversations.id, users.id, hotels.name)
       .orderBy(desc(conversations.id))
       .limit(limit + 1);
 
@@ -45,7 +50,7 @@ export async function getAllConversationsAction(
     }
 
     if (conditions.length > 0) {
-      query.where(and(...(conditions)));
+      query.where(and(...conditions));
     }
 
     const result = await query;
@@ -60,7 +65,7 @@ export async function getAllConversationsAction(
         data: data,
         hasMore,
         nextCursor,
-      }
+      },
     };
   } catch (error) {
     console.error("Error fetching conversations:", error);

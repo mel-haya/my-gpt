@@ -69,6 +69,7 @@ export default function HistoryPageClient({
         hasMore={hasMore}
         isLoading={isLoading}
         className="w-80 shrink-0"
+        showHotelName={true}
       />
       <HistoryMessagesPanel
         conversationId={selectedId}

@@ -76,6 +76,7 @@ export default function HotelHistoryPageClient({
         hasMore={hasMore}
         isLoading={isLoading}
         className="w-80 shrink-0 border-r border-neutral-800"
+        showHotelName={false}
       />
       <div className="flex-1 min-w-0">
         <HistoryMessagesPanel
