@@ -16,6 +16,12 @@ import { Roles } from "@/types/globals";
 
 import { cn } from "@/lib/utils";
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function isValidRole(role: unknown): role is Roles {
+  return role === "admin" || role === "hotel_owner" || role === "hotel_staff";
+}
+
 interface UserComponentProps {
   showSignOut?: boolean;
   signInButton?: React.ReactNode;
@@ -35,10 +41,44 @@ export default function UserComponent({
   const [role, setRole] = useState<Roles | null>(null);
 
   useEffect(() => {
-    if (isLoaded && user) {
-      getCurrentUserRole().then(setRole);
-    }
-  }, [isLoaded, user]);
+    let isMounted = true;
+
+    const loadRole = async () => {
+      if (!isLoaded || !user) {
+        setRole(null);
+        return;
+      }
+
+      const maxAttempts = 4;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const currentRole = await getCurrentUserRole();
+          if (!isMounted) return;
+
+          if (isValidRole(currentRole)) {
+            setRole(currentRole);
+            return;
+          }
+        } catch {
+          // Retry below.
+        }
+
+        if (attempt < maxAttempts) {
+          await sleep(attempt * 120);
+        }
+      }
+
+      if (isMounted) {
+        setRole(null);
+      }
+    };
+
+    loadRole();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isLoaded, user?.id]);
 
   const isAdmin = role === "admin";
   const isHotelStaff = role === "hotel_owner" || role === "hotel_staff";
