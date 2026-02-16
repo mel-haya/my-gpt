@@ -12,7 +12,7 @@ export default async function AdminLayout({
   const isAdmin = await checkRole("admin");
 
   if (!isAdmin) {
-    redirect("/");
+    redirect("/access-denied?reason=not_admin&redirectTo=/admin");
   }
 
   return (

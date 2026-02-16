@@ -15,7 +15,7 @@ export default async function DashboardLayout({
   const { userId } = await auth();
 
   if (!userId) {
-    redirect("/");
+    redirect("/access-denied?reason=not_signed_in&redirectTo=/dashboard");
   }
 
   const user = await getUserById(userId);
@@ -29,13 +29,13 @@ export default async function DashboardLayout({
   // Only hotel_owner and hotel_staff can access dashboard
   const hasAccess = await checkRoles(["hotel_owner", "hotel_staff"]);
   if (!hasAccess) {
-    redirect("/");
+    redirect("/access-denied?reason=no_access&redirectTo=/dashboard");
   }
 
   // Must have a hotel assigned
   const hotelId = await getUserHotelId();
   if (!hotelId) {
-    redirect("/");
+    redirect("/access-denied?reason=no_access&redirectTo=/dashboard");
   }
 
   const { getHotelById } = await import("@/services/hotelService");
