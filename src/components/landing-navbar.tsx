@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X, LogOut, Gauge, LayoutDashboard } from "lucide-react";
 import { useUser, SignOutButton } from "@clerk/nextjs";
 import UserComponent from "@/components/userComponent";
 import { cn } from "@/lib/utils";
@@ -100,6 +100,18 @@ export default function LandingNavbar() {
                 <a href="#how" className="transition-colors hover:text-white">
                     How it works
                 </a>
+                {isAdmin && (
+                    <Link href="/admin" className="flex items-center gap-1.5 transition-colors hover:text-white">
+                        <Gauge size={16} />
+                        Admin Panel
+                    </Link>
+                )}
+                {(isHotelStaff) && (
+                    <Link href="/dashboard" className="flex items-center gap-1.5 transition-colors hover:text-white">
+                        <LayoutDashboard size={16} />
+                        Dashboard
+                    </Link>
+                )}
                 {(isAdmin || isHotelStaff) ? (
                     <SignOutButton>
                         <button className="flex items-center gap-2 rounded-full bg-white/5 px-5 py-2 text-white/60 transition-all hover:bg-red-500/10 hover:text-red-400 cursor-pointer">
@@ -132,72 +144,97 @@ export default function LandingNavbar() {
             </button>
 
             {/* Mobile Menu Overlay */}
-            <div
-                className={cn(
-                    "fixed inset-0 z-40 flex flex-col items-center justify-center bg-[#0a0a0f]/95 backdrop-blur-xl transition-all duration-300 md:hidden",
-                    isOpen ? "visible opacity-100" : "invisible opacity-0"
+            <MobileNavMenu
+                isOpen={isOpen}
+                role={role}
+                isSignedIn={isSignedIn ?? false}
+                onClose={() => setIsOpen(false)}
+            />
+        </nav>
+    );
+}
+
+/* ── Mobile Nav Menu (receives role as prop — no extra DB call) ── */
+
+interface MobileNavMenuProps {
+    isOpen: boolean;
+    role: Roles | null;
+    isSignedIn: boolean;
+    onClose: () => void;
+}
+
+function MobileNavMenu({ isOpen, role, isSignedIn, onClose }: MobileNavMenuProps) {
+    const isAdmin = role === "admin";
+    const isHotelStaff = role === "hotel_owner" || role === "hotel_staff";
+
+    return (
+        <div
+            className={cn(
+                "fixed inset-0 z-40 flex flex-col items-center justify-center bg-[#0a0a0f]/95 backdrop-blur-xl transition-all duration-300 md:hidden",
+                isOpen ? "visible opacity-100" : "invisible opacity-0"
+            )}
+        >
+            <div className="flex flex-col items-center gap-8 text-lg font-light tracking-wide text-white/80 font-jost">
+                <a
+                    href="#hotels"
+                    className="transition-colors hover:text-white"
+                    onClick={onClose}
+                >
+                    Hotels
+                </a>
+                <a
+                    href="#how"
+                    className="transition-colors hover:text-white"
+                    onClick={onClose}
+                >
+                    How it works
+                </a>
+
+                {isAdmin && (
+                    <Link
+                        href="/admin"
+                        className="flex items-center gap-2 transition-colors hover:text-white"
+                        onClick={onClose}
+                    >
+                        <Gauge size={18} />
+                        Admin Panel
+                    </Link>
                 )}
-            >
-                <div className="flex flex-col items-center gap-8 text-lg font-light tracking-wide text-white/80 font-jost">
-                    <a
-                        href="#hotels"
-                        className="transition-colors hover:text-white"
-                        onClick={() => setIsOpen(false)}
+
+                {(isAdmin || isHotelStaff) && (
+                    <Link
+                        href="/dashboard"
+                        className="flex items-center gap-2 transition-colors hover:text-white"
+                        onClick={onClose}
                     >
-                        Hotels
-                    </a>
-                    <a
-                        href="#how"
-                        className="transition-colors hover:text-white"
-                        onClick={() => setIsOpen(false)}
-                    >
-                        How it works
-                    </a>
+                        <LayoutDashboard size={18} />
+                        Dashboard
+                    </Link>
+                )}
 
-                    {isAdmin && (
-                        <Link
-                            href="/admin"
-                            className="transition-colors hover:text-white"
-                            onClick={() => setIsOpen(false)}
-                        >
-                            Admin Panel
-                        </Link>
-                    )}
-
-                    {isHotelStaff && (
-                        <Link
-                            href="/dashboard"
-                            className="transition-colors hover:text-white"
-                            onClick={() => setIsOpen(false)}
-                        >
-                            Dashboard
-                        </Link>
-                    )}
-
-                    <div onClick={() => setIsOpen(false)}>
-                        {(isAdmin || isHotelStaff) ? (
-                            <SignOutButton>
-                                <button className="flex items-center gap-2 rounded-full bg-white/5 px-8 py-3 text-lg text-white/60 transition-all hover:bg-red-500/10 hover:text-red-400 cursor-pointer">
-                                    <LogOut size={20} />
-                                    Sign out
+                <div onClick={onClose}>
+                    {(isAdmin || isHotelStaff) ? (
+                        <SignOutButton>
+                            <button className="flex items-center gap-2 rounded-full bg-white/5 px-8 py-3 text-lg text-white/60 transition-all hover:bg-red-500/10 hover:text-red-400 cursor-pointer">
+                                <LogOut size={20} />
+                                Sign out
+                            </button>
+                        </SignOutButton>
+                    ) : !isSignedIn ? (
+                        <UserComponent
+                            showName={false}
+                            showSignOut={false}
+                            containerClassName="flex flex-col items-center gap-4"
+                            className="contents"
+                            signInButton={
+                                <button className="rounded-full bg-[#2974dd]/10 px-8 py-3 text-lg text-[#2974dd] transition-all hover:bg-[#2974dd] hover:text-white hover:shadow-lg hover:shadow-[#2974dd]/20">
+                                    Log in
                                 </button>
-                            </SignOutButton>
-                        ) : !isSignedIn ? (
-                            <UserComponent
-                                showName={false}
-                                showSignOut={false}
-                                containerClassName="flex flex-col items-center gap-4"
-                                className="contents"
-                                signInButton={
-                                    <button className="rounded-full bg-[#2974dd]/10 px-8 py-3 text-lg text-[#2974dd] transition-all hover:bg-[#2974dd] hover:text-white hover:shadow-lg hover:shadow-[#2974dd]/20">
-                                        Log in
-                                    </button>
-                                }
-                            />
-                        ) : null}
-                    </div>
+                            }
+                        />
+                    ) : null}
                 </div>
             </div>
-        </nav>
+        </div>
     );
 }
