@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
+import { Menu, X, LogOut } from "lucide-react";
+import { useUser, SignOutButton } from "@clerk/nextjs";
 import UserComponent from "@/components/userComponent";
 import { cn } from "@/lib/utils";
 import { getCurrentUserRole } from "@/app/actions/users";
@@ -12,7 +12,7 @@ import type { Roles } from "@/types/globals";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function isValidRole(role: unknown): role is Roles {
-  return role === "admin" || role === "hotel_owner" || role === "hotel_staff";
+    return role === "admin" || role === "hotel_owner" || role === "hotel_staff";
 }
 
 export default function LandingNavbar() {
@@ -28,6 +28,11 @@ export default function LandingNavbar() {
         window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
+
+    useEffect(() => {
+        document.body.style.overflow = isOpen ? "hidden" : "";
+        return () => { document.body.style.overflow = ""; };
+    }, [isOpen]);
 
     useEffect(() => {
         let isMounted = true;
@@ -95,17 +100,26 @@ export default function LandingNavbar() {
                 <a href="#how" className="transition-colors hover:text-white">
                     How it works
                 </a>
-                <UserComponent
-                    showName={false}
-                    showSignOut={false}
-                    containerClassName="contents"
-                    className="contents"
-                    signInButton={
-                        <button className="rounded-full bg-[#2974dd]/10 px-6 py-2 text-[#2974dd] transition-all hover:bg-[#2974dd] hover:text-white hover:shadow-lg hover:shadow-[#2974dd]/20">
-                            Log in
+                {(isAdmin || isHotelStaff) ? (
+                    <SignOutButton>
+                        <button className="flex items-center gap-2 rounded-full bg-white/5 px-5 py-2 text-white/60 transition-all hover:bg-red-500/10 hover:text-red-400 cursor-pointer">
+                            <LogOut size={16} />
+                            Sign out
                         </button>
-                    }
-                />
+                    </SignOutButton>
+                ) : (
+                    <UserComponent
+                        showName={false}
+                        showSignOut={false}
+                        containerClassName="contents"
+                        className="contents"
+                        signInButton={
+                            <button className="rounded-full bg-[#2974dd]/10 px-6 py-2 text-[#2974dd] transition-all hover:bg-[#2974dd] hover:text-white hover:shadow-lg hover:shadow-[#2974dd]/20">
+                                Log in
+                            </button>
+                        }
+                    />
+                )}
             </div>
 
             {/* Mobile Hamburger Button */}
@@ -161,7 +175,14 @@ export default function LandingNavbar() {
                     )}
 
                     <div onClick={() => setIsOpen(false)}>
-                        {!isSignedIn && (
+                        {(isAdmin || isHotelStaff) ? (
+                            <SignOutButton>
+                                <button className="flex items-center gap-2 rounded-full bg-white/5 px-8 py-3 text-lg text-white/60 transition-all hover:bg-red-500/10 hover:text-red-400 cursor-pointer">
+                                    <LogOut size={20} />
+                                    Sign out
+                                </button>
+                            </SignOutButton>
+                        ) : !isSignedIn ? (
                             <UserComponent
                                 showName={false}
                                 showSignOut={false}
@@ -173,7 +194,7 @@ export default function LandingNavbar() {
                                     </button>
                                 }
                             />
-                        )}
+                        ) : null}
                     </div>
                 </div>
             </div>
