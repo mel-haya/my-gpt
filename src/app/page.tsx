@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { getAllHotelsForLanding } from "@/services/hotelService";
 import UserComponent from "@/components/userComponent";
+import LandingNavbar from "@/components/landing-navbar";
 
 export const metadata: Metadata = {
   title: "Oasis — AI Hotel Assistant",
@@ -30,29 +31,8 @@ export default async function LandingPage() {
       </div>
 
       {/* ── nav ── */}
-      <nav className="relative z-10 flex items-center justify-between px-8 py-6 md:px-16 lg:px-24">
-        <span className="font-goldman text-4xl font-bold tracking-wide text-[#2974dd]">
-          Oasis
-        </span>
-        <div className="hidden items-center gap-10 text-sm font-light tracking-wide text-white/60 md:flex font-jost">
-          <a href="#hotels" className="transition-colors hover:text-white">
-            Hotels
-          </a>
-          <a href="#how" className="transition-colors hover:text-white">
-            How it works
-          </a>
-          <UserComponent
-            showSignOut={false}
-            containerClassName="contents"
-            className="contents"
-            signInButton={
-              <button className="rounded-full bg-[#2974dd]/10 px-6 py-2 text-[#2974dd] transition-all hover:bg-[#2974dd] hover:text-white hover:shadow-lg hover:shadow-[#2974dd]/20">
-                Log in
-              </button>
-            }
-          />
-        </div>
-      </nav>
+      {/* ── nav ── */}
+      <LandingNavbar />
 
       {/* ── hero ── */}
       <section className="relative z-10 mx-auto max-w-4xl px-8 pt-16 pb-20 text-center md:px-16 md:pt-28 md:pb-24">

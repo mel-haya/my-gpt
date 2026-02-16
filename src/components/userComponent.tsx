@@ -21,6 +21,7 @@ interface UserComponentProps {
   signInButton?: React.ReactNode;
   containerClassName?: string;
   className?: string; // wrapper class
+  showName?: boolean;
 }
 
 export default function UserComponent({
@@ -28,6 +29,7 @@ export default function UserComponent({
   signInButton,
   containerClassName,
   className,
+  showName = true,
 }: UserComponentProps) {
   const { user, isLoaded } = useUser();
   const [role, setRole] = useState<Roles | null>(null);
@@ -53,7 +55,8 @@ export default function UserComponent({
         >
           <div className="flex cursor-pointer items-center gap-3">
             <UserButton
-              showName={true}
+              key={role ?? "loading"}
+              showName={showName}
               appearance={{
                 elements: {
                   userButtonOuterIdentifier: "order-2 pl-0",
@@ -65,6 +68,7 @@ export default function UserComponent({
                 {isAdmin && (
                   <UserButton.Link
                     label="Admin Panel"
+                    key={`admin-${role ?? "loading"}`}
                     labelIcon={<Gauge size={16} />}
                     href="/admin"
                   />
@@ -72,6 +76,7 @@ export default function UserComponent({
                 {isHotelStaff && (
                   <UserButton.Link
                     label="Dashboard"
+                    key={`dashboard-${role ?? "loading"}`}
                     labelIcon={<LayoutDashboard size={16} />}
                     href="/dashboard"
                   />

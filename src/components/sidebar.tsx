@@ -89,9 +89,8 @@ export default function Sidebar({
   return (
     <div className={`flex z-30 ${bgStyles.sideBarBackground}`}>
       <div
-        className={`fixed top-0 left-0 mt-4 ml-2 flex gap-2 p-1 rounded-lg transition-all ${
-          isOpen ? "bg-gray-transparent" : "bg-gray-200 dark:bg-neutral-800"
-        }`}
+        className={`fixed top-0 left-0 mt-4 ml-2 flex gap-2 p-1 rounded-lg transition-all ${isOpen ? "bg-gray-transparent" : "bg-gray-200 dark:bg-neutral-800"
+          }`}
       >
         <div
           className="p-1"
@@ -113,15 +112,14 @@ export default function Sidebar({
         )}
       </div>
       <div
-        className={`lg:block h-screen overflow-hidden ${
-          !isLoaded
+        className={`lg:block h-screen overflow-hidden ${!isLoaded
             ? "w-0 opacity-0"
             : !hasUserInteracted
               ? isOpen
                 ? "w-75 opacity-100"
                 : "w-0 opacity-0"
               : `transition-all duration-300 ease-in-out ${isOpen ? "w-75 opacity-100" : "w-0 opacity-0"}`
-        }`}
+          }`}
       >
         <div className="flex flex-col h-screen w-75 robert pt-16">
           {/* <h1 className="text-2xl font-bold font-goldman px-4 py-6">My GPT</h1> */}
@@ -211,7 +209,7 @@ export default function Sidebar({
               </div>
             )}
           </div>
-          <UserComponent />
+          <UserComponent showName={true} />
         </div>
       </div>
     </div>

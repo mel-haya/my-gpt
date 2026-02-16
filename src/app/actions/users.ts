@@ -11,6 +11,10 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 import { Roles } from "@/types/globals";
 
+function isValidRole(role: unknown): role is Roles {
+  return role === "admin" || role === "hotel_owner" || role === "hotel_staff";
+}
+
 export async function getUsersWithStatus(
   searchQuery?: string,
   limit: number = 10,
@@ -55,8 +59,15 @@ export async function getCurrentUserRole(): Promise<Roles | null> {
     const { userId } = await auth();
     if (!userId) return null;
 
+    // const claimRole = (sessionClaims as CustomJwtSessionClaims | undefined)
+    //   ?.metadata?.role;
+    // if (isValidRole(claimRole)) {
+    //   return claimRole;
+    // }
+
     const user = await getUserById(userId);
-    return (user?.role as Roles) ?? null;
+    const role = user?.role;
+    return isValidRole(role) ? role : null;
   } catch (error) {
     console.error("Error in getCurrentUserRole action:", error);
     return null;
