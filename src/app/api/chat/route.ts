@@ -11,11 +11,15 @@ import {
   getRemainingMessages,
   recordUsage,
 } from "@/services/tokenUsageService";
-import { getSystemPrompt } from "@/services/settingsService";
+import {
+  getSystemPrompt,
+  getSystemPromptById,
+} from "@/services/settingsService";
 import { uploadImageToImageKit } from "./imageKit";
 import { auth } from "@clerk/nextjs/server";
 import { renameConversationAI } from "./renameConversationAI";
-import { getDefaultModel } from "@/services/modelsService";
+import { getDefaultModel, getModelById } from "@/services/modelsService";
+import { getHotelBySlug } from "@/services/hotelService";
 
 export async function POST(req: Request) {
   try {
@@ -45,13 +49,17 @@ export async function POST(req: Request) {
 
     const { messages, conversation, trigger, hotelSlug } = await req.json();
 
-    // Resolve hotel slug to ID for tools if provided
+    // Resolve hotel slug to hotel data for tools and preferences
     let hotelId: number | undefined;
+    let hotelModelId: number | null = null;
+    let hotelSystemPromptId: number | null = null;
+
     if (hotelSlug) {
-      const { getHotelBySlug } = await import("@/services/hotelService");
       const hotel = await getHotelBySlug(hotelSlug);
       if (hotel) {
         hotelId = hotel.id;
+        hotelModelId = hotel.model_id;
+        hotelSystemPromptId = hotel.system_prompt_id;
       }
     }
 
@@ -64,21 +72,33 @@ export async function POST(req: Request) {
 
     const modelMessages = await convertToModelMessages(messages);
 
-    const defaultModel = await getDefaultModel();
-    if (!defaultModel) {
-      return new Response(
-        JSON.stringify({
-          error: "Service unavailable",
-          message:
-            "The chat service is temporarily unavailable. Please try again later.",
-        }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+    // Resolve model: hotel-specific → global default
+    let selectedmodel: string | undefined;
+
+    if (hotelModelId) {
+      const hotelModel = await getModelById(hotelModelId);
+      if (hotelModel) {
+        selectedmodel = hotelModel.model_id;
+      }
     }
-    const selectedmodel = defaultModel.model_id;
+
+    if (!selectedmodel) {
+      const defaultModel = await getDefaultModel();
+      if (!defaultModel) {
+        return new Response(
+          JSON.stringify({
+            error: "Service unavailable",
+            message:
+              "The chat service is temporarily unavailable. Please try again later.",
+          }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      selectedmodel = defaultModel.model_id;
+    }
 
     // Count user messages to determine if we should rename
     const userMessageCount = messages.filter(
@@ -106,22 +126,15 @@ export async function POST(req: Request) {
       totalTokens: number;
     } | null = null;
 
-    // Get configurable system prompt
-    const systemPromptResult = await getSystemPrompt();
-    if (!systemPromptResult) {
-      return new Response(
-        JSON.stringify({
-          error: "Service unavailable",
-          message:
-            "The chat service is temporarily unavailable. Please try again later.",
-        }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+    // Resolve system prompt: hotel-specific → global default
+    let systemPrompt: string;
+
+    if (hotelSystemPromptId) {
+      const hotelPrompt = await getSystemPromptById(hotelSystemPromptId);
+      systemPrompt = hotelPrompt ?? (await getSystemPrompt());
+    } else {
+      systemPrompt = await getSystemPrompt();
     }
-    const systemPrompt = systemPromptResult;
 
     // Get tools with hotel ID for filtering
     const tools = await getTools(hotelId);
@@ -214,16 +227,6 @@ export async function POST(req: Request) {
               responseMessage as ChatMessage,
               conversation.id,
               selectedmodel,
-            );
-          }
-
-          // Record message usage with actual token count from AI response (only for authenticated users)
-          if (userId) {
-            const actualTokens = streamUsage?.totalTokens || 0;
-            const usageResult = await recordUsage(userId, actualTokens);
-
-            console.log(
-              `User ${userId} - Messages: ${usageResult.usage.messages_sent}/${usageResult.usage.daily_message_limit}, Actual Tokens: ${usageResult.usage.tokens_used}`,
             );
           }
         } catch (error) {

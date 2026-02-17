@@ -228,6 +228,16 @@ export async function getModelByStringId(
   return model || null;
 }
 
+export async function getModelById(id: number): Promise<SelectModel | null> {
+  const [model] = await db
+    .select()
+    .from(models)
+    .where(eq(models.id, id))
+    .limit(1);
+
+  return model || null;
+}
+
 export async function getAvailableModelsFromDb(): Promise<SelectModel[]> {
   const availableModels = await db
     .select()

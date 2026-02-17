@@ -196,7 +196,7 @@ export default function HotelPreferencesDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="preferred-language">Preferred Language</Label>
+              <Label htmlFor="preferred-language">Staff Request Language</Label>
               <Select
                 value={preferredLanguage}
                 onValueChange={setPreferredLanguage}
@@ -219,8 +219,7 @@ export default function HotelPreferencesDialog({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                The primary language for this hotel&apos;s operations and AI
-                responses.
+                Staff requests are created in this language for this hotel&apos;
               </p>
             </div>
           </div>
