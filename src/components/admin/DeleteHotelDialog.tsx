@@ -19,13 +19,21 @@ import { Trash2 } from "lucide-react";
 interface DeleteHotelDialogProps {
   hotelId: number;
   hotelName: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: React.ReactNode;
 }
 
 export default function DeleteHotelDialog({
   hotelId,
   hotelName,
+  open: controlledOpen,
+  onOpenChange,
+  trigger,
 }: DeleteHotelDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = () => {
@@ -40,19 +48,23 @@ export default function DeleteHotelDialog({
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500">
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </AlertDialogTrigger>
+    <AlertDialog open={isOpen} onOpenChange={setOpen}>
+      {trigger !== undefined ? (
+        trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      ) : (
+        <AlertDialogTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+      )}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete the hotel
-            &quot;{hotelName}&quot; and remove all data associated with it, including
-            staff assignments.
+            &quot;{hotelName}&quot; and remove all data associated with it,
+            including staff assignments.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -6,11 +6,18 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { HotelWithStaffCount } from "@/services/hotelService";
 import HotelDialog from "./HotelDialog";
 import DeleteHotelDialog from "./DeleteHotelDialog";
 import HotelStaffDialog from "./HotelStaffDialog";
-import { Edit, Users } from "lucide-react";
+import { Edit, MoreHorizontal, Trash2, Users } from "lucide-react";
 import { format } from "date-fns";
 
 interface HotelsListProps {
@@ -73,29 +80,66 @@ const getColumns = (
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      return (
-        <div className="flex items-center gap-2 justify-end">
-          <HotelStaffDialog hotel={row.original} />
-
-          <HotelDialog
-            hotel={row.original}
-            trigger={
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Edit className="h-4 w-4" />
-              </Button>
-            }
-          />
-
-          <DeleteHotelDialog
-            hotelId={row.original.id}
-            hotelName={row.original.name}
-          />
-        </div>
-      );
-    },
+    size: 48,
+    cell: ({ row }) => <ActionsCell hotel={row.original} />,
   },
 ];
+
+function ActionsCell({ hotel }: { hotel: HotelWithStaffCount }) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [staffOpen, setStaffOpen] = useState(false);
+
+  return (
+    <div className="flex justify-end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+            <Edit className="h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setStaffOpen(true)}>
+            <Users className="h-4 w-4" />
+            Manage Staff
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => setDeleteOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <HotelDialog
+        hotel={hotel}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        trigger={null}
+      />
+      <HotelStaffDialog
+        hotel={hotel}
+        open={staffOpen}
+        onOpenChange={setStaffOpen}
+        trigger={null}
+      />
+      <DeleteHotelDialog
+        hotelId={hotel.id}
+        hotelName={hotel.name}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        trigger={null}
+      />
+    </div>
+  );
+}
 
 export default function HotelsList({
   hotels,

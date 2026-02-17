@@ -121,14 +121,16 @@ export default function HotelDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
+      {trigger !== undefined ? (
+        trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>
+      ) : (
+        <DialogTrigger asChild>
           <Button>
             <Plus className="w-4 h-4 mr-2" />
             Add Hotel
           </Button>
-        )}
-      </DialogTrigger>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-106.25">
         <DialogHeader>
           <DialogTitle>{hotel ? "Edit Hotel" : "Add New Hotel"}</DialogTitle>

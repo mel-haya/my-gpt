@@ -30,10 +30,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface HotelStaffDialogProps {
   hotel: SelectHotel;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: React.ReactNode;
 }
 
-export default function HotelStaffDialog({ hotel }: HotelStaffDialogProps) {
-  const [open, setOpen] = useState(false);
+export default function HotelStaffDialog({
+  hotel,
+  open: controlledOpen,
+  onOpenChange,
+  trigger,
+}: HotelStaffDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [staff, setStaff] = useState<SelectUser[]>([]);
   const [availableStaff, setAvailableStaff] = useState<SelectUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
@@ -57,10 +67,10 @@ export default function HotelStaffDialog({ hotel }: HotelStaffDialogProps) {
   };
 
   useEffect(() => {
-    if (open) {
+    if (isOpen) {
       fetchData();
     }
-  }, [open, hotel.id]);
+  }, [isOpen, hotel.id]);
 
   const handleAddStaff = () => {
     if (!selectedUserId) return;
@@ -88,13 +98,17 @@ export default function HotelStaffDialog({ hotel }: HotelStaffDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Users className="w-4 h-4 mr-2" />
-          Manage Staff
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setOpen}>
+      {trigger !== undefined ? (
+        trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>
+      ) : (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <Users className="w-4 h-4 mr-2" />
+            Manage Staff
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-125">
         <DialogHeader>
           <DialogTitle>Manage Staff - {hotel.name}</DialogTitle>
