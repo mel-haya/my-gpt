@@ -3,6 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { checkRole } from "@/lib/checkRole";
 import { revalidatePath } from "next/cache";
+import { getAllHotelsBasic } from "@/services/hotelService";
 import {
   getTestProfiles,
   createTestProfile,
@@ -65,6 +66,7 @@ export async function createTestProfileAction(data: {
   test_ids: number[];
   model_configs: string[];
   manual_tests?: ManualTest[];
+  hotel_id?: number | null;
 }): Promise<ActionResult<SelectTestProfile>> {
   try {
     const { userId } = await auth();
@@ -108,6 +110,7 @@ export async function updateTestProfileAction(
     test_ids: number[];
     model_configs: string[];
     manual_tests?: ManualTest[];
+    hotel_id?: number | null;
   },
 ): Promise<ActionResult<SelectTestProfile>> {
   try {
@@ -137,6 +140,7 @@ export async function updateTestProfileAction(
       test_ids: data.test_ids,
       model_configs: data.model_configs,
       manual_tests: data.manual_tests,
+      hotel_id: data.hotel_id,
     };
 
     const result = await updateTestProfile(id, updateData);
@@ -277,5 +281,27 @@ export async function getTestProfileDetailsAction(
   } catch (error) {
     console.error("Error fetching test profile details:", error);
     return { success: false, error: "Failed to fetch test profile details" };
+  }
+}
+
+export async function getAllHotelsForSelectionAction(): Promise<
+  ActionResult<{ id: number; name: string }[]>
+> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const isAdmin = await checkRole("admin");
+    if (!isAdmin) {
+      return { success: false, error: "Admin access required" };
+    }
+
+    const hotels = await getAllHotelsBasic();
+    return { success: true, data: hotels };
+  } catch (error) {
+    console.error("Error fetching hotels for selection:", error);
+    return { success: false, error: "Failed to fetch hotels" };
   }
 }

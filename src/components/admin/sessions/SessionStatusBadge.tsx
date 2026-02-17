@@ -1,9 +1,9 @@
 import { Clock, CheckCircle, XCircle, Pause } from "lucide-react";
-import type { SelectTestProfileWithPrompt } from "@/lib/db-schema";
+import type { SelectTestProfileWithDetails } from "@/lib/db-schema";
 import type { SessionRunResult } from "@/app/actions/testSessions";
 
 interface SessionStatusBadgeProps {
-  profile: SelectTestProfileWithPrompt;
+  profile: SelectTestProfileWithDetails;
   isSelected?: boolean;
   runningSessionId: number | null;
   sessionRuns?: SessionRunResult[];

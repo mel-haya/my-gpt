@@ -421,6 +421,13 @@
       "when": 1771340531506,
       "tag": "0059_melted_brother_voodoo",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1771343244849,
+      "tag": "0060_shallow_bloodstrike",
+      "breakpoints": true
     }
   ]
 }

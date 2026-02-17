@@ -381,6 +381,9 @@ export const testProfiles = pgTable(
       { onDelete: "set null" },
     ),
     manual_tests: jsonb("manual_tests"),
+    hotel_id: integer("hotel_id").references(() => hotels.id, {
+      onDelete: "set null",
+    }),
     user_id: text("user_id")
       .notNull()
       .references(() => users.id),
@@ -501,9 +504,10 @@ export type InsertSystemPrompt = typeof systemPrompts.$inferInsert;
 export type SelectSystemPrompt = typeof systemPrompts.$inferSelect;
 export type InsertTestProfile = typeof testProfiles.$inferInsert;
 export type SelectTestProfile = typeof testProfiles.$inferSelect;
-export type SelectTestProfileWithPrompt = SelectTestProfile & {
+export type SelectTestProfileWithDetails = SelectTestProfile & {
   system_prompt: string | null;
   username: string;
+  hotel_name: string | null;
   latest_status: string | null;
   total_tokens_cost: number | null;
   total_tokens: number | null;

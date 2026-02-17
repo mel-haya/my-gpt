@@ -29,12 +29,12 @@ import { ModelRankingsCard } from "@/components/admin/sessions/ModelRankingsCard
 import { AssociatedTestsList } from "@/components/admin/sessions/AssociatedTestsList";
 import { ModelConfigurationsList } from "@/components/admin/sessions/ModelConfigurationsList";
 import { RecentRunsList } from "@/components/admin/sessions/RecentRunsList";
-import type { SelectTestProfileWithPrompt } from "@/lib/db-schema";
+import type { SelectTestProfileWithDetails } from "@/lib/db-schema";
 import type { DetailedTestProfile } from "@/services/testProfilesService";
 
 export default function SessionsPage() {
   const [testProfiles, setTestProfiles] = useState<
-    SelectTestProfileWithPrompt[]
+    SelectTestProfileWithDetails[]
   >([]);
   const [selectedProfile, setSelectedProfile] =
     useState<DetailedTestProfile | null>(null);
@@ -196,7 +196,7 @@ export default function SessionsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const handleSelectProfile = async (profile: SelectTestProfileWithPrompt) => {
+  const handleSelectProfile = async (profile: SelectTestProfileWithDetails) => {
     // Clear previous details to avoid showing them on the new profile
     setTestDetailsData(null);
     setSelectedTestId(null);

@@ -12,17 +12,17 @@ import {
 import CreateTestSessionModal from "@/components/CreateTestSessionModal";
 import { SessionStatusBadge } from "./SessionStatusBadge";
 import { formatTokens } from "@/lib/utils";
-import type { SelectTestProfileWithPrompt } from "@/lib/db-schema";
+import type { SelectTestProfileWithDetails } from "@/lib/db-schema";
 import type { ModelOption } from "@/app/actions/models";
 import type { SessionRunResult } from "@/app/actions/testSessions";
 
 interface SessionsListSidebarProps {
-  testProfiles: SelectTestProfileWithPrompt[];
+  testProfiles: SelectTestProfileWithDetails[];
   selectedProfileId: number | null;
   loading: boolean;
   searchQuery: string;
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSelectProfile: (profile: SelectTestProfileWithPrompt) => void;
+  onSelectProfile: (profile: SelectTestProfileWithDetails) => void;
   onSessionCreated: () => void;
   availableModels: ModelOption[];
   runningSessionId: number | null;

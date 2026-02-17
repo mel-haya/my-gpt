@@ -13,6 +13,7 @@ export interface ChatRequest {
   webSearch?: boolean;
   systemPrompt?: string;
   useTestTools?: boolean; // Use mocked tools that don't create actual DB entries
+  hotelId?: number; // Hotel ID to scope knowledge base search
 }
 
 export interface ChatResponse {
@@ -58,8 +59,8 @@ export async function generateChatCompletionWithToolCalls(
 
     // Use test tools if requested (mocked createStaffRequest that doesn't create DB entries)
     const activeTools = request.useTestTools
-      ? await getTestTools()
-      : await getTools();
+      ? await getTestTools(request.hotelId)
+      : await getTools(request.hotelId);
 
     const result = await generateText({
       messages: modelMessages,

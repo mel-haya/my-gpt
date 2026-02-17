@@ -132,6 +132,7 @@ export async function runTestSessionAction(
       modelIdMap,
       profile.system_prompt ?? "",
       evaluatorModel,
+      profile.hotel_id ?? undefined,
     ).catch(console.error);
 
     revalidatePath("/admin/sessions");
@@ -321,6 +322,7 @@ async function runTestsInBackground(
   modelIdMap: Map<string, number>,
   systemPrompt: string,
   evaluatorModel: string,
+  hotelId?: number,
 ) {
   // Helper function with timeout
   const withTimeout = <T>(
@@ -405,6 +407,7 @@ async function runTestsInBackground(
               webSearch: false,
               systemPrompt: systemPrompt,
               useTestTools: true, // Use mocked tools that don't create actual DB entries
+              hotelId,
             }),
             90000, // 1 minute and 30 s timeout for generation
             "Test execution timed out after 60 seconds",
@@ -912,6 +915,7 @@ export async function regenerateTestResultAction(
       testId,
       modelsToRun,
       profile.system_prompt || "",
+      profile.hotel_id ?? undefined,
     ).catch(console.error);
 
     revalidatePath("/admin/sessions");
@@ -927,6 +931,7 @@ async function runSingleTestForProfileInBackground(
   testId: number | string, // Changed from `test` object to `testId`
   models: { model_name: string }[],
   systemPrompt: string,
+  hotelId?: number,
 ) {
   const evaluatorModel = "openai/gpt-4o";
 
@@ -1007,6 +1012,7 @@ async function runSingleTestForProfileInBackground(
             webSearch: false,
             systemPrompt: systemPrompt,
             useTestTools: true,
+            hotelId,
           }),
           90000,
           "Test execution timed out after 90 seconds",

@@ -9,10 +9,11 @@ import {
   testRuns,
   testRunResults,
   models,
+  hotels,
 } from "@/lib/db-schema";
 import type {
   SelectTestProfile,
-  SelectTestProfileWithPrompt,
+  SelectTestProfileWithDetails,
   SelectTest,
   SelectSystemPrompt,
   InsertTestProfileTest,
@@ -22,7 +23,7 @@ import type {
 import { eq, and, ilike, count, sql, inArray, ne } from "drizzle-orm";
 
 export interface TestProfilesResponse {
-  testProfiles: SelectTestProfileWithPrompt[];
+  testProfiles: SelectTestProfileWithDetails[];
   totalCount: number;
   totalPages: number;
   currentPage: number;
@@ -40,6 +41,7 @@ export interface CreateTestProfileData {
   test_ids: number[];
   model_configs: string[];
   manual_tests?: ManualTest[];
+  hotel_id?: number | null;
 }
 
 export interface UpdateTestProfileData {
@@ -48,6 +50,7 @@ export interface UpdateTestProfileData {
   test_ids: number[];
   model_configs: string[];
   manual_tests?: ManualTest[];
+  hotel_id?: number | null;
 }
 
 export interface ModelAverage {
@@ -67,6 +70,8 @@ export interface DetailedTestProfile {
   system_prompt_default?: boolean;
   user_id: string;
   username: string;
+  hotel_id: number | null;
+  hotel_name: string | null;
   created_at: Date;
   updated_at: Date;
   tests: {
@@ -140,6 +145,8 @@ export async function getTestProfiles(options?: {
         sp.prompt as system_prompt, 
         tp.user_id, 
         u.username, 
+        tp.hotel_id,
+        h.name as hotel_name,
         tp.created_at, 
         tp.updated_at,
         tp.manual_tests,
@@ -151,6 +158,7 @@ export async function getTestProfiles(options?: {
       FROM test_profiles tp
       LEFT JOIN system_prompts sp ON tp.system_prompt_id = sp.id
       INNER JOIN users u ON tp.user_id = u.id
+      LEFT JOIN hotels h ON tp.hotel_id = h.id
       LEFT JOIN LATERAL (
         WITH deduped AS (
           SELECT DISTINCT ON (test_id, trr.model_id)
@@ -192,7 +200,7 @@ export async function getTestProfiles(options?: {
 
   const totalCountResult = await countQuery;
   const profiles =
-    profilesResult.rows as unknown as SelectTestProfileWithPrompt[];
+    profilesResult.rows as unknown as SelectTestProfileWithDetails[];
 
   const totalCount = totalCountResult[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / limit);
@@ -228,6 +236,7 @@ export async function createTestProfile(
         name: data.name,
         system_prompt_id: data.system_prompt_id,
         user_id: data.user_id,
+        hotel_id: data.hotel_id ?? null,
         manual_tests: null, // No longer storing JSON manual tests
       })
       .returning();
@@ -363,6 +372,7 @@ export async function updateTestProfile(
       .set({
         name: data.name,
         system_prompt_id: data.system_prompt_id,
+        hotel_id: data.hotel_id ?? null,
         manual_tests: null, // No longer storing JSON manual tests
         updated_at: new Date(),
       })
@@ -577,6 +587,8 @@ export async function getTestProfileWithDetails(
       id: testProfiles.id,
       name: testProfiles.name,
       system_prompt_id: testProfiles.system_prompt_id,
+      hotel_id: testProfiles.hotel_id,
+      hotel_name: hotels.name,
       user_id: testProfiles.user_id,
       username: users.username,
       created_at: testProfiles.created_at,
@@ -592,6 +604,7 @@ export async function getTestProfileWithDetails(
       eq(testProfiles.system_prompt_id, systemPrompts.id),
     )
     .innerJoin(users, eq(testProfiles.user_id, users.id))
+    .leftJoin(hotels, eq(testProfiles.hotel_id, hotels.id))
     .where(eq(testProfiles.id, id))
     .limit(1);
 
@@ -755,11 +768,13 @@ export async function getTestProfileWithDetails(
     id: profile.id,
     name: profile.name,
     system_prompt_id: profile.system_prompt_id,
-    system_prompt: profile.system_prompt, // Now contains the actual prompt text from the join
-    system_prompt_name: profile.system_prompt_name, // Include the system prompt name
+    system_prompt: profile.system_prompt,
+    system_prompt_name: profile.system_prompt_name,
     system_prompt_default: profile.system_prompt_default ?? false,
     user_id: profile.user_id,
     username: profile.username,
+    hotel_id: profile.hotel_id,
+    hotel_name: profile.hotel_name,
     created_at: profile.created_at,
     updated_at: profile.updated_at,
     tests: testsWithBest.sort((a, b) => a.total_score - b.total_score),

@@ -40,6 +40,7 @@ import {
   updateTestProfileAction,
   getTestsForSelectionAction,
   getSystemPromptsForSelectionAction,
+  getAllHotelsForSelectionAction,
 } from "@/app/actions/testProfiles";
 import { getAvailableModels, type ModelOption } from "@/app/actions/models";
 import type { SelectTest, SelectSystemPrompt } from "@/lib/db-schema";
@@ -51,6 +52,8 @@ interface TestProfileDetails {
   system_prompt: string | null;
   system_prompt_name?: string | null;
   user_id: string;
+  hotel_id?: number | null;
+  hotel_name?: string | null;
   created_at: Date;
   updated_at: Date;
   tests: {
@@ -96,6 +99,10 @@ export default function EditTestSessionModal({
   >([]);
   const [newManualPrompt, setNewManualPrompt] = useState("");
   const [newManualExpected, setNewManualExpected] = useState("");
+  const [availableHotels, setAvailableHotels] = useState<
+    { id: number; name: string }[]
+  >([]);
+  const [selectedHotelId, setSelectedHotelId] = useState<string>("");
 
   // Reset form data when profile changes
   useEffect(() => {
@@ -116,6 +123,7 @@ export default function EditTestSessionModal({
             expected_result: t.expected_result,
           })),
       );
+      setSelectedHotelId(profile.hotel_id ? profile.hotel_id.toString() : "");
     }
     loadData();
   }, [profile]);
@@ -129,11 +137,12 @@ export default function EditTestSessionModal({
 
   const loadData = async () => {
     try {
-      const [testsResult, systemPromptsResult, modelsResult] =
+      const [testsResult, systemPromptsResult, modelsResult, hotelsResult] =
         await Promise.all([
           getTestsForSelectionAction(),
           getSystemPromptsForSelectionAction(),
           getAvailableModels(),
+          getAllHotelsForSelectionAction(),
         ]);
 
       if (testsResult.success && testsResult.data) {
@@ -145,6 +154,10 @@ export default function EditTestSessionModal({
       }
 
       setAvailableModels(modelsResult);
+
+      if (hotelsResult.success && hotelsResult.data) {
+        setAvailableHotels(hotelsResult.data);
+      }
     } catch (error) {
       console.error("Error loading data:", error);
     }
@@ -222,6 +235,10 @@ export default function EditTestSessionModal({
         test_ids: selectedTestIds,
         model_configs: selectedModels,
         manual_tests: manualTests,
+        hotel_id:
+          selectedHotelId && selectedHotelId !== "none"
+            ? Number(selectedHotelId)
+            : null,
       });
 
       if (result.success) {
@@ -321,6 +338,31 @@ export default function EditTestSessionModal({
                   </pre>
                 </div>
               )}
+            </div>
+
+            {/* Hotel Knowledge Base */}
+            <div className="space-y-2">
+              <Label htmlFor="hotel-kb">Hotel Knowledge Base</Label>
+              <Select
+                value={selectedHotelId}
+                onValueChange={setSelectedHotelId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All files (no filter)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">All files (no filter)</SelectItem>
+                  {availableHotels.map((hotel) => (
+                    <SelectItem key={hotel.id} value={hotel.id.toString()}>
+                      {hotel.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                When set, tests will only search files from this hotel&apos;s
+                knowledge base.
+              </p>
             </div>
 
             {/* Test Selection */}

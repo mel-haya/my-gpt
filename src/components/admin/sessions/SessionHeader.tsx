@@ -16,6 +16,7 @@ import {
   Medal,
   Trophy,
   RefreshCw,
+  Hotel,
 } from "lucide-react";
 import EditTestSessionModal from "@/components/EditTestSessionModal";
 import { formatTokens } from "@/lib/utils";
@@ -176,6 +177,14 @@ export function SessionHeader({
           Created on {new Date(profile.created_at).toLocaleDateString()} by{" "}
           {profile.username}
         </span>
+        {profile.hotel_name && (
+          <div className="flex items-center gap-1.5 pl-4 border-l border-gray-300 dark:border-gray-700">
+            <Hotel className="w-4 h-4 text-indigo-500" />
+            <span className="font-medium text-gray-900 dark:text-gray-100">
+              {profile.hotel_name}
+            </span>
+          </div>
+        )}
         {profile.average_score !== null && !isNaN(profile.average_score) && (
           <div className="flex items-center gap-4 pl-4 border-l border-gray-300 dark:border-gray-700">
             <div

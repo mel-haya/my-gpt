@@ -40,6 +40,7 @@ import {
   createTestProfileAction,
   getTestsForSelectionAction,
   getSystemPromptsForSelectionAction,
+  getAllHotelsForSelectionAction,
 } from "@/app/actions/testProfiles";
 import type { ModelOption } from "@/app/actions/models";
 import type { SelectTest, SelectSystemPrompt } from "@/lib/db-schema";
@@ -60,7 +61,7 @@ export default function CreateTestSessionModal({
     SelectSystemPrompt[]
   >([]);
   const [availableModels, setAvailableModels] = useState<ModelOption[]>(
-    propAvailableModels || []
+    propAvailableModels || [],
   );
 
   // Form state
@@ -75,6 +76,10 @@ export default function CreateTestSessionModal({
   const [newManualExpected, setNewManualExpected] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [isTestSectionCollapsed, setIsTestSectionCollapsed] = useState(false);
+  const [availableHotels, setAvailableHotels] = useState<
+    { id: number; name: string }[]
+  >([]);
+  const [selectedHotelId, setSelectedHotelId] = useState<string>("");
 
   // Update internal state if prop changes
   useEffect(() => {
@@ -92,10 +97,12 @@ export default function CreateTestSessionModal({
 
   const loadData = async () => {
     try {
-      const [testsResult, systemPromptsResult] = await Promise.all([
-        getTestsForSelectionAction(),
-        getSystemPromptsForSelectionAction(),
-      ]);
+      const [testsResult, systemPromptsResult, hotelsResult] =
+        await Promise.all([
+          getTestsForSelectionAction(),
+          getSystemPromptsForSelectionAction(),
+          getAllHotelsForSelectionAction(),
+        ]);
 
       if (testsResult.success && testsResult.data) {
         setAvailableTests(testsResult.data);
@@ -103,6 +110,10 @@ export default function CreateTestSessionModal({
 
       if (systemPromptsResult.success && systemPromptsResult.data) {
         setAvailableSystemPrompts(systemPromptsResult.data);
+      }
+
+      if (hotelsResult.success && hotelsResult.data) {
+        setAvailableHotels(hotelsResult.data);
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -141,6 +152,7 @@ export default function CreateTestSessionModal({
     setManualTests([]);
     setNewManualPrompt("");
     setNewManualExpected("");
+    setSelectedHotelId("");
   };
 
   const handleAddManualTest = () => {
@@ -178,7 +190,7 @@ export default function CreateTestSessionModal({
 
     try {
       const selectedSystemPromptObj = availableSystemPrompts.find(
-        (sp) => sp.id.toString() === selectedSystemPrompt
+        (sp) => sp.id.toString() === selectedSystemPrompt,
       );
       if (!selectedSystemPromptObj) {
         alert("Selected system prompt not found");
@@ -191,6 +203,10 @@ export default function CreateTestSessionModal({
         test_ids: selectedTestIds,
         model_configs: selectedModelIds,
         manual_tests: manualTests,
+        hotel_id:
+          selectedHotelId && selectedHotelId !== "none"
+            ? Number(selectedHotelId)
+            : null,
       });
 
       if (result.success) {
@@ -209,7 +225,7 @@ export default function CreateTestSessionModal({
   };
 
   const selectedSystemPromptObj = availableSystemPrompts.find(
-    (sp) => sp.id.toString() === selectedSystemPrompt
+    (sp) => sp.id.toString() === selectedSystemPrompt,
   );
 
   return (
@@ -292,6 +308,31 @@ export default function CreateTestSessionModal({
                   </pre>
                 </div>
               )}
+            </div>
+
+            {/* Hotel Knowledge Base */}
+            <div className="space-y-2">
+              <Label htmlFor="hotel-kb">Hotel Knowledge Base</Label>
+              <Select
+                value={selectedHotelId}
+                onValueChange={setSelectedHotelId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All files (no filter)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">All files (no filter)</SelectItem>
+                  {availableHotels.map((hotel) => (
+                    <SelectItem key={hotel.id} value={hotel.id.toString()}>
+                      {hotel.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                When set, tests will only search files from this hotel&apos;s
+                knowledge base.
+              </p>
             </div>
 
             {/* Test Selection */}
