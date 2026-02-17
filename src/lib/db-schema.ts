@@ -216,7 +216,6 @@ export const uploadedFiles = pgTable(
       .notNull()
       .references(() => users.id),
     active: boolean("active").notNull().default(true),
-    include_in_tests: boolean("include_in_tests").notNull().default(false),
     downloadUrl: text("download_url"),
     hotel_id: integer("hotel_id").references(() => hotels.id, {
       onDelete: "set null",

@@ -181,7 +181,6 @@ export async function POST(request: Request): Promise<NextResponse> {
               status: "processing",
               downloadUrl: blob.downloadUrl,
               hotel_id: hotelId,
-              include_in_tests: false,
             })
             .returning();
 

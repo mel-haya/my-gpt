@@ -37,7 +37,6 @@ export default async function FilesDashboard({
         files={data.files}
         pagination={data.pagination}
         searchQuery={searchQuery}
-        isAdmin
       />
     </div>
   );

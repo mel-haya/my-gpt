@@ -41,7 +41,7 @@ export type SearchKnowledgeBaseResult = z.infer<
   typeof searchKnowledgeBaseOutputSchema
 >;
 
-function searchKnowledgeBaseTool(hotelId?: number, testOnly?: boolean) {
+function searchKnowledgeBaseTool(hotelId?: number) {
   return tool({
     description:
       "Searches the knowledge base for relevant information based on a query.",
@@ -55,13 +55,7 @@ function searchKnowledgeBaseTool(hotelId?: number, testOnly?: boolean) {
           const hotel = await getHotelById(hotelId);
           hotelName = hotel?.name;
         }
-        const response = await searchDocuments(
-          query,
-          5,
-          0,
-          hotelName,
-          testOnly,
-        );
+        const response = await searchDocuments(query, 5, 0, hotelName);
         return {
           success: response.length > 0,
           message: `Found ${response.length} relevant documents in the knowledge base.`,
@@ -134,57 +128,56 @@ function createStaffRequestTool(
 ) {
   return tool({
     description: `Creates a staff request for guest services (room service, housekeeping, maintenance, etc.) or issues. the userMessage should match the conversation language.`,
-    inputSchema: z
-      .object({
-        title: z
-          .string()
-          .describe(`Brief title of the request (MUST be in ${staffLanguage})`),
-        description: z
-          .string()
-          .describe(
-            `Detailed description of the request (MUST be in ${staffLanguage})`,
-          ),
-        admin_title: z
-          .string()
-          .describe(
-            `Brief title of the request translated into ${adminLanguage} for admin review`,
-          ),
-        admin_description: z
-          .string()
-          .describe(
-            `Detailed description of the request translated into ${adminLanguage} for admin review`,
-          ),
-        category: z.enum([
-          "reservation",
-          "room_issue",
-          "room_service",
-          "housekeeping",
-          "maintenance",
-          "concierge",
-          "other",
-        ]),
-        urgency: z
-          .enum(["low", "medium", "high", "critical"])
-          .default("medium")
-          .describe("Urgency level of the request"),
-        room_number: z
-          .number()
-          .optional()
-          .describe(
-            "Guest's room number (required for all categories except reservations).",
-          ),
-        guest_contact: z
-          .string()
-          .optional()
-          .describe(
-            "Guest's contact information (phone number or email). Required for reservations.",
-          ),
-        userMessage: z
-          .string()
-          .describe(
-            "A short, generic confirmation message like 'Your request has been submitted to the staff.' - Do NOT include specific details (room number, request type, etc.). MUST be in the same language as the conversation.",
-          ),
-      }),
+    inputSchema: z.object({
+      title: z
+        .string()
+        .describe(`Brief title of the request (MUST be in ${staffLanguage})`),
+      description: z
+        .string()
+        .describe(
+          `Detailed description of the request (MUST be in ${staffLanguage})`,
+        ),
+      admin_title: z
+        .string()
+        .describe(
+          `Brief title of the request translated into ${adminLanguage} for admin review`,
+        ),
+      admin_description: z
+        .string()
+        .describe(
+          `Detailed description of the request translated into ${adminLanguage} for admin review`,
+        ),
+      category: z.enum([
+        "reservation",
+        "room_issue",
+        "room_service",
+        "housekeeping",
+        "maintenance",
+        "concierge",
+        "other",
+      ]),
+      urgency: z
+        .enum(["low", "medium", "high", "critical"])
+        .default("medium")
+        .describe("Urgency level of the request"),
+      room_number: z
+        .number()
+        .optional()
+        .describe(
+          "Guest's room number (required for all categories except reservations).",
+        ),
+      guest_contact: z
+        .string()
+        .optional()
+        .describe(
+          "Guest's contact information (phone number or email). Required for reservations.",
+        ),
+      userMessage: z
+        .string()
+        .describe(
+          "A short, generic confirmation message like 'Your request has been submitted to the staff.' - Do NOT include specific details (room number, request type, etc.). MUST be in the same language as the conversation.",
+        ),
+    }),
     execute: async (input) => {
       try {
         const result = await createStaffRequest({
@@ -219,55 +212,54 @@ function createStaffRequestTool(
 function createMockedStaffRequestTool(staffLanguage: string) {
   return tool({
     description: `Creates a staff request for guest services (room service, housekeeping, maintenance, etc.) or issues. IMPORTANT: The title and description MUST be written in ${staffLanguage.toUpperCase()}. Only the userMessage should match the conversation language.`,
-    inputSchema: z
-      .object({
-        title: z
-          .string()
-          .describe(`Brief title of the request (MUST be in ${staffLanguage})`),
-        description: z
-          .string()
-          .describe(
-            `Detailed description of the request (MUST be in ${staffLanguage})`,
-          ),
-        admin_title: z
-          .string()
-          .optional()
-          .describe(`(Optional for test) Admin title`),
-        admin_description: z
-          .string()
-          .optional()
-          .describe(`(Optional for test) Admin description`),
-        category: z.enum([
-          "reservation",
-          "room_issue",
-          "room_service",
-          "housekeeping",
-          "maintenance",
-          "concierge",
-          "other",
-        ]),
-        urgency: z
-          .enum(["low", "medium", "high", "critical"])
-          .default("medium")
-          .describe("Urgency level of the request"),
-        room_number: z
-          .number()
-          .optional()
-          .describe(
-            "Guest's room number (required for all categories except reservations).",
-          ),
-        guest_contact: z
-          .string()
-          .optional()
-          .describe(
-            "Guest's contact information (phone number or email). Required for reservations.",
-          ),
-        userMessage: z
-          .string()
-          .describe(
-            "A short, generic confirmation message like 'Your request has been submitted to the staff.' - Do NOT include specific details (room number, request type, etc.). MUST be in the same language as the conversation.",
-          ),
-      }),
+    inputSchema: z.object({
+      title: z
+        .string()
+        .describe(`Brief title of the request (MUST be in ${staffLanguage})`),
+      description: z
+        .string()
+        .describe(
+          `Detailed description of the request (MUST be in ${staffLanguage})`,
+        ),
+      admin_title: z
+        .string()
+        .optional()
+        .describe(`(Optional for test) Admin title`),
+      admin_description: z
+        .string()
+        .optional()
+        .describe(`(Optional for test) Admin description`),
+      category: z.enum([
+        "reservation",
+        "room_issue",
+        "room_service",
+        "housekeeping",
+        "maintenance",
+        "concierge",
+        "other",
+      ]),
+      urgency: z
+        .enum(["low", "medium", "high", "critical"])
+        .default("medium")
+        .describe("Urgency level of the request"),
+      room_number: z
+        .number()
+        .optional()
+        .describe(
+          "Guest's room number (required for all categories except reservations).",
+        ),
+      guest_contact: z
+        .string()
+        .optional()
+        .describe(
+          "Guest's contact information (phone number or email). Required for reservations.",
+        ),
+      userMessage: z
+        .string()
+        .describe(
+          "A short, generic confirmation message like 'Your request has been submitted to the staff.' - Do NOT include specific details (room number, request type, etc.). MUST be in the same language as the conversation.",
+        ),
+    }),
     execute: async (input) => {
       // Return a mocked successful response without creating a database entry
       return {
@@ -313,7 +305,7 @@ export async function getTestTools(hotelId?: number) {
     hotelLang ?? (await getSetting("staff_preferred_language"));
 
   return {
-    searchKnowledgeBase: searchKnowledgeBaseTool(hotelId, true),
+    searchKnowledgeBase: searchKnowledgeBaseTool(hotelId),
     suggestActivities: suggestActivitiesTool,
     createStaffRequest: createMockedStaffRequestTool(staffLanguage),
   };

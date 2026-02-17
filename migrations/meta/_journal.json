@@ -414,6 +414,13 @@
       "when": 1770898696427,
       "tag": "0058_demonic_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1771340531506,
+      "tag": "0059_melted_brother_voodoo",
+      "breakpoints": true
     }
   ]
 }
