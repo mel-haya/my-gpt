@@ -201,7 +201,7 @@ function MobileNavMenu({ isOpen, role, isSignedIn, onClose }: MobileNavMenuProps
                     </Link>
                 )}
 
-                {(isAdmin || isHotelStaff) && (
+                {isHotelStaff && (
                     <Link
                         href="/dashboard"
                         className="flex items-center gap-2 transition-colors hover:text-white"
