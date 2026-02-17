@@ -1,8 +1,6 @@
 "use server";
 
 import {
-  getHotels,
-  getHotelById,
   createHotel,
   updateHotel,
   deleteHotel,
@@ -10,10 +8,13 @@ import {
   assignStaffToHotel,
   removeStaffFromHotel,
   getAvailableStaffForHotel,
-  PaginatedHotels,
+  updateHotelPreferences,
 } from "@/services/hotelService";
+import { getAvailableModelsFromDb } from "@/services/modelsService";
+import { getSystemPromptsForSelection } from "@/services/testProfilesService";
 import { InsertHotel, SelectHotel, SelectUser } from "@/lib/db-schema";
 import { revalidatePath } from "next/cache";
+import { checkRole } from "@/lib/checkRole";
 import { uploadImageToImageKit } from "@/app/api/chat/imageKit";
 
 export async function uploadHotelImageAction(
@@ -289,5 +290,69 @@ export async function updateHotelLanguageAction(
   } catch (error) {
     console.error("Error updating hotel language:", error);
     return { success: false, error: "Failed to update language" };
+  }
+}
+
+export async function updateHotelPreferencesAction(
+  hotelId: number,
+  systemPromptId: number | null,
+  modelId: number | null,
+  preferredLanguage?: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const isAdmin = await checkRole("admin");
+    if (!isAdmin) {
+      return { success: false, error: "Admin access required" };
+    }
+
+    await updateHotelPreferences(hotelId, {
+      systemPromptId,
+      modelId,
+      preferredLanguage,
+    });
+    revalidatePath("/admin/hotels");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating hotel preferences:", error);
+    return { success: false, error: "Failed to update hotel preferences" };
+  }
+}
+
+export async function getModelsForSelectAction(): Promise<
+  { id: number; name: string }[]
+> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return [];
+
+    const models = await getAvailableModelsFromDb();
+    return models
+      .map((m) => ({ id: m.id, name: m.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    console.error("Error fetching models:", error);
+    return [];
+  }
+}
+
+export async function getSystemPromptsForSelectAction(): Promise<
+  { id: number; name: string }[]
+> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return [];
+
+    const prompts = await getSystemPromptsForSelection();
+    return prompts
+      .map((p) => ({ id: p.id, name: p.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    console.error("Error fetching system prompts:", error);
+    return [];
   }
 }

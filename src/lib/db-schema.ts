@@ -131,10 +131,19 @@ export const hotels = pgTable(
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     slug: text("slug").unique(),
+    system_prompt_id: integer("system_prompt_id").references(
+      () => systemPrompts.id,
+      { onDelete: "set null" },
+    ),
+    model_id: integer("model_id").references(() => models.id, {
+      onDelete: "set null",
+    }),
   },
   (table) => [
     index("hotels_name_index").on(table.name),
     uniqueIndex("hotels_name_unique").on(table.name),
+    index("hotels_system_prompt_id_index").on(table.system_prompt_id),
+    index("hotels_model_id_index").on(table.model_id),
   ],
 );
 

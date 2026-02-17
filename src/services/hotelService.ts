@@ -115,6 +115,8 @@ export async function getHotelByUserId(
       location: hotels.location,
       preferred_language: hotels.preferred_language,
       slug: hotels.slug,
+      system_prompt_id: hotels.system_prompt_id,
+      model_id: hotels.model_id,
       created_at: hotels.created_at,
       updated_at: hotels.updated_at,
     })
@@ -161,6 +163,25 @@ export async function updateHotel(
 
 export async function deleteHotel(id: number): Promise<void> {
   await db.delete(hotels).where(eq(hotels.id, id));
+}
+
+export async function updateHotelPreferences(
+  hotelId: number,
+  data: {
+    systemPromptId: number | null;
+    modelId: number | null;
+    preferredLanguage?: string;
+  },
+): Promise<void> {
+  await db
+    .update(hotels)
+    .set({
+      system_prompt_id: data.systemPromptId,
+      model_id: data.modelId,
+      preferred_language: data.preferredLanguage,
+      updated_at: new Date(),
+    })
+    .where(eq(hotels.id, hotelId));
 }
 
 // Get all hotels (for dropdown selects)

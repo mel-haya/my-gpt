@@ -17,7 +17,8 @@ import { HotelWithStaffCount } from "@/services/hotelService";
 import HotelDialog from "./HotelDialog";
 import DeleteHotelDialog from "./DeleteHotelDialog";
 import HotelStaffDialog from "./HotelStaffDialog";
-import { Edit, MoreHorizontal, Trash2, Users } from "lucide-react";
+import HotelPreferencesDialog from "./HotelPreferencesDialog";
+import { Edit, MoreHorizontal, Trash2, Users, Settings } from "lucide-react";
 import { format } from "date-fns";
 
 interface HotelsListProps {
@@ -89,6 +90,7 @@ function ActionsCell({ hotel }: { hotel: HotelWithStaffCount }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [staffOpen, setStaffOpen] = useState(false);
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
 
   return (
     <div className="flex justify-end">
@@ -106,6 +108,10 @@ function ActionsCell({ hotel }: { hotel: HotelWithStaffCount }) {
           <DropdownMenuItem onSelect={() => setStaffOpen(true)}>
             <Users className="h-4 w-4" />
             Manage Staff
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setPreferencesOpen(true)}>
+            <Settings className="h-4 w-4" />
+            Preferences
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -135,6 +141,12 @@ function ActionsCell({ hotel }: { hotel: HotelWithStaffCount }) {
         hotelName={hotel.name}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
+        trigger={null}
+      />
+      <HotelPreferencesDialog
+        hotel={hotel}
+        open={preferencesOpen}
+        onOpenChange={setPreferencesOpen}
         trigger={null}
       />
     </div>
