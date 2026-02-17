@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getUserById } from "@/services/userService";
 import { getUserHotelId } from "@/lib/checkRole";
 import { getHotelFilesWithStatus } from "@/app/actions/files";
+import { getHotelById } from "@/services/hotelService";
 import FilesTable from "@/components/admin/FilesTable";
 import StatisticsCards from "@/components/admin/statisticsCards";
 
@@ -32,6 +33,9 @@ export default async function DashboardFilesPage({ searchParams }: PageProps) {
     redirect("/");
   }
 
+  const hotel = await getHotelById(hotelId);
+  const hotels = hotel ? [{ id: hotel.id, name: hotel.name }] : [];
+
   const resolvedSearchParams = await searchParams;
   const currentPage = Number(resolvedSearchParams?.page) || 1;
   const searchQuery = resolvedSearchParams?.search || "";
@@ -59,6 +63,8 @@ export default async function DashboardFilesPage({ searchParams }: PageProps) {
         files={data.files}
         pagination={data.pagination}
         searchQuery={searchQuery}
+        hotels={hotels}
+        showHotelInfo={false}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import {
   deleteFile,
   getFileHotelId,
   toggleFileActive,
+  updateFile,
   PaginatedUploadedFiles,
 } from "@/services/filesService";
 import { checkRole, checkRoles, getUserHotelId } from "@/lib/checkRole";
@@ -110,5 +111,27 @@ export async function toggleFileActiveAction(
   } catch (error) {
     console.error("Error updating file status:", error);
     throw new Error("Failed to update file status");
+  }
+}
+
+export async function updateFileAction(
+  fileId: number,
+  data: {
+    fileName?: string;
+    hotelId?: number | null;
+    active?: boolean;
+  },
+): Promise<void> {
+  try {
+    const isAdmin = await checkRole("admin");
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    await updateFile(fileId, data);
+    return;
+  } catch (error) {
+    console.error("Error updating file:", error);
+    throw new Error("Failed to update file");
   }
 }

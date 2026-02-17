@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Trash2, Eye, EyeOff, MoreHorizontal, Download } from "lucide-react";
-import { deleteFileAction, toggleFileActiveAction } from "@/app/actions/files";
+import { Trash2, MoreHorizontal, Download, Edit } from "lucide-react";
+import { deleteFileAction } from "@/app/actions/files";
 import DeleteDialog from "@/components/ui/DeleteDialog";
+import EditFileDialog from "./EditFileDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +19,10 @@ interface FileActionButtonsProps {
   fileName: string;
   active: boolean;
   downloadUrl: string | null;
+  hotels: { id: number; name: string }[];
+  hotelId: number | null;
   onUpdate: () => void;
+  canChangeHotel?: boolean;
 }
 
 export default function FileActionButtons({
@@ -26,25 +30,18 @@ export default function FileActionButtons({
   fileName,
   active,
   downloadUrl,
+  hotels,
+  hotelId,
   onUpdate,
+  canChangeHotel = true,
 }: FileActionButtonsProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending] = useTransition();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   const handleDelete = async () => {
     await deleteFileAction(fileId);
     onUpdate();
-  };
-
-  const handleToggleActive = () => {
-    startTransition(async () => {
-      try {
-        await toggleFileActiveAction(fileId, !active);
-        onUpdate();
-      } catch (error) {
-        console.error("Error updating file status:", error);
-      }
-    });
   };
 
   const handleDownload = () => {
@@ -68,18 +65,9 @@ export default function FileActionButtons({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={handleToggleActive}>
-            {active ? (
-              <>
-                <EyeOff className="mr-2 h-4 w-4" />
-                <span>Disable</span>
-              </>
-            ) : (
-              <>
-                <Eye className="mr-2 h-4 w-4" />
-                <span>Enable</span>
-              </>
-            )}
+          <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+            <Edit className="mr-2 h-4 w-4" />
+            <span>Edit</span>
           </DropdownMenuItem>
 
           {downloadUrl && (
@@ -100,6 +88,18 @@ export default function FileActionButtons({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <EditFileDialog
+        isOpen={showEditDialog}
+        onClose={() => setShowEditDialog(false)}
+        fileId={fileId}
+        initialFileName={fileName}
+        initialHotelId={hotelId}
+        initialActive={active}
+        hotels={hotels}
+        onUpdate={onUpdate}
+        canChangeHotel={canChangeHotel}
+      />
 
       <DeleteDialog
         isOpen={showDeleteDialog}

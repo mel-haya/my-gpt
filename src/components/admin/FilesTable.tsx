@@ -21,6 +21,8 @@ interface FilesTableProps {
     hasPreviousPage: boolean;
   };
   searchQuery: string;
+  hotels: { id: number; name: string }[];
+  showHotelInfo?: boolean;
 }
 
 function FileStatusBadge({
@@ -48,91 +50,116 @@ function FileStatusBadge({
 
 const getColumns = (
   handleRefresh: () => void,
-): ColumnDef<UploadedFileWithUser>[] => [
-  {
-    accessorKey: "fileName",
-    header: "File Name",
-    cell: ({ row }) => (
-      <div className="max-w-50 truncate" title={row.getValue("fileName")}>
-        {row.getValue("fileName")}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "username",
-    header: "Username",
-    cell: ({ row }) => (
-      <div className="text-neutral-600 dark:text-neutral-400">
-        {row.getValue("username") || "Unknown"}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "documentCount",
-    header: "Documents",
-    size: 70,
-    cell: ({ row }) => {
-      const count = row.getValue("documentCount") as number;
-      return (
-        <div className="font-medium">
-          <span className="inline-flex items-center justify-center w-8 h-8 text-xs font-bold bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900/20 dark:text-blue-300">
-            {count}
-          </span>
+  hotels: { id: number; name: string }[],
+  showHotelInfo: boolean,
+): ColumnDef<UploadedFileWithUser>[] => {
+  const columns: ColumnDef<UploadedFileWithUser>[] = [
+    {
+      accessorKey: "fileName",
+      header: "File Name",
+      cell: ({ row }) => (
+        <div className="max-w-50 truncate" title={row.getValue("fileName")}>
+          {row.getValue("fileName")}
         </div>
-      );
+      ),
     },
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    size: 70,
-    cell: ({ row }) => <FileStatusBadge status={row.getValue("status")} />,
-  },
-  {
-    accessorKey: "active",
-    header: "Active",
-    size: 50,
-    cell: ({ row }) => {
-      const isActive = row.getValue("active") as boolean;
-      return (
-        <span
-          className={`px-2 py-1 rounded-md text-xs font-medium border ${
-            isActive
-              ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700"
-              : "bg-neutral-100 text-neutral-800 border-neutral-200 dark:bg-neutral-900/20 dark:text-neutral-300 dark:border-neutral-700"
-          }`}
-        >
-          {isActive ? "Yes" : "No"}
-        </span>
-      );
+    {
+      accessorKey: "username",
+      header: "Uploaded by",
+      cell: ({ row }) => (
+        <div className="text-neutral-600 dark:text-neutral-400">
+          {row.getValue("username") || "Unknown"}
+        </div>
+      ),
     },
-  },
+  ];
 
-  {
-    accessorKey: "actions",
-    header: "Actions",
-    size: 50,
-    cell: ({ row }) => {
-      const file = row.original;
-      return (
-        <div className="w-12">
-          <FileActionButtons
-            fileId={file.id}
-            fileName={file.fileName}
-            active={file.active}
-            downloadUrl={file.downloadUrl}
-            onUpdate={handleRefresh}
-          />
+  if (showHotelInfo) {
+    columns.push({
+      accessorKey: "hotelName",
+      header: "Hotel",
+      cell: ({ row }) => (
+        <div className="text-neutral-600 dark:text-neutral-400">
+          {row.getValue("hotelName") || "-"}
         </div>
-      );
+      ),
+    });
+  }
+
+  columns.push(
+    {
+      accessorKey: "documentCount",
+      header: "Documents",
+      size: 70,
+      cell: ({ row }) => {
+        const count = row.getValue("documentCount") as number;
+        return (
+          <div className="font-medium">
+            <span className="inline-flex items-center justify-center w-8 h-8 text-xs font-bold bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900/20 dark:text-blue-300">
+              {count}
+            </span>
+          </div>
+        );
+      },
     },
-  },
-];
+    {
+      accessorKey: "status",
+      header: "Status",
+      size: 70,
+      cell: ({ row }) => <FileStatusBadge status={row.getValue("status")} />,
+    },
+    {
+      accessorKey: "active",
+      header: "Active",
+      size: 50,
+      cell: ({ row }) => {
+        const isActive = row.getValue("active") as boolean;
+        return (
+          <span
+            className={`px-2 py-1 rounded-md text-xs font-medium border ${
+              isActive
+                ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700"
+                : "bg-neutral-100 text-neutral-800 border-neutral-200 dark:bg-neutral-900/20 dark:text-neutral-300 dark:border-neutral-700"
+            }`}
+          >
+            {isActive ? "Yes" : "No"}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "actions",
+      header: "Actions",
+      size: 50,
+      cell: ({ row }) => {
+        const file = row.original;
+        return (
+          <div className="w-12">
+            <FileActionButtons
+              fileId={file.id}
+              fileName={file.fileName}
+              active={file.active}
+              downloadUrl={file.downloadUrl}
+              onUpdate={handleRefresh}
+              hotels={hotels}
+              hotelId={file.hotel_id}
+              canChangeHotel={showHotelInfo}
+            />
+          </div>
+        );
+      },
+    },
+  );
+
+  return columns;
+};
 
 export default function FilesTable({
   files,
   pagination,
   searchQuery,
+  hotels,
+  showHotelInfo = true,
 }: FilesTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -224,7 +251,7 @@ export default function FilesTable({
       </div>
 
       <DataTable
-        columns={getColumns(handleRefresh)}
+        columns={getColumns(handleRefresh, hotels, showHotelInfo)}
         data={files}
         emptyMessage="No files found."
       />

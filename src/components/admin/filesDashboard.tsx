@@ -1,6 +1,7 @@
 import FilesTable from "./FilesTable";
 import { getFilesWithStatus } from "@/app/actions/files";
 import StatisticsCards from "./statisticsCards";
+import { getAllHotelsForSelectionAction } from "@/app/actions/testProfiles";
 
 interface FilesDashboardProps {
   searchParams?: {
@@ -23,6 +24,9 @@ export default async function FilesDashboard({
     currentPage,
   );
 
+  const hotelsResult = await getAllHotelsForSelectionAction();
+  const hotels = hotelsResult.success ? hotelsResult.data || [] : [];
+
   return (
     <div className="flex flex-col max-w-350 mx-4 2xl:mx-auto my-4 gap-4">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -37,6 +41,7 @@ export default async function FilesDashboard({
         files={data.files}
         pagination={data.pagination}
         searchQuery={searchQuery}
+        hotels={hotels}
       />
     </div>
   );

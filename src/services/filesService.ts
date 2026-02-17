@@ -3,6 +3,7 @@ import {
   uploadedFiles,
   users,
   documents,
+  hotels,
 } from "@/lib/db-schema";
 import { db } from "@/lib/db-config";
 import { eq, and, desc, ilike, count } from "drizzle-orm";
@@ -10,6 +11,7 @@ import { del } from "@vercel/blob";
 
 export type UploadedFileWithUser = SelectUploadedFile & {
   username: string | null;
+  hotelName: string | null;
   documentCount: number;
 };
 
@@ -25,6 +27,7 @@ export type PaginatedUploadedFiles = {
   statistics: {
     activeFilesCount: number;
     totalDocumentsCount: number;
+    activeHotelsCount?: number;
   };
 };
 
@@ -70,6 +73,7 @@ export async function getUploadedFiles(
         downloadUrl: uploadedFiles.downloadUrl,
         hotel_id: uploadedFiles.hotel_id,
         username: users.username,
+        hotelName: hotels.name,
         documentCount: db.$count(
           documents,
           eq(documents.uploaded_file_id, uploadedFiles.id),
@@ -77,6 +81,7 @@ export async function getUploadedFiles(
       })
       .from(uploadedFiles)
       .leftJoin(users, eq(uploadedFiles.user_id, users.id))
+      .leftJoin(hotels, eq(uploadedFiles.hotel_id, hotels.id))
       .where(whereCondition)
       .limit(limit)
       .offset(limit * (page - 1))
@@ -134,6 +139,7 @@ export async function getUploadedFiles(
       downloadUrl: uploadedFiles.downloadUrl,
       hotel_id: uploadedFiles.hotel_id,
       username: users.username,
+      hotelName: hotels.name,
       documentCount: db.$count(
         documents,
         eq(documents.uploaded_file_id, uploadedFiles.id),
@@ -141,6 +147,7 @@ export async function getUploadedFiles(
     })
     .from(uploadedFiles)
     .leftJoin(users, eq(uploadedFiles.user_id, users.id))
+    .leftJoin(hotels, eq(uploadedFiles.hotel_id, hotels.id))
     .where(hotelCondition)
     .orderBy(desc(uploadedFiles.id))
     .limit(limit)
@@ -247,5 +254,23 @@ export async function toggleFileActive(
   await db
     .update(uploadedFiles)
     .set({ active })
+    .where(eq(uploadedFiles.id, fileId));
+}
+
+export async function updateFile(
+  fileId: number,
+  data: {
+    fileName?: string;
+    hotelId?: number | null;
+    active?: boolean;
+  },
+): Promise<void> {
+  await db
+    .update(uploadedFiles)
+    .set({
+      fileName: data.fileName,
+      hotel_id: data.hotelId,
+      active: data.active,
+    })
     .where(eq(uploadedFiles.id, fileId));
 }
