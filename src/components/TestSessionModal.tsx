@@ -37,6 +37,7 @@ import {
   Trash2,
   Edit,
   Loader2,
+  Filter,
 } from "lucide-react";
 import {
   createTestProfileAction,
@@ -87,6 +88,7 @@ export default function TestSessionModal({
   const [showPreview, setShowPreview] = useState(false);
   const [isTestSectionCollapsed, setIsTestSectionCollapsed] = useState(false);
   const [selectedHotelId, setSelectedHotelId] = useState<string>("");
+  const [testHotelFilter, setTestHotelFilter] = useState<string>("all");
 
   // Update internal state if prop changes
   useEffect(() => {
@@ -188,12 +190,21 @@ export default function TestSessionModal({
     }
   };
 
+  // Filtered tests based on hotel filter
+  const filteredTests = availableTests.filter((test) => {
+    if (testHotelFilter === "all") return true;
+    if (testHotelFilter === "none") return !test.hotel_id;
+    return test.hotel_id?.toString() === testHotelFilter;
+  });
+
   const handleSelectAllTests = () => {
-    setSelectedTestIds(availableTests.map((test) => test.id));
+    const filteredIds = filteredTests.map((t) => t.id);
+    setSelectedTestIds((prev) => [...new Set([...prev, ...filteredIds])]);
   };
 
   const handleDeselectAllTests = () => {
-    setSelectedTestIds([]);
+    const filteredIds = new Set(filteredTests.map((t) => t.id));
+    setSelectedTestIds((prev) => prev.filter((id) => !filteredIds.has(id)));
   };
 
   const resetForm = () => {
@@ -428,66 +439,113 @@ export default function TestSessionModal({
                   )}
                   Select Tests *
                   <span className="text-sm text-gray-500 font-normal">
-                    ({selectedTestIds.length} of {availableTests.length}{" "}
-                    selected)
+                    ({selectedTestIds.length} selected)
                   </span>
                 </Label>
-                {!isTestSectionCollapsed && availableTests.length > 0 && (
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleSelectAllTests}
-                      disabled={
-                        selectedTestIds.length === availableTests.length
-                      }
-                    >
-                      Select All
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDeselectAllTests}
-                      disabled={selectedTestIds.length === 0}
-                    >
-                      Deselect All
-                    </Button>
-                  </div>
-                )}
               </div>
               {!isTestSectionCollapsed && (
-                <div className="border rounded-lg p-4 max-h-60 overflow-y-auto space-y-2">
-                  {availableTests.length === 0 ? (
-                    <p className="text-sm text-gray-500">No tests available</p>
-                  ) : (
-                    availableTests.map((test) => (
-                      <div key={test.id} className="flex items-start space-x-2">
-                        <Checkbox
-                          id={`test-${test.id}`}
-                          checked={selectedTestIds.includes(test.id)}
-                          onCheckedChange={(checked) =>
-                            handleTestSelection(test.id, checked as boolean)
-                          }
-                        />
-                        <div className="flex-1">
-                          <Label
-                            htmlFor={`test-${test.id}`}
-                            className="text-sm font-medium cursor-pointer"
+                <>
+                  {/* Hotel filter + bulk actions row */}
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={testHotelFilter}
+                      onValueChange={setTestHotelFilter}
+                    >
+                      <SelectTrigger className="w-[180px] h-8 text-xs">
+                        <Filter className="h-3 w-3 mr-1.5 opacity-50" />
+                        <SelectValue placeholder="All Hotels" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Hotels</SelectItem>
+                        <SelectItem value="none">No Hotel</SelectItem>
+                        {availableHotels.map((hotel) => (
+                          <SelectItem
+                            key={hotel.id}
+                            value={hotel.id.toString()}
                           >
-                            {test.prompt.substring(0, 50)}
-                            {test.prompt.length > 50 && "..."}
-                          </Label>
-                          <p className="text-xs text-gray-600 mt-1">
-                            {test.expected_result.substring(0, 50)}
-                            {test.expected_result.length > 50 && "..."}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                            {hotel.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-1.5 ml-auto">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={handleSelectAllTests}
+                        disabled={filteredTests.every((t) =>
+                          selectedTestIds.includes(t.id),
+                        )}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={handleDeselectAllTests}
+                        disabled={
+                          !filteredTests.some((t) =>
+                            selectedTestIds.includes(t.id),
+                          )
+                        }
+                      >
+                        Deselect All
+                      </Button>
+                    </div>
+                  </div>
+                  {/* Test list */}
+                  <div className="border rounded-lg p-4 max-h-60 overflow-y-auto space-y-2">
+                    {filteredTests.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        {availableTests.length === 0
+                          ? "No tests available"
+                          : "No tests match this filter"}
+                      </p>
+                    ) : (
+                      filteredTests.map((test) => {
+                        const hotel = test.hotel_id
+                          ? availableHotels.find((h) => h.id === test.hotel_id)
+                          : null;
+                        return (
+                          <div
+                            key={test.id}
+                            className="flex items-start space-x-2"
+                          >
+                            <Checkbox
+                              id={`test-${test.id}`}
+                              checked={selectedTestIds.includes(test.id)}
+                              onCheckedChange={(checked) =>
+                                handleTestSelection(test.id, checked as boolean)
+                              }
+                            />
+                            <div className="flex-1 min-w-0">
+                              <Label
+                                htmlFor={`test-${test.id}`}
+                                className="text-sm font-medium cursor-pointer"
+                              >
+                                {test.prompt.substring(0, 50)}
+                                {test.prompt.length > 50 && "..."}
+                              </Label>
+                              <p className="text-xs text-gray-600 mt-1">
+                                {test.expected_result.substring(0, 50)}
+                                {test.expected_result.length > 50 && "..."}
+                              </p>
+                            </div>
+                            {hotel && testHotelFilter === "all" && (
+                              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
+                                {hotel.name}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
               )}
             </div>
 
