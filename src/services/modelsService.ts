@@ -1,5 +1,5 @@
 import { db } from "@/lib/db-config";
-import { models, testRunResults } from "@/lib/db-schema";
+import { models, testRunResults, testProfileModels } from "@/lib/db-schema";
 import { eq, and, desc, asc, count, ilike, inArray, sql } from "drizzle-orm";
 import type { SelectModel, InsertModel } from "@/lib/db-schema";
 
@@ -185,6 +185,24 @@ export async function updateModel(
 export async function deleteModel(
   modelId: number,
 ): Promise<SelectModel | null> {
+  const modelToDelete = await db
+    .select()
+    .from(models)
+    .where(eq(models.id, modelId))
+    .limit(1);
+
+  if (!modelToDelete[0]) {
+    return null;
+  }
+
+  // Delete from test_profile_models using the string ID
+  await db
+    .delete(testProfileModels)
+    .where(eq(testProfileModels.model_name, modelToDelete[0].model_id));
+
+  // Delete from test_run_results using the numeric ID (though FK might handle this, explicit is safer for cleanup)
+  await db.delete(testRunResults).where(eq(testRunResults.model_id, modelId));
+
   const [deletedModel] = await db
     .delete(models)
     .where(eq(models.id, modelId))
@@ -198,12 +216,31 @@ export async function bulkDeleteModels(modelIds: number[]): Promise<number> {
     return 0;
   }
 
+  const modelsToDelete = await db
+    .select()
+    .from(models)
+    .where(inArray(models.id, modelIds));
+
+  if (modelsToDelete.length > 0) {
+    const modelStringIds = modelsToDelete.map((m) => m.model_id);
+
+    // Delete from test_profile_models
+    await db
+      .delete(testProfileModels)
+      .where(inArray(testProfileModels.model_name, modelStringIds));
+
+    // Delete from test_run_results
+    await db
+      .delete(testRunResults)
+      .where(inArray(testRunResults.model_id, modelIds));
+  }
+
   const result = await db
     .delete(models)
     .where(inArray(models.id, modelIds))
     .returning();
 
-  return result.length; // Return actual count of deleted records
+  return result.length;
 }
 
 export async function getDefaultModel(): Promise<SelectModel | null> {
