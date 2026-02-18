@@ -11,6 +11,7 @@ import {
   BookOpenText,
   MessageSquareCode,
   ThumbsUp,
+  Activity,
   ClipboardList,
   Building,
   LogOut,
@@ -74,6 +75,7 @@ export default function SidebarAdmin() {
         { label: "Requests", path: "/admin/requests", icon: ClipboardList },
         { label: "Feedback", path: "/admin/feedback", icon: ThumbsUp },
         { label: "History", path: "/admin/history", icon: HistoryIcon },
+        { label: "Activities", path: "/admin/activities", icon: Activity },
       ],
     },
   ];
