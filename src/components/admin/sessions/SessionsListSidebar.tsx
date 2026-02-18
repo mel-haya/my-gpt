@@ -9,7 +9,7 @@ import {
   Medal,
   Trophy,
 } from "lucide-react";
-import CreateTestSessionModal from "@/components/CreateTestSessionModal";
+import TestSessionModal from "@/components/TestSessionModal";
 import { SessionStatusBadge } from "./SessionStatusBadge";
 import { formatTokens } from "@/lib/utils";
 import type { SelectTestProfileWithDetails } from "@/lib/db-schema";
@@ -55,8 +55,8 @@ export function SessionsListSidebar({
           <p className="text-sm text-gray-600">Manage session profiles</p>
         </div>
         <div className="flex items-center gap-2">
-          <CreateTestSessionModal
-            onSessionCreated={onSessionCreated}
+          <TestSessionModal
+            onSuccess={onSessionCreated}
             availableModels={availableModels}
           />
         </div>

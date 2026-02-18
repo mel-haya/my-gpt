@@ -5,10 +5,10 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -35,25 +35,32 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
+  Edit,
+  Loader2,
 } from "lucide-react";
 import {
   createTestProfileAction,
+  updateTestProfileAction,
   getTestsForSelectionAction,
   getSystemPromptsForSelectionAction,
   getAllHotelsForSelectionAction,
 } from "@/app/actions/testProfiles";
 import type { ModelOption } from "@/app/actions/models";
 import type { SelectTest, SelectSystemPrompt } from "@/lib/db-schema";
+import type { DetailedTestProfile } from "@/services/testProfilesService";
 
-interface CreateTestSessionModalProps {
-  onSessionCreated?: () => void;
+interface TestSessionModalProps {
+  initialData?: DetailedTestProfile;
+  onSuccess?: () => void;
   availableModels: ModelOption[];
 }
 
-export default function CreateTestSessionModal({
-  onSessionCreated,
+export default function TestSessionModal({
+  initialData,
+  onSuccess,
   availableModels: propAvailableModels,
-}: CreateTestSessionModalProps) {
+}: TestSessionModalProps) {
+  const isEditMode = !!initialData;
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [availableTests, setAvailableTests] = useState<SelectTest[]>([]);
@@ -63,6 +70,9 @@ export default function CreateTestSessionModal({
   const [availableModels, setAvailableModels] = useState<ModelOption[]>(
     propAvailableModels || [],
   );
+  const [availableHotels, setAvailableHotels] = useState<
+    { id: number; name: string }[]
+  >([]);
 
   // Form state
   const [name, setName] = useState("");
@@ -76,9 +86,6 @@ export default function CreateTestSessionModal({
   const [newManualExpected, setNewManualExpected] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [isTestSectionCollapsed, setIsTestSectionCollapsed] = useState(false);
-  const [availableHotels, setAvailableHotels] = useState<
-    { id: number; name: string }[]
-  >([]);
   const [selectedHotelId, setSelectedHotelId] = useState<string>("");
 
   // Update internal state if prop changes
@@ -88,12 +95,57 @@ export default function CreateTestSessionModal({
     }
   }, [propAvailableModels]);
 
-  // Load data when modal opens
+  // Load data when modal opens or initialData changes
   useEffect(() => {
     if (open) {
       loadData();
+      if (initialData) {
+        populateForm(initialData);
+      } else {
+        resetForm();
+      }
     }
-  }, [open]);
+  }, [open, initialData]);
+
+  const populateForm = (data: DetailedTestProfile) => {
+    setName(data.name);
+    setSelectedSystemPrompt(
+      data.system_prompt_id ? data.system_prompt_id.toString() : "",
+    );
+    setSelectedTestIds(
+      data.tests.filter((t) => !t.is_manual).map((t) => Number(t.test_id)),
+    );
+    setSelectedModelIds(data.models.map((m) => m.model_name)); // Assuming model_name maps to ID or we need ID.
+    // Wait, the EditModal used `model_name` as the selected ID?
+    // Let's check `EditTestSessionModal.tsx`:
+    // setSelectedModels(profile.models.map((m) => m.model_name));
+    // And `handleModelSelection` adds `modelId` to the list.
+    // The `profile.models` comes from `DetailedTestProfile`.
+    // It seems `model_name` holds the ID string in the `models` array of `DetailedTestProfile`?
+    // Let's check `TestProfileDetails` interface in `EditTestSessionModal.tsx`:
+    // models: { id: number; profile_id: ...; model_name: string; ... }[]
+    // And `availableModels` has `id` (string) and `name` (string).
+    // In `EditTestSessionModal`, `handleModelSelection` uses `modelId` (string).
+    // So `profile.models` probably contains the model IDs in `model_name` field?
+    // Or `model_name` IS the model ID (like "gpt-4")?
+    // Yes, `ModelOption` has `id` as string (e.g. "gpt-4").
+    // So `model_name` in `profile.models` likely corresponds to `model.id` in `availableModels`.
+
+    setManualTests(
+      data.manual_tests
+        ? data.manual_tests.map((t) => ({
+            prompt: t.prompt,
+            expected_result: t.expected_result,
+          }))
+        : data.tests
+            .filter((t) => t.is_manual)
+            .map((t) => ({
+              prompt: t.test_prompt,
+              expected_result: t.expected_result,
+            })),
+    );
+    setSelectedHotelId(data.hotel_id ? data.hotel_id.toString() : "");
+  };
 
   const loadData = async () => {
     try {
@@ -197,7 +249,7 @@ export default function CreateTestSessionModal({
         return;
       }
 
-      const result = await createTestProfileAction({
+      const payload = {
         name: name.trim(),
         system_prompt_id: Number(selectedSystemPrompt),
         test_ids: selectedTestIds,
@@ -207,18 +259,33 @@ export default function CreateTestSessionModal({
           selectedHotelId && selectedHotelId !== "none"
             ? Number(selectedHotelId)
             : null,
-      });
+      };
+
+      let result;
+      if (isEditMode && initialData) {
+        result = await updateTestProfileAction(initialData.id, payload);
+      } else {
+        result = await createTestProfileAction(payload);
+      }
 
       if (result.success) {
-        resetForm();
+        if (!isEditMode) resetForm();
         setOpen(false);
-        onSessionCreated?.();
+        onSuccess?.();
       } else {
-        alert(result.error || "Failed to create test session");
+        alert(
+          result.error ||
+            `Failed to ${isEditMode ? "update" : "create"} test session`,
+        );
       }
     } catch (error) {
-      console.error("Error creating test session:", error);
-      alert("An error occurred while creating the test session");
+      console.error(
+        `Error ${isEditMode ? "updating" : "creating"} test session:`,
+        error,
+      );
+      alert(
+        `An error occurred while ${isEditMode ? "updating" : "creating"} the test session`,
+      );
     } finally {
       setLoading(false);
     }
@@ -231,23 +298,33 @@ export default function CreateTestSessionModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Test Session
-        </Button>
+        {isEditMode ? (
+          <Button variant="outline" size="sm">
+            <Edit className="w-4 h-4 mr-2" />
+            Edit
+          </Button>
+        ) : (
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Test Session
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Create New Test Session</DialogTitle>
+          <DialogTitle>
+            {isEditMode ? "Edit Test Session" : "Create New Test Session"}
+          </DialogTitle>
           <DialogDescription>
-            Create a new test session to run multiple tests with different
-            models and system prompts.
+            {isEditMode
+              ? "Update the session configuration including name, system prompt, tests, and model configurations."
+              : "Create a new test session to run multiple tests with different models and system prompts."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
           <form
-            id="create-session-form"
+            id="test-session-form"
             onSubmit={handleSubmit}
             className="space-y-6"
           >
@@ -474,7 +551,7 @@ export default function CreateTestSessionModal({
               <div className="space-y-3">
                 <div className="grid gap-2">
                   <Input
-                    placeholder="New Question eg: What is the capital of France?  "
+                    placeholder="New Question eg: What is the capital of France?"
                     value={newManualPrompt}
                     onChange={(e) => setNewManualPrompt(e.target.value)}
                     className="bg-neutral-900 border-gray-700 text-white"
@@ -540,8 +617,15 @@ export default function CreateTestSessionModal({
               Cancel
             </Button>
           </DialogClose>
-          <Button type="submit" form="create-session-form" disabled={loading}>
-            {loading ? "Creating..." : "Create Session"}
+          <Button type="submit" form="test-session-form" disabled={loading}>
+            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {loading
+              ? isEditMode
+                ? "Updating..."
+                : "Creating..."
+              : isEditMode
+                ? "Update Session"
+                : "Create Session"}
           </Button>
         </DialogFooter>
       </DialogContent>

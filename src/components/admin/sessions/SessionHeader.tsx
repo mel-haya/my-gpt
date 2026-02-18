@@ -18,7 +18,7 @@ import {
   RefreshCw,
   Hotel,
 } from "lucide-react";
-import EditTestSessionModal from "@/components/EditTestSessionModal";
+import TestSessionModal from "@/components/TestSessionModal";
 import { formatTokens } from "@/lib/utils";
 import type { DetailedTestProfile } from "@/services/testProfilesService";
 import type { SessionRunResult } from "@/app/actions/testSessions";
@@ -162,9 +162,10 @@ export function SessionHeader({
               Run Session
             </Button>
           )}
-          <EditTestSessionModal
-            profile={profile}
-            onSessionUpdated={onSessionUpdated}
+          <TestSessionModal
+            initialData={profile}
+            onSuccess={onSessionUpdated}
+            availableModels={availableModels}
           />
           <Button onClick={onDeleteSession} variant="destructive" size="sm">
             <Trash2 className="w-4 h-4 mr-2" />
