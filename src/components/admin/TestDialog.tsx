@@ -14,6 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createTestAction, updateTestAction } from "@/app/actions/tests";
 import { Plus, Loader2, Edit } from "lucide-react";
 import type { TestWithUser } from "@/services/testsService";
@@ -26,6 +33,7 @@ interface TestDialogProps {
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   initialPrompt?: string;
+  hotels?: { id: number; name: string }[];
 }
 
 export default function TestDialog({
@@ -36,14 +44,15 @@ export default function TestDialog({
   isOpen,
   onOpenChange,
   initialPrompt,
+  hotels,
 }: TestDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    // name removed
     prompt: "",
     expected_result: "",
     category: "",
+    hotel_id: "",
   });
   const [error, setError] = useState("");
 
@@ -51,21 +60,20 @@ export default function TestDialog({
   const open = isOpen !== undefined ? isOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
 
-  // Initialize form data when test prop changes or dialog opens
   useEffect(() => {
     if (isEditMode && test && open) {
       setFormData({
-        // name removed
         prompt: test.prompt,
         expected_result: test.expected_result,
         category: test.category || "",
+        hotel_id: test.hotel_id ? String(test.hotel_id) : "",
       });
     } else if (!isEditMode && open) {
       setFormData({
-        // name removed
         prompt: initialPrompt || "",
         expected_result: "",
         category: "",
+        hotel_id: "",
       });
     }
   }, [isEditMode, test, open, initialPrompt]);
@@ -94,10 +102,10 @@ export default function TestDialog({
       }
 
       const testData = {
-        // name removed
         prompt: formData.prompt.trim(),
         expected_result: formData.expected_result.trim(),
         category: formData.category.trim() || undefined,
+        hotel_id: formData.hotel_id ? Number(formData.hotel_id) : undefined,
       };
 
       let result;
@@ -110,10 +118,10 @@ export default function TestDialog({
       if (result.success) {
         // Reset form
         setFormData({
-          // name removed
           prompt: "",
           expected_result: "",
           category: "",
+          hotel_id: "",
         });
         setOpen(false);
         onSuccess?.();
@@ -139,10 +147,10 @@ export default function TestDialog({
 
   const handleCancel = () => {
     setFormData({
-      // name removed
       prompt: "",
       expected_result: "",
       category: "",
+      hotel_id: "",
     });
     setError("");
     setOpen(false);
@@ -230,6 +238,31 @@ export default function TestDialog({
                 disabled={isSubmitting}
               />
             </div>
+
+            {hotels && hotels.length > 0 && (
+              <div className="grid gap-2">
+                <Label htmlFor="test-hotel">Hotel (Optional)</Label>
+                <Select
+                  value={formData.hotel_id || "none"}
+                  onValueChange={(value) =>
+                    handleInputChange("hotel_id", value === "none" ? "" : value)
+                  }
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger id="test-hotel">
+                    <SelectValue placeholder="Select a hotel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No hotel</SelectItem>
+                    {hotels.map((hotel) => (
+                      <SelectItem key={hotel.id} value={String(hotel.id)}>
+                        {hotel.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

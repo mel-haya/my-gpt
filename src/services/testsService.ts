@@ -1,5 +1,11 @@
 import { db } from "@/lib/db-config";
-import { tests, users, testRuns, testRunResults } from "@/lib/db-schema";
+import {
+  tests,
+  users,
+  testRuns,
+  testRunResults,
+  hotels,
+} from "@/lib/db-schema";
 import type {
   SelectTest,
   SelectTestRun,
@@ -39,6 +45,7 @@ export interface UpdateTestRunResultParams {
 
 export interface TestWithUser extends SelectTest {
   username?: string;
+  hotel_name?: string;
   latest_test_result_status?: string;
   latest_test_result_created_at?: Date;
   latest_test_result_output?: string;
@@ -120,6 +127,7 @@ export async function getTestsWithPagination(
   category?: string,
   limit: number = 10,
   page: number = 1,
+  hotelId?: number,
 ): Promise<TestsResult> {
   const offset = (page - 1) * limit;
 
@@ -133,9 +141,12 @@ export async function getTestsWithPagination(
 
   const categoryCondition = category ? eq(tests.category, category) : undefined;
 
+  const hotelCondition = hotelId ? eq(tests.hotel_id, hotelId) : undefined;
+
   const baseConditions = and(
     searchCondition,
     categoryCondition,
+    hotelCondition,
     eq(tests.is_manual, false),
   );
 
@@ -172,12 +183,15 @@ export async function getTestsWithPagination(
       updated_at: tests.updated_at,
       username: userTable.username,
       is_manual: tests.is_manual,
+      hotel_id: tests.hotel_id,
+      hotel_name: hotels.name,
       latest_test_result_status: latestResultsSubquery.status,
       latest_test_result_created_at: latestResultsSubquery.created_at,
       latest_test_result_output: latestResultsSubquery.output,
     })
     .from(tests)
     .leftJoin(userTable, eq(tests.user_id, userTable.id))
+    .leftJoin(hotels, eq(tests.hotel_id, hotels.id))
     .leftJoin(
       latestResultsSubquery,
       eq(tests.id, latestResultsSubquery.test_id),
@@ -205,6 +219,7 @@ export async function getTestsWithPagination(
   const mappedTests: TestWithUser[] = testsData.map((test) => ({
     ...test,
     username: test.username ?? undefined,
+    hotel_name: test.hotel_name ?? undefined,
     latest_test_result_status: test.latest_test_result_status ?? undefined,
     latest_test_result_created_at:
       test.latest_test_result_created_at ?? undefined,
@@ -228,6 +243,7 @@ export async function createTest(testData: {
   expected_result: string;
   category?: string;
   user_id: string;
+  hotel_id?: number;
 }) {
   const [newTest] = await db.insert(tests).values(testData).returning();
   return newTest;
@@ -239,6 +255,7 @@ export async function updateTest(
     prompt?: string;
     expected_result?: string;
     category?: string;
+    hotel_id?: number | null;
   },
 ) {
   const [updatedTest] = await db
@@ -275,6 +292,7 @@ async function getTestById(id: number): Promise<TestWithUser | null> {
       updated_at: tests.updated_at,
       username: userTable.username,
       is_manual: tests.is_manual,
+      hotel_id: tests.hotel_id,
     })
     .from(tests)
     .leftJoin(userTable, eq(tests.user_id, userTable.id))
@@ -577,6 +595,7 @@ export async function getAllTests(): Promise<TestWithUser[]> {
       updated_at: tests.updated_at,
       username: users.username,
       is_manual: tests.is_manual,
+      hotel_id: tests.hotel_id,
     })
     .from(tests)
     .leftJoin(users, eq(tests.user_id, users.id))

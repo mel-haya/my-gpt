@@ -48,12 +48,16 @@ interface QuestionsDashboardProps {
   };
   searchQuery: string;
   categoryQuery: string;
+  hotelQuery: string;
+  hotels: { id: number; name: string }[];
 }
 
 export default function QuestionsDashboard({
   initialData,
   searchQuery,
   categoryQuery,
+  hotelQuery,
+  hotels,
 }: QuestionsDashboardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -118,6 +122,19 @@ export default function QuestionsDashboard({
         params.set("category", category);
       } else {
         params.delete("category");
+      }
+      params.delete("page"); // Reset to first page
+      router.push(`/admin/questions?${params.toString()}`);
+    });
+  };
+
+  const handleHotelChange = (hotel: string) => {
+    startTransition(() => {
+      const params = new URLSearchParams(searchParams);
+      if (hotel && hotel !== "all") {
+        params.set("hotel", hotel);
+      } else {
+        params.delete("hotel");
       }
       params.delete("page"); // Reset to first page
       router.push(`/admin/questions?${params.toString()}`);
@@ -191,7 +208,7 @@ export default function QuestionsDashboard({
   };
 
   const handleImportCSV = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -205,16 +222,24 @@ export default function QuestionsDashboard({
         return;
       }
 
-      const lines = text.split('\n');
+      const lines = text.split("\n");
       const headerLine = lines[0].trim();
-      
+
       // Determine delimiter
-      const delimiter = headerLine.includes(',') ? ',' : ';';
+      const delimiter = headerLine.includes(",") ? "," : ";";
 
-      const headers = headerLine.split(delimiter).map(h => h.trim().toLowerCase());
+      const headers = headerLine
+        .split(delimiter)
+        .map((h) => h.trim().toLowerCase());
 
-      if (headers.length !== 2 || headers[0] !== 'question' || headers[1] !== 'resultat') {
-        toast.error("Invalid CSV header. The header must be 'question,resultat' or 'question;resultat'.");
+      if (
+        headers.length !== 2 ||
+        headers[0] !== "question" ||
+        headers[1] !== "resultat"
+      ) {
+        toast.error(
+          "Invalid CSV header. The header must be 'question,resultat' or 'question;resultat'.",
+        );
         setIsImporting(false);
         event.target.value = "";
         return;
@@ -234,7 +259,9 @@ export default function QuestionsDashboard({
       }
 
       // Get column names from the parser which are now lowercased
-      const parsedHeaders = Object.keys(records[0]).map(h => h.trim().toLowerCase());
+      const parsedHeaders = Object.keys(records[0]).map((h) =>
+        h.trim().toLowerCase(),
+      );
       const promptColumn = parsedHeaders[0];
       const expectedColumn = parsedHeaders[1];
 
@@ -260,7 +287,10 @@ export default function QuestionsDashboard({
             }
           } else {
             errorCount++;
-            console.warn("Skipping row with empty prompt or expected result:", record);
+            console.warn(
+              "Skipping row with empty prompt or expected result:",
+              record,
+            );
           }
         } catch (error) {
           errorCount++;
@@ -272,11 +302,13 @@ export default function QuestionsDashboard({
         toast.success(
           `Successfully imported ${successCount} tests!${
             errorCount > 0 ? ` ${errorCount} failed.` : ""
-          }`
+          }`,
         );
         router.refresh();
       } else {
-        toast.error("No tests were imported. Please check your CSV format and content.");
+        toast.error(
+          "No tests were imported. Please check your CSV format and content.",
+        );
       }
     } catch (error) {
       toast.error("Error importing CSV. Please check the console for details.");
@@ -313,7 +345,6 @@ export default function QuestionsDashboard({
                 <Button onClick={handleSearch} disabled={isPending} size="sm">
                   Search
                 </Button>
-
               </div>
               <div className="flex items-center gap-2">
                 {selectedRows.size > 0 && (
@@ -363,6 +394,7 @@ export default function QuestionsDashboard({
                 <TestDialog
                   mode="add"
                   onSuccess={() => router.refresh()}
+                  hotels={hotels}
                   trigger={
                     <Button size="sm">
                       <Plus className="mr-2 h-4 w-4" />
@@ -372,25 +404,42 @@ export default function QuestionsDashboard({
                 />
               </div>
             </div>
-              <div className="flex justify-end">
-                                <Select
-                  value={categoryQuery || "all"}
-                  onValueChange={handleCategoryChange}
-                  disabled={isPending}
-                >
-                  <SelectTrigger className="w-45">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="flex justify-end gap-2">
+              <Select
+                value={hotelQuery || "all"}
+                onValueChange={handleHotelChange}
+                disabled={isPending}
+              >
+                <SelectTrigger className="w-45">
+                  <SelectValue placeholder="Hotel" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Hotels</SelectItem>
+                  {hotels.map((hotel) => (
+                    <SelectItem key={hotel.id} value={String(hotel.id)}>
+                      {hotel.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={categoryQuery || "all"}
+                onValueChange={handleCategoryChange}
+                disabled={isPending}
+              >
+                <SelectTrigger className="w-45">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Questions List */}
             <QuestionsList
@@ -466,6 +515,7 @@ export default function QuestionsDashboard({
           mode="edit"
           test={editTest}
           isOpen={editDialogOpen}
+          hotels={hotels}
           onOpenChange={(open) => {
             setEditDialogOpen(open);
             if (!open) {

@@ -296,8 +296,14 @@ export const tests = pgTable(
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     is_manual: boolean("is_manual").notNull().default(false),
+    hotel_id: integer("hotel_id").references(() => hotels.id, {
+      onDelete: "set null",
+    }),
   },
-  (table) => [index("tests_user_id_index").on(table.user_id)],
+  (table) => [
+    index("tests_user_id_index").on(table.user_id),
+    index("tests_hotel_id_index").on(table.hotel_id),
+  ],
 );
 
 export const testRuns = pgTable(

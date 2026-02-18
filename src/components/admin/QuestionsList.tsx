@@ -51,11 +51,14 @@ export default function QuestionsList({
               </div>
 
               <div className="space-y-2 flex-1">
-                {test.category && (
-                  <div>
+                <div className="flex gap-1 flex-wrap">
+                  {test.hotel_name && (
+                    <Badge variant="outline">{test.hotel_name}</Badge>
+                  )}
+                  {test.category && (
                     <Badge variant="secondary">{test.category}</Badge>
-                  </div>
-                )}
+                  )}
+                </div>
                 <div>
                   <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100 whitespace-pre-wrap leading-tight">
                     {test.prompt}

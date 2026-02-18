@@ -428,6 +428,13 @@
       "when": 1771343244849,
       "tag": "0060_shallow_bloodstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1771381135617,
+      "tag": "0061_early_johnny_storm",
+      "breakpoints": true
     }
   ]
 }

@@ -17,7 +17,8 @@ export async function getTestsWithStatus(
   searchQuery?: string,
   category?: string,
   limit: number = 10,
-  page: number = 1
+  page: number = 1,
+  hotelId?: number,
 ) {
   try {
     // Check if user has admin role
@@ -26,7 +27,13 @@ export async function getTestsWithStatus(
       throw new Error("Unauthorized: Admin access required");
     }
 
-    const result = await getTestsWithPagination(searchQuery, category, limit, page);
+    const result = await getTestsWithPagination(
+      searchQuery,
+      category,
+      limit,
+      page,
+      hotelId,
+    );
     return result;
   } catch (error) {
     console.error("Error in getTestsWithStatus action:", error);
@@ -51,6 +58,7 @@ export async function createTestAction(testData: {
   prompt: string;
   expected_result: string;
   category?: string;
+  hotel_id?: number;
 }) {
   try {
     // Check if user has admin role
@@ -90,7 +98,8 @@ export async function updateTestAction(
     prompt: string;
     expected_result: string;
     category?: string;
-  }
+    hotel_id?: number | null;
+  },
 ) {
   try {
     // Check if user has admin role
