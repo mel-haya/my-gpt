@@ -29,6 +29,7 @@ interface ActivityDialogProps {
   onClose: () => void;
   onSave: (data: InsertActivity | Partial<InsertActivity>) => Promise<void>;
   activity?: SelectActivity | null;
+  hotels?: { id: number; name: string }[];
 }
 
 const CATEGORIES = [
@@ -49,6 +50,7 @@ export function ActivityDialog({
   onClose,
   onSave,
   activity,
+  hotels,
 }: ActivityDialogProps) {
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -62,6 +64,7 @@ export function ActivityDialog({
     phone: "",
     website: "",
     image_url: "",
+    hotel_id: null,
   });
 
   useEffect(() => {
@@ -78,6 +81,7 @@ export function ActivityDialog({
         phone: "",
         website: "",
         image_url: "",
+        hotel_id: null,
       });
     }
   }, [activity, isOpen]);
@@ -93,6 +97,13 @@ export function ActivityDialog({
     setFormData((prev) => ({
       ...prev,
       [name]: value as InsertActivity[typeof name],
+    }));
+  };
+
+  const handleHotelChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      hotel_id: value === "none" ? null : Number(value),
     }));
   };
 
@@ -193,6 +204,39 @@ export function ActivityDialog({
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Hotel Selector (admin only) */}
+              {hotels && hotels.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-[10px] uppercase tracking-widest text-neutral-500">
+                    Hotel
+                  </Label>
+                  <Select
+                    value={
+                      formData.hotel_id ? String(formData.hotel_id) : "none"
+                    }
+                    onValueChange={handleHotelChange}
+                  >
+                    <SelectTrigger className="bg-transparent border-white/10 rounded-none h-10">
+                      <SelectValue placeholder="Select hotel" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#0F0F0F] border-white/10 text-gray-200">
+                      <SelectItem value="none" className="hover:bg-white/5">
+                        No Hotel
+                      </SelectItem>
+                      {hotels.map((hotel) => (
+                        <SelectItem
+                          key={hotel.id}
+                          value={String(hotel.id)}
+                          className="hover:bg-white/5"
+                        >
+                          {hotel.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label

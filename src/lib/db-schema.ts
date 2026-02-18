@@ -455,20 +455,27 @@ export const feedback = pgTable("feedback", {
   ),
 });
 
-export const activities = pgTable("activities", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description").notNull(),
-  location: text("location"),
-  category: activityCategoryEnum("category"),
-  distance_from_hotel: text("distance_from_hotel"),
-  price_indicator: priceIndicatorEnum("price_indicator"),
-  phone: text("phone"),
-  website: text("website"),
-  image_url: text("image_url"),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-  updated_at: timestamp("updated_at").notNull().defaultNow(),
-});
+export const activities = pgTable(
+  "activities",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    location: text("location"),
+    category: activityCategoryEnum("category"),
+    distance_from_hotel: text("distance_from_hotel"),
+    price_indicator: priceIndicatorEnum("price_indicator"),
+    phone: text("phone"),
+    website: text("website"),
+    image_url: text("image_url"),
+    hotel_id: integer("hotel_id").references(() => hotels.id, {
+      onDelete: "set null",
+    }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [index("activities_hotel_id_index").on(table.hotel_id)],
+);
 
 export const models = pgTable(
   "models",

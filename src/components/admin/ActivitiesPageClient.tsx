@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ActivitiesList } from "./ActivitiesList";
 import { ActivityDialog } from "./ActivityDialog";
 import { DeleteActivityDialog } from "./DeleteActivityDialog";
@@ -13,17 +13,7 @@ import {
 } from "@/app/actions/activities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Search,
-  Sparkles,
-  MapPin,
-  Tag,
-  DollarSign,
-  Compass,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search, Compass } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -34,38 +24,44 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTransition } from "react";
 import { toast } from "react-toastify";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface ActivitiesPageClientProps {
   initialActivities: SelectActivity[];
   totalCount: number;
   initialPage: number;
   totalPages: number;
+  hotels?: { id: number; name: string }[];
+  hotelQuery?: string;
+  /** When true, hides hotel filter/badge (dashboard context) */
+  hideHotelControls?: boolean;
+  /** Pre-set hotel ID for dashboard context */
+  fixedHotelId?: number;
 }
-
-const CATEGORIES = [
-  { id: "all", label: "All Experiences" },
-  { id: "restaurants", label: "Restaurants & Dining" },
-  { id: "tours", label: "Tours & Excursions" },
-  { id: "wellness", label: "Spa & Wellness" },
-  { id: "sports", label: "Sports & Outdoor" },
-  { id: "entertainment", label: "Entertainment" },
-  { id: "shopping", label: "Shopping" },
-  { id: "culture", label: "Museums & Culture" },
-  { id: "nature", label: "Parks & Nature" },
-];
 
 export function ActivitiesPageClient({
   initialActivities,
   totalCount,
   initialPage,
   totalPages,
+  hotels = [],
+  hotelQuery = "",
+  hideHotelControls = false,
+  fixedHotelId,
 }: ActivitiesPageClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activities, setActivities] =
     useState<SelectActivity[]>(initialActivities);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [isPending, startTransition] = useTransition();
+
+  // Sync with server-provided data when URL params change
+  useEffect(() => {
+    setActivities(initialActivities);
+  }, [initialActivities]);
 
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -76,12 +72,21 @@ export function ActivitiesPageClient({
   const [activityToDelete, setActivityToDelete] =
     useState<SelectActivity | null>(null);
 
-  const fetchActivities = async (page: number, s: string, c: string) => {
+  const activeHotelId =
+    fixedHotelId || (hotelQuery ? Number(hotelQuery) : undefined);
+
+  const fetchActivities = async (
+    page: number,
+    s: string,
+    c: string,
+    hId?: number,
+  ) => {
     startTransition(async () => {
       const result = await getActivitiesAction({
         page,
         search: s,
         category: c,
+        hotelId: hId ?? activeHotelId,
       });
       if (result.success && result.data) {
         setActivities(result.data.activities);
@@ -90,23 +95,68 @@ export function ActivitiesPageClient({
   };
 
   const handleSearch = () => {
-    fetchActivities(1, search, category);
-    setCurrentPage(1);
+    if (hideHotelControls) {
+      // Dashboard mode: client-side fetch
+      fetchActivities(1, search, category);
+      setCurrentPage(1);
+    } else {
+      // Admin mode: URL-based navigation
+      startTransition(() => {
+        const params = new URLSearchParams(searchParams);
+        if (search.trim()) {
+          params.set("search", search);
+        } else {
+          params.delete("search");
+        }
+        params.delete("page");
+        router.push(`/admin/activities?${params.toString()}`);
+      });
+    }
   };
 
   const handleCategoryChange = (val: string) => {
     setCategory(val);
-    fetchActivities(1, search, val);
-    setCurrentPage(1);
+    if (hideHotelControls) {
+      fetchActivities(1, search, val);
+      setCurrentPage(1);
+    } else {
+      startTransition(() => {
+        const params = new URLSearchParams(searchParams);
+        if (val && val !== "all") {
+          params.set("category", val);
+        } else {
+          params.delete("category");
+        }
+        params.delete("page");
+        router.push(`/admin/activities?${params.toString()}`);
+      });
+    }
+  };
+
+  const handleHotelChange = (hotel: string) => {
+    startTransition(() => {
+      const params = new URLSearchParams(searchParams);
+      if (hotel && hotel !== "all") {
+        params.set("hotel", hotel);
+      } else {
+        params.delete("hotel");
+      }
+      params.delete("page");
+      router.push(`/admin/activities?${params.toString()}`);
+    });
   };
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    fetchActivities(newPage, search, category);
-  };
-
-  const handleCreate = () => {
-    setIsCreateDialogOpen(true);
+    if (hideHotelControls) {
+      fetchActivities(newPage, search, category);
+    } else {
+      startTransition(() => {
+        const params = new URLSearchParams(searchParams);
+        params.set("page", newPage.toString());
+        router.push(`/admin/activities?${params.toString()}`);
+      });
+    }
   };
 
   const handleEdit = (activity: SelectActivity) => {
@@ -120,16 +170,19 @@ export function ActivitiesPageClient({
   };
 
   const handleSave = async (data: InsertActivity | Partial<InsertActivity>) => {
+    // If in dashboard context, force the fixed hotel ID
+    const saveData = fixedHotelId ? { ...data, hotel_id: fixedHotelId } : data;
+
     if (selectedActivity) {
-      const res = await updateActivityAction(selectedActivity.id, data);
+      const res = await updateActivityAction(selectedActivity.id, saveData);
       if (res.success) {
-        toast.success("Experience refined", { theme: "dark" });
+        toast.success("Activity updated successfully", { theme: "dark" });
         fetchActivities(currentPage, search, category);
       }
     } else {
-      const res = await createActivityAction(data as InsertActivity);
+      const res = await createActivityAction(saveData as InsertActivity);
       if (res.success) {
-        toast.success("New experience curated", { theme: "dark" });
+        toast.success("Activity updated successfully", { theme: "dark" });
         fetchActivities(1, search, category);
         setCurrentPage(1);
       }
@@ -140,7 +193,7 @@ export function ActivitiesPageClient({
     if (activityToDelete) {
       const res = await deleteActivityAction(activityToDelete.id);
       if (res.success) {
-        toast.success("Experience removed", { theme: "dark" });
+        toast.success("Activity removed successfully", { theme: "dark" });
         fetchActivities(currentPage, search, category);
       }
     }
@@ -153,7 +206,8 @@ export function ActivitiesPageClient({
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center">
             <Compass className="mr-2 h-6 w-6" />
-            Activities</h1>
+            Activities
+          </h1>
           <p className="text-muted-foreground">
             Manage hotel activities and curated experiences for your guests
           </p>
@@ -172,12 +226,33 @@ export function ActivitiesPageClient({
             <CardTitle>Activities registry ({totalCount})</CardTitle>
 
             <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4 sm:items-center">
+              {/* Hotel Filter (admin only) */}
+              {!hideHotelControls && hotels.length > 0 && (
+                <Select
+                  value={hotelQuery || "all"}
+                  onValueChange={handleHotelChange}
+                  disabled={isPending}
+                >
+                  <SelectTrigger className="w-45">
+                    <SelectValue placeholder="All Hotels" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0F0F0F] border-white/10 text-gray-200">
+                    <SelectItem value="all">All Hotels</SelectItem>
+                    {hotels.map((hotel) => (
+                      <SelectItem key={hotel.id} value={String(hotel.id)}>
+                        {hotel.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               {/* Category Filter */}
               <Select
                 value={category}
                 onValueChange={(val) => handleCategoryChange(val)}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-45">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#0F0F0F] border-white/10 text-gray-200">
@@ -218,6 +293,7 @@ export function ActivitiesPageClient({
               activities={activities}
               onEdit={handleEdit}
               onDelete={handleDeleteClick}
+              hotels={hideHotelControls ? undefined : hotels}
             />
           </div>
         </CardContent>
@@ -261,6 +337,7 @@ export function ActivitiesPageClient({
         isOpen={isCreateDialogOpen}
         onClose={() => setIsCreateDialogOpen(false)}
         onSave={handleSave}
+        hotels={hideHotelControls ? undefined : hotels}
       />
 
       {selectedActivity && (
@@ -272,6 +349,7 @@ export function ActivitiesPageClient({
           }}
           onSave={handleSave}
           activity={selectedActivity}
+          hotels={hideHotelControls ? undefined : hotels}
         />
       )}
 

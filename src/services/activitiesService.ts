@@ -18,6 +18,7 @@ export async function getActivities(
   category?: string,
   limit: number = 10,
   page: number = 1,
+  hotelId?: number,
 ): Promise<PaginatedActivities> {
   const offset = (page - 1) * limit;
 
@@ -49,6 +50,10 @@ export async function getActivities(
           | "nature",
       ),
     );
+  }
+
+  if (hotelId) {
+    conditions.push(eq(activities.hotel_id, hotelId));
   }
 
   if (conditions.length > 0) {

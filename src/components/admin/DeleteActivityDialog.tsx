@@ -44,23 +44,22 @@ export function DeleteActivityDialog({
         <DialogHeader className="mb-4">
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
-            Supprimer l&apos;activité
+            Delete Activity
           </DialogTitle>
           <div className="mt-2">
             <p className="text-muted-foreground text-sm">
-              Êtes-vous sûr de vouloir supprimer &quot;{activityName}&quot; du
-              registre de l&apos;hôtel ?
+              Are you sure you want to delete &quot;{activityName}&quot; from
+              the hotel registry?
             </p>
             <p className="text-xs text-destructive/70 mt-4 leading-relaxed font-medium">
-              Cette action est irréversible et supprimera toutes les données
-              associées.
+              This action is irreversible and will delete all associated data.
             </p>
           </div>
         </DialogHeader>
 
         <DialogFooter className="mt-6 gap-2">
           <Button variant="outline" onClick={onClose} disabled={loading}>
-            Annuler
+            Cancel
           </Button>
           <Button
             variant="destructive"
@@ -70,7 +69,7 @@ export function DeleteActivityDialog({
             {loading ? (
               <Loader2 className="animate-spin h-4 w-4 mr-2" />
             ) : (
-              "Supprimer définitivement"
+              "Permanently delete"
             )}
           </Button>
         </DialogFooter>

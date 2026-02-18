@@ -34,17 +34,19 @@ export async function getActivitiesAction({
   limit = 10,
   search = "",
   category = "all",
+  hotelId,
 }: {
   page?: number;
   limit?: number;
   search?: string;
   category?: string;
+  hotelId?: number;
 } = {}) {
   try {
     const user = await currentUser();
     if (!user) throw new Error("User not authenticated");
 
-    const data = await getActivities(search, category, limit, page);
+    const data = await getActivities(search, category, limit, page, hotelId);
     return { success: true, data };
   } catch (error) {
     console.error("Error in getActivitiesAction:", error);

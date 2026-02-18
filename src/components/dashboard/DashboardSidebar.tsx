@@ -9,6 +9,7 @@ import {
   Home,
   LogOut,
   ThumbsUp,
+  Compass,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -63,6 +64,12 @@ export default function DashboardSidebar({
       label: "Files",
       path: "/dashboard/files",
       icon: FilesIcon,
+      ownerOnly: true,
+    },
+    {
+      label: "Activities",
+      path: "/dashboard/activities",
+      icon: Compass,
       ownerOnly: true,
     },
     {

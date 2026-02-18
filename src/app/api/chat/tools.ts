@@ -79,47 +79,50 @@ function searchKnowledgeBaseTool(hotelId?: number) {
   });
 }
 
-const suggestActivitiesTool = tool({
-  description:
-    "Suggests hotel activities (restaurants, tours, wellness, etc.) based on a search query or guest preferences.",
-  inputSchema: z.object({
-    query: z
-      .string()
-      .describe(
-        "The search query for activities, e.g., 'romantic dinner' or 'outdoor hiking'",
-      ),
-  }),
-  execute: async ({ query }) => {
-    try {
-      const results = (await getActivities("", "", 100)).activities;
-      const input = results.map(
-        (activity) =>
-          `activity name: ${activity.name}, activity description: ${activity.description}, activity category: ${activity.category}, activity location: ${activity.location}`,
-      );
-      let { ranking } = await rerank({
-        model: cohere.reranking(process.env.RERANKING_MODEL || "rerank-v3.5"),
-        documents: input,
-        query,
-        topN: 5,
-      });
-      ranking = ranking.filter((a) => {
-        return a.score > 0.1;
-      });
+function suggestActivitiesTool(hotelId?: number) {
+  return tool({
+    description:
+      "Suggests hotel activities (restaurants, tours, wellness, etc.) based on a search query or guest preferences.",
+    inputSchema: z.object({
+      query: z
+        .string()
+        .describe(
+          "The search query for activities, e.g., 'romantic dinner' or 'outdoor hiking'",
+        ),
+    }),
+    execute: async ({ query }) => {
+      try {
+        const results = (await getActivities("", "", 100, 1, hotelId))
+          .activities;
+        const input = results.map(
+          (activity) =>
+            `activity name: ${activity.name}, activity description: ${activity.description}, activity category: ${activity.category}, activity location: ${activity.location}`,
+        );
+        let { ranking } = await rerank({
+          model: cohere.reranking(process.env.RERANKING_MODEL || "rerank-v3.5"),
+          documents: input,
+          query,
+          topN: 5,
+        });
+        ranking = ranking.filter((a) => {
+          return a.score > 0.1;
+        });
 
-      const output = ranking.map((a) => ({
-        ...results[a.originalIndex],
-        image: results[a.originalIndex].image_url,
-      }));
-      return {
-        success: true,
-        activities: output,
-      };
-    } catch (error) {
-      console.error("Error suggesting activities:", error);
-      return { success: false, activities: [] };
-    }
-  },
-});
+        const output = ranking.map((a) => ({
+          ...results[a.originalIndex],
+          image: results[a.originalIndex].image_url,
+        }));
+        return {
+          success: true,
+          activities: output,
+        };
+      } catch (error) {
+        console.error("Error suggesting activities:", error);
+        return { success: false, activities: [] };
+      }
+    },
+  });
+}
 
 function createStaffRequestTool(
   staffLanguage: string,
@@ -290,7 +293,7 @@ export async function getTools(hotelId?: number) {
 
   return {
     searchKnowledgeBase: searchKnowledgeBaseTool(hotelId),
-    suggestActivities: suggestActivitiesTool,
+    suggestActivities: suggestActivitiesTool(hotelId),
     createStaffRequest: createStaffRequestTool(
       staffLanguage,
       adminLanguage,
@@ -306,7 +309,7 @@ export async function getTestTools(hotelId?: number) {
 
   return {
     searchKnowledgeBase: searchKnowledgeBaseTool(hotelId),
-    suggestActivities: suggestActivitiesTool,
+    suggestActivities: suggestActivitiesTool(hotelId),
     createStaffRequest: createMockedStaffRequestTool(staffLanguage),
   };
 }

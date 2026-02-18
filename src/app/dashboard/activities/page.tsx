@@ -1,32 +1,52 @@
+import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
+import { getUserById } from "@/services/userService";
+import { getUserHotelId } from "@/lib/checkRole";
 import {
   getActivitiesAction,
   getActivityStatsAction,
 } from "@/app/actions/activities";
-import { getAllHotelsForSelectionAction } from "@/app/actions/testProfiles";
 import { ActivitiesPageClient } from "@/components/admin/ActivitiesPageClient";
 import { SelectActivity } from "@/lib/db-schema";
 
 export const dynamic = "force-dynamic";
 
-export default async function ActivitiesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{
+interface PageProps {
+  searchParams?: Promise<{
     page?: string;
     search?: string;
     category?: string;
-    hotel?: string;
   }>;
-}) {
-  const resolvedSearchParams = await searchParams;
-  const currentPage = parseInt(resolvedSearchParams.page || "1");
-  const pageSize = 9;
-  const search = resolvedSearchParams.search || "";
-  const category = resolvedSearchParams.category || "all";
-  const hotelQuery = resolvedSearchParams.hotel || "";
-  const hotelId = hotelQuery ? Number(hotelQuery) : undefined;
+}
 
-  const [activitiesResult, statsResult, hotelsResult] = await Promise.all([
+export default async function DashboardActivitiesPage({
+  searchParams,
+}: PageProps) {
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect("/");
+  }
+
+  const user = await getUserById(userId);
+
+  // Only hotel owners can manage activities
+  if (user?.role !== "hotel_owner") {
+    redirect("/dashboard/requests");
+  }
+
+  const hotelId = await getUserHotelId();
+  if (!hotelId) {
+    redirect("/");
+  }
+
+  const resolvedSearchParams = await searchParams;
+  const currentPage = Number(resolvedSearchParams?.page) || 1;
+  const search = resolvedSearchParams?.search || "";
+  const category = resolvedSearchParams?.category || "all";
+  const pageSize = 9;
+
+  const [activitiesResult, statsResult] = await Promise.all([
     getActivitiesAction({
       page: currentPage,
       limit: pageSize,
@@ -35,7 +55,6 @@ export default async function ActivitiesPage({
       hotelId,
     }),
     getActivityStatsAction(),
-    getAllHotelsForSelectionAction(),
   ]);
 
   const activitiesData =
@@ -49,16 +68,14 @@ export default async function ActivitiesPage({
   const stats =
     statsResult.success && statsResult.data ? statsResult.data : { total: 0 };
 
-  const hotels = hotelsResult.success ? hotelsResult.data || [] : [];
-
   return (
     <ActivitiesPageClient
       initialActivities={activitiesData.activities}
       totalCount={stats.total}
       initialPage={currentPage}
       totalPages={activitiesData.pagination.totalPages}
-      hotels={hotels}
-      hotelQuery={hotelQuery}
+      hideHotelControls
+      fixedHotelId={hotelId}
     />
   );
 }

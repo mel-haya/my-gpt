@@ -7,27 +7,26 @@ import {
   Globe,
   Edit2,
   Trash2,
-  Tag,
   DollarSign,
   Navigation,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 
-import { useState } from "react";
-
-
 interface ActivitiesListProps {
   activities: SelectActivity[];
   onEdit: (activity: SelectActivity) => void;
   onDelete: (activity: SelectActivity) => void;
+  hotels?: { id: number; name: string }[];
 }
 
 export function ActivitiesList({
   activities,
   onEdit,
   onDelete,
+  hotels,
 }: ActivitiesListProps) {
   if (activities.length === 0) {
     return (
@@ -36,6 +35,8 @@ export function ActivitiesList({
       </div>
     );
   }
+
+  const hotelMap = new Map(hotels?.map((h) => [h.id, h.name]) || []);
 
   return (
     <>
@@ -46,6 +47,9 @@ export function ActivitiesList({
             activity={activity}
             onEdit={() => onEdit(activity)}
             onDelete={() => onDelete(activity)}
+            hotelName={
+              activity.hotel_id ? hotelMap.get(activity.hotel_id) : undefined
+            }
           />
         ))}
       </div>
@@ -56,28 +60,30 @@ export function ActivitiesList({
 function ActivityCard({
   activity,
   onEdit,
-  onDelete
+  onDelete,
+  hotelName,
 }: {
   activity: SelectActivity;
   onEdit: () => void;
   onDelete: () => void;
+  hotelName?: string;
 }) {
   return (
     <div className="flex flex-col p-4 border rounded-xl hover:shadow-md transition-shadow bg-card h-full">
       {/* Header row */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 min-w-0">
           <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground truncate max-w-[150px]">
             {activity.name}
           </h3>
           <Badge
             variant="secondary"
-            className="text-[10px] h-4 px-1 py-0 bg-muted text-muted-foreground font-normal rounded-sm capitalize"
+            className="text-[10px] h-4 px-1 py-0 bg-muted text-muted-foreground font-normal rounded-sm capitalize shrink-0"
           >
             {activity.category}
           </Badge>
         </div>
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 shrink-0">
           <Button
             variant="ghost"
             size="icon"
@@ -146,6 +152,12 @@ function ActivityCard({
           <div className="flex items-center gap-2 text-[10px] text-neutral-500">
             <MapPin size={12} className="text-neutral-600" />
             <span className="truncate">{activity.location}</span>
+          </div>
+        )}
+        {hotelName && (
+          <div className="flex items-center gap-2 text-[10px] text-neutral-500">
+            <Building2 size={12} className="text-blue-400" />
+            <span className="text-blue-400">{hotelName}</span>
           </div>
         )}
         <div className="flex items-center justify-between">
