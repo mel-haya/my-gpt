@@ -442,6 +442,13 @@
       "when": 1771508382018,
       "tag": "0062_tense_onslaught",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1771515222917,
+      "tag": "0063_manual_tests_hotel_optional",
+      "breakpoints": true
     }
   ]
 }

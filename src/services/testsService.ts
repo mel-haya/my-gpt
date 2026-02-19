@@ -243,7 +243,7 @@ export async function createTest(testData: {
   expected_result: string;
   category?: string;
   user_id: string;
-  hotel_id?: number;
+  hotel_id: number;
 }) {
   const [newTest] = await db.insert(tests).values(testData).returning();
   return newTest;
@@ -255,7 +255,7 @@ export async function updateTest(
     prompt?: string;
     expected_result?: string;
     category?: string;
-    hotel_id?: number | null;
+    hotel_id: number;
   },
 ) {
   const [updatedTest] = await db

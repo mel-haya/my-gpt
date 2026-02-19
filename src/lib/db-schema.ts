@@ -296,9 +296,9 @@ export const tests = pgTable(
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     is_manual: boolean("is_manual").notNull().default(false),
-    hotel_id: integer("hotel_id")
-      .notNull()
-      .references(() => hotels.id, { onDelete: "cascade" }),
+    hotel_id: integer("hotel_id").references(() => hotels.id, {
+      onDelete: "cascade",
+    }),
   },
   (table) => [
     index("tests_user_id_index").on(table.user_id),

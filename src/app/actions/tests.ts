@@ -58,7 +58,7 @@ export async function createTestAction(testData: {
   prompt: string;
   expected_result: string;
   category?: string;
-  hotel_id?: number;
+  hotel_id: number;
 }) {
   try {
     // Check if user has admin role
@@ -98,7 +98,7 @@ export async function updateTestAction(
     prompt: string;
     expected_result: string;
     category?: string;
-    hotel_id?: number | null;
+    hotel_id: number;
   },
 ) {
   try {
@@ -228,55 +228,6 @@ export async function bulkDeleteTestsAction(testIds: number[]) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to delete tests",
-    };
-  }
-}
-
-export async function getLatestTestRunStatsAction() {
-  try {
-    // Check if user has admin role
-    const isAdmin = await checkRole("admin");
-    if (!isAdmin) {
-      throw new Error("Unauthorized: Admin access required");
-    }
-
-    const stats = await getLatestTestRunStats();
-    return stats;
-  } catch (error) {
-    console.error("Error in getLatestTestRunStatsAction:", error);
-    throw new Error("Failed to fetch test run stats");
-  }
-}
-
-export async function runSingleTestAction(testId: number) {
-  try {
-    // Check if user has admin role
-    const isAdmin = await checkRole("admin");
-    if (!isAdmin) {
-      throw new Error("Unauthorized: Admin access required");
-    }
-
-    // Get current user
-    const user = await currentUser();
-    if (!user) {
-      throw new Error("User not authenticated");
-    }
-
-    const result = await runSingleTest(testId);
-
-    // Revalidate the tests page to show updated results
-    revalidatePath("/admin/tests");
-
-    return {
-      success: true,
-      result: result,
-      message: "Test executed successfully",
-    };
-  } catch (error) {
-    console.error("Error in runSingleTestAction:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to run test",
     };
   }
 }

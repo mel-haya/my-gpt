@@ -2,21 +2,11 @@
 
 import {
   getSetting,
-  getSystemPrompt,
   upsertSetting,
 } from "@/services/settingsService";
 
 const STAFF_PREFERRED_LANGUAGE_KEY = "staff_preferred_language";
 const DEFAULT_LANGUAGE = "english";
-
-export async function getSystemPromptAction(): Promise<string> {
-  try {
-    return await getSystemPrompt();
-  } catch (error) {
-    console.error("Error fetching system prompt:", error);
-    return "You are a helpful assistant.";
-  }
-}
 
 export async function getStaffPreferredLanguageAction(): Promise<string> {
   try {
