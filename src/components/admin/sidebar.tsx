@@ -56,6 +56,7 @@ export default function SidebarAdmin() {
           path: "/admin/system-prompts",
           icon: MessageSquareCode,
         },
+        { label: "Activities", path: "/admin/activities", icon: Activity },
       ],
     },
     {
@@ -75,7 +76,6 @@ export default function SidebarAdmin() {
         { label: "Requests", path: "/admin/requests", icon: ClipboardList },
         { label: "Feedback", path: "/admin/feedback", icon: ThumbsUp },
         { label: "History", path: "/admin/history", icon: HistoryIcon },
-        { label: "Activities", path: "/admin/activities", icon: Activity },
       ],
     },
   ];

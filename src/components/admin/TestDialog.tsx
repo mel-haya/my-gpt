@@ -78,6 +78,12 @@ export default function TestDialog({
     }
   }, [isEditMode, test, open, initialPrompt]);
 
+  useEffect(() => {
+    if (!open) {
+      setError("");
+    }
+  }, [open]);
+
   // handleInputChange updated implicitly by strict string typing or just reusing same function
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -91,21 +97,30 @@ export default function TestDialog({
     setIsSubmitting(true);
     setError("");
 
-    try {
-      // Validate form data
-      // Name validation removed
-      if (!formData.prompt.trim()) {
-        throw new Error("Prompt is required");
-      }
-      if (!formData.expected_result.trim()) {
-        throw new Error("Expected result is required");
-      }
+    // Validate form data
+    if (!formData.prompt.trim()) {
+      setError("Prompt is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!formData.expected_result.trim()) {
+      setError("Expected result is required");
+      setIsSubmitting(false);
+      return;
+    }
+    const hotelId = Number(formData.hotel_id);
+    if (!formData.hotel_id || Number.isNaN(hotelId) || hotelId <= 0) {
+      setError("Hotel is required");
+      setIsSubmitting(false);
+      return;
+    }
 
+    try {
       const testData = {
         prompt: formData.prompt.trim(),
         expected_result: formData.expected_result.trim(),
         category: formData.category.trim() || undefined,
-        hotel_id: formData.hotel_id ? Number(formData.hotel_id) : undefined,
+        hotel_id: hotelId,
       };
 
       let result;
@@ -239,30 +254,31 @@ export default function TestDialog({
               />
             </div>
 
-            {hotels && hotels.length > 0 && (
-              <div className="grid gap-2">
-                <Label htmlFor="test-hotel">Hotel (Optional)</Label>
-                <Select
-                  value={formData.hotel_id || "none"}
-                  onValueChange={(value) =>
-                    handleInputChange("hotel_id", value === "none" ? "" : value)
-                  }
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger id="test-hotel">
-                    <SelectValue placeholder="Select a hotel" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No hotel</SelectItem>
-                    {hotels.map((hotel) => (
-                      <SelectItem key={hotel.id} value={String(hotel.id)}>
-                        {hotel.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="grid gap-2">
+              <Label htmlFor="test-hotel">Hotel</Label>
+              <Select
+                value={formData.hotel_id}
+                onValueChange={(value) => handleInputChange("hotel_id", value)}
+                disabled={isSubmitting || !hotels || hotels.length === 0}
+              >
+                <SelectTrigger id="test-hotel">
+                  <SelectValue
+                    placeholder={
+                      hotels && hotels.length > 0
+                        ? "Select a hotel"
+                        : "No hotels available"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {hotels?.map((hotel) => (
+                    <SelectItem key={hotel.id} value={String(hotel.id)}>
+                      {hotel.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <DialogFooter>
