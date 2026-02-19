@@ -232,13 +232,16 @@ export default function QuestionsDashboard({
         .split(delimiter)
         .map((h) => h.trim().toLowerCase());
 
-      if (
-        headers.length !== 2 ||
-        headers[0] !== "question" ||
-        headers[1] !== "resultat"
-      ) {
+      const allowedHeaders = new Set(["question", "resultat", "hotel"]);
+      const hasInvalidHeader = headers.some((header) => !allowedHeaders.has(header));
+      const hasRequiredHeaders =
+        headers.includes("question") &&
+        headers.includes("resultat") &&
+        headers.includes("hotel");
+
+      if (!hasRequiredHeaders || hasInvalidHeader || headers.length !== 3) {
         toast.error(
-          "Invalid CSV header. The header must be 'question,resultat' or 'question;resultat'.",
+          "Invalid CSV header. Use 'question,resultat,hotel' (comma or semicolon).",
         );
         setIsImporting(false);
         event.target.value = "";
@@ -262,8 +265,23 @@ export default function QuestionsDashboard({
       const parsedHeaders = Object.keys(records[0]).map((h) =>
         h.trim().toLowerCase(),
       );
-      const promptColumn = parsedHeaders[0];
-      const expectedColumn = parsedHeaders[1];
+      const promptColumn = parsedHeaders.find((h) => h === "question");
+      const expectedColumn = parsedHeaders.find((h) => h === "resultat");
+      const hotelColumn = parsedHeaders.find((h) => h === "hotel");
+
+      if (!promptColumn || !expectedColumn || !hotelColumn) {
+        toast.error(
+          "CSV must include 'question', 'resultat', and 'hotel' columns.",
+        );
+        setIsImporting(false);
+        event.target.value = "";
+        return;
+      }
+
+      const hotelsByName = new Map<string, number>();
+      for (const hotel of hotels) {
+        hotelsByName.set(hotel.name.trim().toLowerCase(), hotel.id);
+      }
 
       let successCount = 0;
       let errorCount = 0;
@@ -272,11 +290,27 @@ export default function QuestionsDashboard({
         try {
           const prompt = record[promptColumn]?.trim() || "";
           const expectedResult = record[expectedColumn]?.trim() || "";
+          const hotelName = record[hotelColumn]?.trim() || "";
+          const hotelId = hotelsByName.get(hotelName.toLowerCase())
 
-          if (prompt && expectedResult) {
+
+          if (!hotelName) {
+            errorCount++;
+            console.warn("Skipping row with empty hotel:", record);
+            continue;
+          }
+
+          if (hotelName && !hotelId) {
+            errorCount++;
+            console.warn("Skipping row with unknown hotel:", record);
+            continue;
+          }
+
+          if (prompt && expectedResult && hotelId) {
             const result = await createTestAction({
               prompt: prompt,
               expected_result: expectedResult,
+              hotel_id: hotelId,
             });
 
             if (result.success) {
@@ -367,7 +401,7 @@ export default function QuestionsDashboard({
                       <TooltipContent className="max-w-xs">
                         <p>CSV Format:</p>
                         <p>
-                          <code>question,resultat</code>
+                          <code>question,resultat,hotel</code>
                         </p>
                       </TooltipContent>
                     </Tooltip>
