@@ -28,7 +28,7 @@ export default async function FilesDashboard({
   const hotels = hotelsResult.success ? hotelsResult.data || [] : [];
 
   return (
-    <div className="flex flex-col max-w-350 mx-4 2xl:mx-auto my-4 gap-4">
+    <div className="flex flex-col max-w-350 px-4 2xl:mx-auto my-4 gap-4">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
         Files Dashboard
       </h1>
