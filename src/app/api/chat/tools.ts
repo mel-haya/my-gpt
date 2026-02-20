@@ -98,16 +98,12 @@ function suggestActivitiesTool(hotelId?: number) {
           (activity) =>
             `activity name: ${activity.name}, activity description: ${activity.description}, activity category: ${activity.category}, activity location: ${activity.location}`,
         );
-        let { ranking } = await rerank({
+        const { ranking } = await rerank({
           model: cohere.reranking(process.env.RERANKING_MODEL || "rerank-v3.5"),
           documents: input,
           query,
           topN: 5,
         });
-        ranking = ranking.filter((a) => {
-          return a.score > 0.1;
-        });
-
         const output = ranking.map((a) => ({
           ...results[a.originalIndex],
           image: results[a.originalIndex].image_url,
