@@ -211,6 +211,9 @@ export default function ModelsList({
             ) : (
               [...models]
                 .sort((a, b) => {
+                  const shouldPinDefault =
+                    sortBy === "created_at" && sortOrder === "desc";
+                  if (!shouldPinDefault) return 0;
                   if (a.default && !b.default) return -1;
                   if (!a.default && b.default) return 1;
                   return 0;
@@ -256,7 +259,7 @@ export default function ModelsList({
                     </TableCell>
                     <TableCell>
                       <div className="font-mono text-xs">
-                        {model.cost ? `$${model.cost.toFixed(4)}` : "$0.0000"}
+                        {model.cost ? `$${model.cost.toFixed(4)}` : "-"}
                       </div>
                     </TableCell>
                     <TableCell>

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db-config";
 import { models, testRunResults, testProfileModels } from "@/lib/db-schema";
 import { eq, and, desc, asc, count, ilike, inArray, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import type { SelectModel, InsertModel } from "@/lib/db-schema";
 
 export type SelectModelWithStats = SelectModel & {
@@ -66,16 +67,18 @@ export async function getModels(
 
   let orderByClause;
   const direction = sortOrder === "asc" ? asc : desc;
+  const orderByWithNullsLast = (expr: SQL) =>
+    sql`${expr} ${sql.raw(sortOrder)} nulls last`;
 
   switch (sortBy) {
     case "score":
-      orderByClause = direction(scoreSql);
+      orderByClause = orderByWithNullsLast(scoreSql);
       break;
     case "cost":
-      orderByClause = direction(costSql);
+      orderByClause = orderByWithNullsLast(costSql);
       break;
     case "latency":
-      orderByClause = direction(latencySql);
+      orderByClause = orderByWithNullsLast(latencySql);
       break;
     case "responses":
       orderByClause = direction(correctCountSql);
