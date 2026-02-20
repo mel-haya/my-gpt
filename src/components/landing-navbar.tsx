@@ -17,7 +17,6 @@ export default function LandingNavbar({ initialRole, initialSignedIn }: LandingN
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const { isSignedIn } = useUser();
-    const [role] = useState<Roles | null>(initialRole);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -32,9 +31,11 @@ export default function LandingNavbar({ initialRole, initialSignedIn }: LandingN
         return () => { document.body.style.overflow = ""; };
     }, [isOpen]);
 
+    const effectiveSignedIn = isSignedIn ?? initialSignedIn;
+    const role = effectiveSignedIn ? initialRole : null;
+
     const isAdmin = role === "admin";
     const isHotelStaff = role === "hotel_owner" || role === "hotel_staff";
-    const effectiveSignedIn = initialSignedIn || !!isSignedIn;
 
     return (
         <nav
