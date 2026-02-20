@@ -1,8 +1,9 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { getAllHotelsForLanding } from "@/services/hotelService";
-import UserComponent from "@/components/userComponent";
 import LandingNavbar from "@/components/landing-navbar";
+import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserRole } from "@/app/actions/users";
 
 export const metadata: Metadata = {
   title: "Oasis — AI Hotel Assistant",
@@ -12,6 +13,8 @@ export const metadata: Metadata = {
 
 export default async function LandingPage() {
   const hotels = await getAllHotelsForLanding();
+  const { userId } = await auth();
+  const role = userId ? await getCurrentUserRole() : null;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0a0a0f] text-white selection:bg-[#2974dd]/30 selection:text-blue-100">
@@ -32,7 +35,7 @@ export default async function LandingPage() {
 
       {/* ── nav ── */}
       {/* ── nav ── */}
-      <LandingNavbar />
+      <LandingNavbar initialRole={role} initialSignedIn={!!userId} />
 
       {/* ── hero ── */}
       <section className="relative z-10 mx-auto max-w-4xl px-8 pt-16 pb-20 text-center md:px-16 md:pt-28 md:pb-24">

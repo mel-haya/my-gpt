@@ -6,20 +6,18 @@ import { Menu, X, LogOut, Gauge, LayoutDashboard } from "lucide-react";
 import { useUser, SignOutButton } from "@clerk/nextjs";
 import UserComponent from "@/components/userComponent";
 import { cn } from "@/lib/utils";
-import { getCurrentUserRole } from "@/app/actions/users";
 import type { Roles } from "@/types/globals";
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function isValidRole(role: unknown): role is Roles {
-    return role === "admin" || role === "hotel_owner" || role === "hotel_staff";
+interface LandingNavbarProps {
+    initialRole: Roles | null;
+    initialSignedIn: boolean;
 }
 
-export default function LandingNavbar() {
+export default function LandingNavbar({ initialRole, initialSignedIn }: LandingNavbarProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
-    const { user, isLoaded, isSignedIn } = useUser();
-    const [role, setRole] = useState<Roles | null>(null);
+    const { isSignedIn } = useUser();
+    const [role] = useState<Roles | null>(initialRole);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -34,50 +32,9 @@ export default function LandingNavbar() {
         return () => { document.body.style.overflow = ""; };
     }, [isOpen]);
 
-    useEffect(() => {
-        let isMounted = true;
-
-        const loadRole = async () => {
-            if (!isLoaded) return;
-
-            if (!user) {
-                setRole(null);
-                return;
-            }
-
-            const maxAttempts = 4;
-            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-                try {
-                    const currentRole = await getCurrentUserRole();
-                    if (!isMounted) return;
-
-                    if (isValidRole(currentRole)) {
-                        setRole(currentRole);
-                        return;
-                    }
-                } catch {
-                    // Retry below.
-                }
-
-                if (attempt < maxAttempts) {
-                    await sleep(attempt * 120);
-                }
-            }
-
-            if (isMounted) {
-                setRole(null);
-            }
-        };
-
-        loadRole();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [isLoaded, user?.id]);
-
     const isAdmin = role === "admin";
     const isHotelStaff = role === "hotel_owner" || role === "hotel_staff";
+    const effectiveSignedIn = initialSignedIn || !!isSignedIn;
 
     return (
         <nav
@@ -147,7 +104,7 @@ export default function LandingNavbar() {
             <MobileNavMenu
                 isOpen={isOpen}
                 role={role}
-                isSignedIn={isSignedIn ?? false}
+                isSignedIn={effectiveSignedIn}
                 onClose={() => setIsOpen(false)}
             />
         </nav>
