@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
@@ -18,7 +19,14 @@ import HotelDialog from "./HotelDialog";
 import DeleteHotelDialog from "./DeleteHotelDialog";
 import HotelStaffDialog from "./HotelStaffDialog";
 import HotelPreferencesDialog from "./HotelPreferencesDialog";
-import { Edit, MoreHorizontal, Trash2, Users, Settings } from "lucide-react";
+import {
+  Edit,
+  MoreHorizontal,
+  Trash2,
+  Users,
+  Settings,
+  MessageCircle,
+} from "lucide-react";
 import { format } from "date-fns";
 
 interface HotelsListProps {
@@ -113,6 +121,16 @@ function ActionsCell({ hotel }: { hotel: HotelWithStaffCount }) {
             <Settings className="h-4 w-4" />
             Preferences
           </DropdownMenuItem>
+          {hotel.slug ? (
+            <DropdownMenuItem asChild>
+              <Link href={`/${hotel.slug}`}>
+                <MessageCircle className="h-4 w-4" />
+                Open Chat
+              </Link>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem disabled>Open Chat</DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
